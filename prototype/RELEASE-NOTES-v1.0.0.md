@@ -179,7 +179,13 @@ npm run dev
 ## 🐛 已知问题
 
 - **首次 npm run build:desktop 慢**（5-10 分钟编译 Next.js 全栈 + Electron 打包），之后增量打包快
-- **macOS Gatekeeper**：未签名 .dmg 需要 `xattr -d com.apple.quarantine` 绕过
+- **macOS Gatekeeper 必做 3 步**（未签名 Electron .app 在 macOS 11+ 会被拦）：
+```bash
+xattr -cr '/Applications/Insight OS.app'
+codesign --force --deep --sign - '/Applications/Insight OS.app'
+codesign --verify --verbose '/Applications/Insight OS.app'
+```
+  不跑会报"Insight OS 已损坏，无法打开"。一行搞定：`xattr -cr '/Applications/Insight OS.app' && codesign --force --deep --sign - '/Applications/Insight OS.app' && open '/Applications/Insight OS.app'`。
 - **Windows / Linux**：v1.1 计划
 - **自动更新**：v1.2 计划（已配好 electron-updater + GitHub Releases 端点）
 - **多用户**：单用户 SQLite，v2.0 才考虑多用户/同步
