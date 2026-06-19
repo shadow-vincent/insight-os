@@ -57,10 +57,10 @@
 ## 📦 安装
 
 ### macOS（推荐）
-1. 下载 **`Insight Asset OS_1.0.0_aarch64.dmg`**（下方 Assets）
-2. 双击 .dmg，拖入 Applications
-3. 启动 → 进 3 步 onboarding
-4. 1 分钟上手，开始用
+1. 下载 **`Insight OS-1.0.0-arm64.dmg`**（下方 Assets，334 MB Apple Silicon）
+2. 双击 .dmg，把 `Insight OS.app` 拖入 Applications
+3. 在 Applications 双击 `Insight OS.app` 启动
+4. 进 3 步 onboarding → 1 分钟上手
 
 ### Web 版（dev / 试用）
 ```bash
@@ -81,7 +81,7 @@ npm run dev
 ## 🚀 3 分钟上手
 
 启动后自动进 `/onboarding`：
-1. **配 LLM Key**（可选）— 支持 DeepSeek / OpenAI / 通义千问 / Moonshot / 自定义
+1. **配 LLM Key**（可选）— **任何兼容 OpenAI API 协议的服务**（本地 Ollama / 自部署 vLLM / MiniMax / DeepSeek / Qwen / GLM / OpenAI / Claude / 自定义）
 2. **选 Vault 路径** — 指向你的知识库根目录
 3. **装入示例数据** — 8 张示例卡 + 2 个主题 + 1 个内核 + 1 个示例写作
 
@@ -97,8 +97,8 @@ npm run dev
 - **Onboarding 引导**：4 步（欢迎 → LLM → Vault → Seed → 完成）
 - **Seed 示例数据**：8 张卡 + 2 主题 + 1 内核 + 1 写作，幂等
 - **README + LICENSE + CHANGELOG**
-- **Tauri 桌面 app 集成**：~10MB 安装包 vs Electron 80MB+
-- **隐私隔离**：macOS 走 `~/Library/Application Support/InsightOS/`
+- **Electron 32 桌面 app 集成**：macOS arm64 .dmg（包含 Next.js 全栈 + SQLite + LLM 集成）
+- **隐私隔离**：macOS 走 `~/Library/Application Support/insight-os-desktop/`
 - **3 处 API route 硬编码** → 改用 `config.paths.vaultPath`（修复别人用会写错文件的关键 bug）
 - 10 个生产 build blocker 修复
 
@@ -170,18 +170,18 @@ npm run dev
 - **前端**：Next.js 15 + React 19 + TypeScript
 - **UI**：自建设计系统（CSS variables + 双主题）
 - **数据**：SQLite + Drizzle ORM
-- **LLM**：OpenAI 兼容 API（DeepSeek / OpenAI / 通义 / Moonshot）
+- **LLM**：**任何兼容 OpenAI API 协议的服务**（本地 Ollama / 自部署 vLLM / MiniMax / DeepSeek / Qwen / GLM / OpenAI / Claude …）
 - **图谱**：react-force-graph-2d
-- **桌面 app**：Tauri 2.x
+- **桌面 app**：Electron 32（包含 Next.js 全栈 + SQLite）
 
 ---
 
 ## 🐛 已知问题
 
-- **首次 cargo tauri build 慢**（5-10 分钟编译 Rust 依赖），之后增量编译快
+- **首次 npm run build:desktop 慢**（5-10 分钟编译 Next.js 全栈 + Electron 打包），之后增量打包快
 - **macOS Gatekeeper**：未签名 .dmg 需要 `xattr -d com.apple.quarantine` 绕过
-- **Windows / Linux .dmg/.msi/.AppImage**：v1.1 计划
-- **自动更新**：v1.2 计划（已配好 Tauri updater 插件 + GitHub Releases 端点）
+- **Windows / Linux**：v1.1 计划
+- **自动更新**：v1.2 计划（已配好 electron-updater + GitHub Releases 端点）
 - **多用户**：单用户 SQLite，v2.0 才考虑多用户/同步
 
 ---
@@ -190,7 +190,7 @@ npm run dev
 
 - [README](./README.md) — 完整上手指南
 - [CHANGELOG](./CHANGELOG.md) — 全部历史
-- [Tauri 集成说明](./apps/web/src-tauri/README.md) — 桌面 app 编译 / 调试 / 签名
+- [桌面 app 构建说明](./apps/desktop/README.md) — Electron 编译 / 调试 / 签名
 - [路线图](./README.md#路线图) — v1.1 / v1.2 计划
 
 ---
@@ -198,8 +198,8 @@ npm run dev
 ## 🤝 反馈
 
 - **Bug / Feature Request** → [GitHub Issues](https://github.com/shadow-vincent/insight-os/issues)
-- **讨论 / 想法** → [GitHub Discussions](https://github.com/shadow-vincent/insight-os/discussions)
-- **邮件** — your@email.com
+- **讨论 / 想法** → 在 Issue 里加 `💡 idea` 标签
+- **邮件** — vincent4895856@gmail.com
 
 ---
 

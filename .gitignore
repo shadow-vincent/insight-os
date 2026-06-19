@@ -13,11 +13,18 @@ apps/web/.next/standalone/
 # Tauri
 apps/web/src-tauri/gen/
 
+# Electron desktop build (334MB - 不进 git)
+apps/desktop/dist/
+apps/desktop/node_modules/
+
 # 用户数据（绝不进 git）
 apps/web/storage/insight.db
 apps/web/storage/insight.db-wal
 apps/web/storage/config.json
 apps/web/storage/04_管理洞察/
+
+# Desktop packaged app user data
+~/Library/Application Support/insight-os-desktop/
 
 # OS
 .DS_Store

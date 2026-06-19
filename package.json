@@ -17,9 +17,17 @@
     "lint": "cd apps/web && next lint",
     "test": "node --test tests/*.test.mjs",
     "index": "node scripts/index-assets.mjs",
-    "index:watch": "node scripts/index-assets.mjs --watch"
+    "index:watch": "node scripts/index-assets.mjs --watch",
+    "build:packages": "node build-packages.mjs",
+    "build:desktop": "cd apps/desktop && npx electron-builder --mac",
+    "build:desktop:dir": "cd apps/desktop && npx electron-builder --mac --dir",
+    "rebuild:native": "cd apps/web && npx electron-rebuild -f -w better-sqlite3 -v 32.2.5"
   },
   "dependencies": {
     "playwright": "^1.61.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "esbuild": "^0.28.1"
   }
 }

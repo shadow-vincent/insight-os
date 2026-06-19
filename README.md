@@ -124,7 +124,7 @@ npm run index
 - **数据**：SQLite + Drizzle ORM
 - **LLM**：**任何兼容 OpenAI API 协议的服务**（本地 Ollama / 自部署 vLLM / MiniMax / DeepSeek / Qwen / GLM / OpenAI / Claude …）
 - **图谱**：react-force-graph-2d
-- **桌面 app**（计划）：Tauri 2.x
+- **桌面 app**：Electron 32（macOS arm64 .dmg 已发布）
 
 ## 路线图
 
@@ -139,7 +139,7 @@ npm run index
 - ✅ v0.9 写作工作流（4 步向导 + 陪练）
 - ✅ v0.10 今日待办 + 进化时间线 + 写作复盘
 - ✅ v1.0 Onboarding + Seed 数据
-- 🚧 v1.1 Tauri 桌面 app（macOS .dmg）
+- ✅ v1.1 Electron 桌面 app（macOS arm64 .dmg）
 - 🚧 v1.2 自动更新 + GitHub Releases
 
 ## 常见问题

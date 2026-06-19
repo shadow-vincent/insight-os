@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./prompts/light-card": "./src/prompts/light-card.ts",
-    "./prompts/calibrate": "./src/prompts/calibrate.ts",
-    "./prompts/asset-upgrade": "./src/prompts/asset-upgrade.ts",
-    "./prompts/output-generate": "./src/prompts/output-generate.ts"
+    ".": "./dist/index.js",
+    "./prompts/light-card": "./dist/prompts/light-card.js",
+    "./prompts/calibrate": "./dist/prompts/calibrate.js",
+    "./prompts/asset-upgrade": "./dist/prompts/asset-upgrade.js",
+    "./prompts/output-generate": "./dist/prompts/output-generate.js"
   },
   "dependencies": {
     "openai": "^4.73.0",

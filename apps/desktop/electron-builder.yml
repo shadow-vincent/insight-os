@@ -1,0 +1,44 @@
+appId: com.insightos.app
+productName: Insight OS
+copyright: Copyright © 2024-2026 Vincent
+directories:
+  buildResources: ../web/src-tauri/icons
+  output: dist
+
+# Mac 配置
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64
+  icon: ../web/src-tauri/icons/icon.icns
+  identity: null  # 未签名
+
+dmg:
+  title: ${productName} ${version}
+  iconSize: 96
+  contents:
+    - x: 180
+      y: 170
+    - x: 480
+      y: 170
+      type: link
+      path: /Applications
+
+# 不打包 web 源码 (太大了)
+files:
+  - main.js
+  - package.json
+
+extraResources:
+  - from: ../web/.next
+    to: web-pkg/.next
+  - from: ../web/public
+    to: web-pkg/public
+  - from: ../web/package.json
+    to: web-pkg/package.json
+  - from: ../../node_modules
+    to: web-pkg/node_modules
+  - from: ../../packages
+    to: web-pkg/packages

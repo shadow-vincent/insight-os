@@ -1,0 +1,22 @@
+{
+  "name": "insight-os-desktop",
+  "version": "1.0.0",
+  "description": "Insight Asset OS desktop app (Electron)",
+  "main": "main.js",
+  "author": {
+    "name": "Vincent",
+    "email": "vincent4895856@gmail.com"
+  },
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "32.2.5",
+    "electron-builder": "25.1.8"
+  }
+}

@@ -31,7 +31,7 @@ export async function GET(
       .from(assetTopics)
       .where(eq(assetTopics.assetId, assetId))
       .all();
-    const myTopicIds = myTopicRows.map(r => r.topicId);
+    const myTopicIds = myTopicRows.map((r: any) => r.topicId);
 
     if (myTopicIds.length === 0) {
       // 当前资产无主题 → 退而求其次：返回最近更新 + 高 E 等级 的资产
