@@ -114,7 +114,9 @@ export default function MapPage() {
         <div className="card empty-state">
           <div className="icon">🗺️</div>
           <p>还没有主题</p>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>运行 <code>node scripts/seed-topics.mjs</code></p>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8 }}>
+            去 <Link href="/onboarding" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>onboarding</Link> 装示例数据，或在资产库给卡打主题标签后会自动归类
+          </p>
         </div>
       )}
 
