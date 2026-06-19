@@ -6,6 +6,10 @@ Insight Asset OS 是为**独立咨询顾问 / 自由职业者 / 知识工作者*
 
 它帮你把散落的笔记、文章、案例沉淀成"判断力资产"——每张卡都有**反常识点 + 证据等级**，每个主题都有**思想内核 + 核心判断**。
 
+<p align="center">
+  <video src="https://raw.githubusercontent.com/shadow-vincent/insight-os/main/apps/web/public/demo-promo.mp4" controls width="800"></video>
+</p>
+
 ## 核心特性
 
 - 🧠 **思想内核**：每个主题 1 句核心判断 + 3-5 条反常识
