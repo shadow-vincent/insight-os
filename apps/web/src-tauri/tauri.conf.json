@@ -51,7 +51,7 @@
       "active": true,
       "dialog": true,
       "endpoints": [
-        "https://github.com/yourusername/insight-asset-os/releases/latest/download/{{target}}/{{arch}}/{{current_version}}"
+        "https://github.com/shadow-vincent/insight-os/releases/latest/download/{{target}}/{{arch}}/{{current_version}}"
       ]
     }
   }

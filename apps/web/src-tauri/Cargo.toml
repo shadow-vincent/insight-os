@@ -1,10 +1,10 @@
 [package]
-name = "insight-asset-os"
+name = "insight-os"
 version = "1.0.0"
 description = "把零散经验转化为可调用、可输出、可验证、可进化的管理思想资产"
 authors = ["Vincent"]
 license = "MIT"
-repository = "https://github.com/yourusername/insight-asset-os"
+repository = "https://github.com/shadow-vincent/insight-os"
 edition = "2021"
 rust-version = "1.70"
 

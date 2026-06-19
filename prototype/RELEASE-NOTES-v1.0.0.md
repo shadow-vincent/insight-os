@@ -64,8 +64,8 @@
 
 ### Web 版（dev / 试用）
 ```bash
-git clone https://github.com/yourusername/insight-asset-os.git
-cd insight-asset-os
+git clone https://github.com/shadow-vincent/insight-os.git
+cd insight-os
 npm install
 npm run dev
 # 浏览器打开 http://localhost:4191
@@ -197,8 +197,8 @@ npm run dev
 
 ## 🤝 反馈
 
-- **Bug / Feature Request** → [GitHub Issues](https://github.com/yourusername/insight-asset-os/issues)
-- **讨论 / 想法** → [GitHub Discussions](https://github.com/yourusername/insight-asset-os/discussions)
+- **Bug / Feature Request** → [GitHub Issues](https://github.com/shadow-vincent/insight-os/issues)
+- **讨论 / 想法** → [GitHub Discussions](https://github.com/shadow-vincent/insight-os/discussions)
 - **邮件** — your@email.com
 
 ---
@@ -206,15 +206,6 @@ npm run dev
 ## 📝 License
 
 [MIT](./LICENSE) © 2024-2026 Vincent
-
----
-
-## 🙏 致谢
-
-- 设计灵感：Derek Sivers / Farnam Street
-- LLM 提供：DeepSeek / OpenAI / Anthropic Claude
-- 图谱：react-force-graph-2d
-- 框架：Next.js + Tauri
 
 ---
 
