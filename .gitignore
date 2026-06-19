@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+apps/web/src-tauri/target/
+apps/web/.next/standalone/
+
+# Tauri
+apps/web/src-tauri/gen/
+
+# 用户数据（绝不进 git）
+apps/web/storage/insight.db
+apps/web/storage/insight.db-wal
+apps/web/storage/config.json
+apps/web/storage/04_管理洞察/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Tauri build artifacts
+*.app
+*.dmg
+*.msi
+*.AppImage

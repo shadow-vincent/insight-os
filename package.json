@@ -1,0 +1,25 @@
+{
+  "name": "insight-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "管理洞察资产工作台 - 让零散经验转化为可调用、可输出、可验证、可进化的管理思想资产",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "cd apps/web && next dev --port 4191",
+    "build": "cd apps/web && next build",
+    "start": "cd apps/web && next start --port 4191",
+    "lint": "cd apps/web && next lint",
+    "test": "node --test tests/*.test.mjs",
+    "index": "node scripts/index-assets.mjs",
+    "index:watch": "node scripts/index-assets.mjs --watch"
+  },
+  "dependencies": {
+    "playwright": "^1.61.0"
+  }
+}

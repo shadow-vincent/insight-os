@@ -1,0 +1,2386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insight Asset OS · 重新设计原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   Insight OS Redesign · 设计系统 v2
+   核心理念：从"工具感"到"思想资产驾驶舱"
+   ============================================ */
+:root {
+  /* 背景 —— 冷白（当前 insight-os 配色） */
+  --bg-canvas: #f7f9fc;
+  --bg-panel: #ffffff;
+  --bg-subtle: #eef2f7;
+  --bg-elevated: #ffffff;
+
+  /* 描边 */
+  --line: #e2e8f0;
+  --line-soft: #eef2f7;
+  --line-strong: #cbd5e1;
+
+  /* 文字 */
+  --text: #1a2332;
+  --text-2: #475569;
+  --text-3: #64748b;
+  --text-muted: #94a3b8;
+  --ink: #0f172a;
+
+  /* 品牌主色 —— 深蓝（当前 insight-os 配色） */
+  --primary: #1a365d;
+  --primary-hover: #142847;
+  --primary-soft: rgba(26, 54, 93, 0.07);
+  --primary-line: rgba(26, 54, 93, 0.18);
+  --primary-glow: rgba(26, 54, 93, 0.12);
+
+  /* 强调色 —— 琥珀橙，呼应"洞察=火花" */
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.1);
+
+  /* 紫色辅助（用于"思想内核"等高级概念） */
+  --violet: #6d5bc9;
+  --violet-soft: rgba(109, 91, 201, 0.1);
+
+  /* 状态色 */
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.1);
+  --warning: #d97706;
+  --danger: #dc2626;
+
+  /* 阴影 —— 更柔和、有层次 */
+  --shadow-xs: 0 1px 2px rgba(20, 23, 30, 0.04);
+  --shadow-sm: 0 2px 8px -2px rgba(20, 23, 30, 0.06);
+  --shadow-md: 0 4px 16px -4px rgba(20, 23, 30, 0.08);
+  --shadow-lg: 0 12px 32px -8px rgba(20, 23, 30, 0.12);
+  --shadow-xl: 0 24px 64px -12px rgba(20, 23, 30, 0.18);
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* { box-sizing: border-box; }
+* { text-wrap: pretty; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  background: var(--bg-canvas);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(26, 54, 93, 0.04) 0%, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(217, 119, 6, 0.03) 0%, transparent 40%);
+  background-attachment: fixed;
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5 { color: var(--ink); font-weight: 600; margin: 0; letter-spacing: -0.005em; }
+
+/* ============================================
+   布局
+   ============================================ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.app-main {
+  padding: 32px 40px 80px;
+  width: 100%;
+  min-width: 0;
+  max-width: 1480px;
+}
+
+@media (max-width: 1280px) { .app-main { padding: 28px 28px; } }
+@media (max-width: 768px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .app-main { padding: 16px; }
+}
+
+.page-title {
+  font-family: 'DM Serif Display', 'Noto Serif SC', serif;
+  font-size: 30px;
+  font-weight: 400;
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 13.5px;
+  color: var(--text-3);
+  margin: 6px 0 0;
+}
+
+/* ============================================
+   Sidebar —— 增加品牌质感
+   ============================================ */
+.sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--line);
+  padding: 22px 14px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  margin-bottom: 28px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+
+.sidebar-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), #2d7a64);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--primary-glow);
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-logo-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+}
+.sidebar-logo-mark svg { width: 16px; height: 16px; position: relative; z-index: 1; }
+
+.sidebar-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.sidebar-logo-text .name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.sidebar-logo-text .tag {
+  font-size: 9.5px;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.sidebar-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  font-size: 12.5px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 140ms;
+  font-family: inherit;
+}
+.sidebar-search-btn:hover {
+  background: var(--bg-panel);
+  border-color: var(--primary-line);
+  color: var(--primary);
+  box-shadow: var(--shadow-xs);
+}
+.sidebar-search-btn svg { width: 14px; height: 14px; }
+.sidebar-search-btn kbd {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-3);
+  background: var(--bg-panel);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+.sidebar-section {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 18px 12px 7px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-2);
+  text-decoration: none;
+  margin-bottom: 2px;
+  cursor: pointer;
+  transition: all 140ms;
+  position: relative;
+  font-weight: 500;
+}
+.nav-item:hover {
+  background: var(--bg-subtle);
+  color: var(--ink);
+}
+.nav-item.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 12px -4px var(--primary-glow);
+}
+.nav-item.active svg { stroke: white; }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke-width: 1.8; }
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  line-height: 1.5;
+}
+.nav-item.active .nav-badge { background: rgba(255,255,255,0.25); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 3px var(--success-soft);
+}
+
+/* ============================================
+   按钮 —— 更精致
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 15px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 140ms;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-xs);
+}
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 4px 12px -3px var(--primary-glow);
+}
+.btn-accent {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-accent:hover { background: #b45309; border-color: #b45309; }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-3); }
+.btn-ghost:hover { background: var(--bg-subtle); color: var(--text); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn-icon { padding: 7px; width: 30px; height: 30px; }
+.btn svg { width: 14px; height: 14px; }
+
+/* ============================================
+   卡片 —— 纵深感
+   ============================================ */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-hover {
+  transition: border-color 180ms, box-shadow 180ms, transform 180ms;
+}
+.card-hover:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title svg { width: 15px; height: 15px; color: var(--primary); }
+
+.card-body { padding: 22px; }
+
+/* ============================================
+   Pill / 标签 —— 更精致的色阶
+   ============================================ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.pill-E0 { background: #f1f0ec; color: #78716c; }
+.pill-E1 { background: #fef3c7; color: #92400e; }
+.pill-E2 { background: #ddd6fe; color: #6d28d9; }
+.pill-E3 { background: #bfdbfe; color: #1e40af; }
+.pill-E4 { background: #99f6e4; color: #0f766e; }
+.pill-E5 { background: var(--primary); color: white; }
+
+.pill-priority-A { background: #fee2e2; color: #b91c1c; }
+.pill-priority-B { background: #fed7aa; color: #9a3412; }
+.pill-priority-C { background: #f1f0ec; color: #78716c; }
+
+.pill-status-in_use { background: var(--success-soft); color: #15803d; }
+.pill-status-candidate { background: var(--accent-soft); color: #b45309; }
+.pill-status-inbox { background: #f1f0ec; color: #78716c; }
+
+.pill-soft { background: var(--bg-subtle); color: var(--text-2); }
+
+/* ============================================
+   仪表盘 —— 核心改造区
+   ============================================ */
+.dash-hero {
+  background: linear-gradient(135deg, #1a365d 0%, #142847 100%);
+  border-radius: var(--radius-xl);
+  padding: 32px 36px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: 0 20px 50px -20px rgba(31, 93, 76, 0.5);
+}
+.dash-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -10%;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.dash-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60%; left: 20%;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.dash-hero-content { position: relative; z-index: 1; }
+
+.dash-greeting {
+  font-size: 13px;
+  opacity: 0.75;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.dash-hero h1 {
+  font-family: 'DM Serif Display', 'Noto Serif SC', serif;
+  font-size: 34px;
+  font-weight: 400;
+  color: white;
+  margin: 0 0 14px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  max-width: 720px;
+}
+.dash-hero h1 em {
+  font-style: italic;
+  color: #fbbf24;
+}
+
+.dash-hero-meta {
+  display: flex;
+  gap: 28px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.dash-hero-meta .item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-hero-meta .num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+}
+.dash-hero-meta .label {
+  font-size: 11px;
+  opacity: 0.7;
+  letter-spacing: 0.04em;
+}
+
+.dash-cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+.dash-cta {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 9px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+}
+.dash-cta:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+}
+.dash-cta.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.dash-cta.primary:hover { background: #b45309; }
+.dash-cta svg { width: 14px; height: 14px; }
+
+/* 统计卡 —— 带迷你趋势 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.stat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 180ms;
+}
+.stat-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.stat-card .stat-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.stat-card .stat-icon svg { width: 16px; height: 16px; }
+.stat-icon.green { background: var(--primary-soft); color: var(--primary); }
+.stat-icon.amber { background: var(--accent-soft); color: var(--accent); }
+.stat-icon.violet { background: var(--violet-soft); color: var(--violet); }
+.stat-icon.blue { background: #dbeafe; color: #2563eb; }
+
+.stat-card .stat-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.stat-card .stat-label {
+  font-size: 12.5px;
+  color: var(--text-2);
+  font-weight: 600;
+  margin-top: 6px;
+}
+.stat-card .stat-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.stat-card .stat-trend {
+  position: absolute;
+  top: 18px; right: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.stat-trend.up { color: var(--success); }
+.stat-trend.down { color: var(--danger); }
+.stat-trend.flat { color: var(--text-3); }
+
+/* 证据等级分布 —— 横向条形 */
+.ev-bar-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 36px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 9px;
+  font-size: 12px;
+}
+.ev-bar-row:last-child { margin-bottom: 0; }
+.ev-bar-label {
+  font-weight: 700;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.ev-bar-track {
+  height: 22px;
+  background: var(--bg-subtle);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+.ev-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 800ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  color: white;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.ev-bar-fill.f-E0 { background: #a8a29e; }
+.ev-bar-fill.f-E1 { background: #fbbf24; }
+.ev-bar-fill.f-E2 { background: #a78bfa; }
+.ev-bar-fill.f-E3 { background: #60a5fa; }
+.ev-bar-fill.f-E4 { background: #3b82f6; }
+.ev-bar-fill.f-E5 { background: var(--primary); }
+.ev-bar-count {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: right;
+  font-weight: 600;
+}
+
+/* 主题热力图气泡 */
+.topic-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+.topic-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 20px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 160ms;
+  font-weight: 500;
+}
+.topic-bubble:hover {
+  border-color: var(--primary-line);
+  background: var(--primary-soft);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+.topic-bubble .count {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  background: var(--bg-panel);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.topic-bubble:hover .count { color: var(--primary); }
+.topic-bubble.hot { background: var(--primary); color: white; border-color: var(--primary); }
+.topic-bubble.hot .count { background: rgba(255,255,255,0.2); color: white; }
+
+/* 今日工作流 —— 三栏待办 */
+.workflow-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 900px) { .workflow-board { grid-template-columns: 1fr; } }
+
+.workflow-col {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.workflow-col-head {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-subtle);
+}
+.workflow-col-head .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.workflow-col-head.amber .dot { background: var(--accent); }
+.workflow-col-head.blue .dot { background: #3b82f6; }
+.workflow-col-head.green .dot { background: var(--success); }
+.workflow-col-head .title {
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+}
+.workflow-col-head .count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  background: var(--bg-panel);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.workflow-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: background 140ms;
+}
+.workflow-item:hover { background: var(--bg-subtle); }
+.workflow-item:last-child { border-bottom: none; }
+.workflow-item .wi-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.workflow-item .wi-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+
+/* 最近活动 feed */
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.activity-icon svg { width: 14px; height: 14px; }
+.activity-content { flex: 1; min-width: 0; }
+.activity-content .ac-title {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.45;
+}
+.activity-content .ac-title strong { font-weight: 600; }
+.activity-content .ac-time {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* ============================================
+   资产卡 —— 列表/网格两种
+   ============================================ */
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.asset-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  cursor: pointer;
+  transition: all 180ms;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.asset-card:hover {
+  border-color: var(--primary-line);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.asset-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 18px; bottom: 18px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--line-strong);
+}
+.asset-card.e-E5::before { background: var(--primary); }
+.asset-card.e-E4::before { background: #3b82f6; }
+.asset-card.e-E3::before { background: #60a5fa; }
+.asset-card.e-E2::before { background: #a78bfa; }
+.asset-card.e-E1::before { background: #fbbf24; }
+
+.asset-card .ac-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.asset-card .ac-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  margin: 0 0 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.asset-card .ac-insight {
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+.asset-card .ac-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.asset-card .ac-footer .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.asset-card .ac-footer svg { width: 11px; height: 11px; }
+
+/* 资产卡顶部 checkbox */
+.asset-check {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 20px; height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--bg-panel);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 140ms;
+  z-index: 2;
+}
+.asset-check:hover { border-color: var(--primary); }
+.asset-check.checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.asset-check.checked svg { display: block; }
+.asset-check svg { display: none; width: 12px; height: 12px; stroke: white; stroke-width: 3; }
+
+/* ============================================
+   资产详情 —— 阅读型布局
+   ============================================ */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 1100px) { .detail-layout { grid-template-columns: 1fr; } }
+
+.detail-main { min-width: 0; }
+.detail-side {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-title {
+  font-family: 'DM Serif Display', 'Noto Serif SC', serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.25;
+  margin: 12px 0 16px;
+  letter-spacing: -0.01em;
+}
+
+.insight-callout {
+  background: linear-gradient(135deg, var(--primary-soft), transparent);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.insight-callout.accent {
+  background: linear-gradient(135deg, var(--accent-soft), transparent);
+  border-left-color: var(--accent);
+}
+.insight-callout strong { color: var(--ink); }
+
+.detail-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+/* 详情侧边栏小卡 */
+.side-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.side-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.side-card-title svg { width: 13px; height: 13px; }
+
+.audience-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms;
+  font-family: inherit;
+}
+.audience-chip:hover { border-color: var(--primary-line); }
+.audience-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* ============================================
+   工具类
+   ============================================ */
+.row { display: flex; align-items: center; gap: 12px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.col { display: flex; flex-direction: column; gap: 12px; }
+.gap-8 { gap: 8px; } .gap-16 { gap: 16px; } .gap-24 { gap: 24px; }
+.mb-0 { margin-bottom: 0; } .mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; } .mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+.mt-16 { margin-top: 16px; } .mt-24 { margin-top: 24px; }
+.flex-1 { flex: 1; }
+.text-muted { color: var(--text-3); }
+.text-sm { font-size: 12px; }
+.text-xs { font-size: 11px; }
+.fw-600 { font-weight: 600; }
+.divider { height: 1px; background: var(--line-soft); margin: 16px 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* 空状态 */
+.empty-state {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--text-3);
+}
+.empty-state svg { width: 40px; height: 40px; opacity: 0.3; margin-bottom: 12px; }
+
+/* Tab */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.tab {
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: all 140ms;
+  font-family: inherit;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--ink);
+  color: white;
+  padding: 11px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast svg { width: 15px; height: 15px; color: var(--success); }
+
+/* 页面切换动画 */
+.page { animation: fadeIn 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 进度条（加载用） */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-panel) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 5px;
+}
+
+/* 迷你 sparkline */
+.sparkline { display: block; }
+.sparkline path.area { fill: var(--primary-soft); }
+.sparkline path.line { fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 内核候选标记 */
+.kernel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--violet);
+  background: var(--violet-soft);
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 5px; border: 2px solid var(--bg-canvas); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar">
+    <a class="sidebar-logo" onclick="nav('dashboard')">
+      <span class="sidebar-logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/>
+        </svg>
+      </span>
+      <span class="sidebar-logo-text">
+        <span class="name">Insight OS</span>
+        <span class="tag">思想资产工作台</span>
+      </span>
+    </a>
+
+    <button class="sidebar-search-btn" onclick="showToast('全局搜索（⌘K）')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <span>搜索资产…</span>
+      <kbd>⌘K</kbd>
+    </button>
+
+    <div class="sidebar-section">工作流</div>
+    <a class="nav-item active" data-nav="dashboard" onclick="nav('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      <span>仪表盘</span>
+    </a>
+    <a class="nav-item" data-nav="inbox" onclick="nav('inbox')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+      <span>收集箱</span>
+      <span class="nav-badge">3</span>
+    </a>
+    <a class="nav-item" data-nav="assets" onclick="nav('assets')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span>资产库</span>
+    </a>
+    <a class="nav-item" data-nav="map" onclick="nav('map')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+      <span>资产地图</span>
+    </a>
+    <a class="nav-item" data-nav="graph" onclick="nav('graph')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/><line x1="7" y1="19" x2="17" y2="19"/></svg>
+      <span>资产图谱</span>
+    </a>
+
+    <div class="sidebar-section">产出</div>
+    <a class="nav-item" data-nav="output" onclick="nav('output')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>输出历史</span>
+    </a>
+    <a class="nav-item" data-nav="assistant" onclick="nav('assistant')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>洞察助手</span>
+      <span class="nav-badge" style="background: var(--violet);">新</span>
+    </a>
+
+    <div class="sidebar-section">系统</div>
+    <a class="nav-item" data-nav="settings" onclick="nav('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>设置</span>
+    </a>
+
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      <span>DeepSeek · 已连接</span>
+    </div>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <main class="app-main">
+
+    <!-- ============================================
+         页面 1：仪表盘（核心改造）
+         ============================================ -->
+    <div class="page" id="page-dashboard">
+      <!-- Hero -->
+      <div class="dash-hero">
+        <div class="dash-hero-content">
+          <div class="dash-greeting">下午好，Vincent · 今天是周三</div>
+          <h1>你有 <em>3 张待校准</em>的洞察，<br>其中 1 张可能成为<em>思想内核</em>候选</h1>
+          <div class="dash-cta-row">
+            <a class="dash-cta primary" onclick="nav('inbox')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              快速记录一条观察
+            </a>
+            <a class="dash-cta" onclick="nav('assistant')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              向洞察助手提问
+            </a>
+          </div>
+          <div class="dash-hero-meta">
+            <div class="item"><span class="num">42</span><span class="label">资产总数</span></div>
+            <div class="item"><span class="num">38</span><span class="label">已入库</span></div>
+            <div class="item"><span class="num">7</span><span class="label">本周新增</span></div>
+            <div class="item"><span class="num">12</span><span class="label">本月输出</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 统计卡（带迷你趋势） -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-trend up">↑ 18%</div>
+          <div class="stat-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <div class="stat-num">42</div>
+          <div class="stat-label">资产卡总数</div>
+          <div class="stat-sub">OpenClaw 加工 + 本应用整理</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-trend up">↑ 3</div>
+          <div class="stat-icon amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div class="stat-num">8</div>
+          <div class="stat-label">高证据资产 (E3+)</div>
+          <div class="stat-sub">可用于客户场景</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-trend flat">—</div>
+          <div class="stat-icon violet">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <div class="stat-num">2</div>
+          <div class="stat-label">思想内核候选</div>
+          <div class="stat-sub">3+ 张卡共识待确认</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-trend up">↑ 5</div>
+          <div class="stat-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="stat-num">12</div>
+          <div class="stat-label">本月输出</div>
+          <div class="stat-sub">话术 7 · 大纲 5</div>
+        </div>
+      </div>
+
+      <!-- 主体区：左侧证据分布 + 右侧今日工作流 -->
+      <div class="grid-2 mb-24">
+        <!-- 证据等级分布 -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              证据等级分布
+            </h2>
+            <span class="text-xs text-muted">共 42 张</span>
+          </div>
+          <div class="card-body">
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E0">E0</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E0" style="width: 21%">3</div></div>
+              <span class="ev-bar-count">3 张</span>
+            </div>
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E1">E1</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E1" style="width: 43%">9</div></div>
+              <span class="ev-bar-count">9 张</span>
+            </div>
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E2">E2</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E2" style="width: 67%">14</div></div>
+              <span class="ev-bar-count">14 张</span>
+            </div>
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E3">E3</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E3" style="width: 29%">6</div></div>
+              <span class="ev-bar-count">6 张</span>
+            </div>
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E4">E4</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E4" style="width: 14%">3</div></div>
+              <span class="ev-bar-count">3 张</span>
+            </div>
+            <div class="ev-bar-row">
+              <span class="ev-bar-label pill-E5">E5</span>
+              <div class="ev-bar-track"><div class="ev-bar-fill f-E5" style="width: 10%">2</div></div>
+              <span class="ev-bar-count">2 张</span>
+            </div>
+            <div class="divider"></div>
+            <div class="row" style="font-size: 12px; color: var(--text-3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>E3+ 资产可放心用于客户场景，目前占 <strong style="color: var(--primary);">26%</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 主题热力图 -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+              主题分布
+            </h2>
+            <a class="text-xs" style="color: var(--primary); cursor: pointer;" onclick="nav('map')">查看地图 →</a>
+          </div>
+          <div class="card-body">
+            <div class="topic-bubbles">
+              <span class="topic-bubble hot" onclick="nav('map')">数字化转型 <span class="count">11</span></span>
+              <span class="topic-bubble" onclick="nav('map')">AI 落地 <span class="count">8</span></span>
+              <span class="topic-bubble" onclick="nav('map')">组织治理 <span class="count">7</span></span>
+              <span class="topic-bubble" onclick="nav('map')">财务数字化 <span class="count">6</span></span>
+              <span class="topic-bubble" onclick="nav('map')">客户沟通 <span class="count">5</span></span>
+              <span class="topic-bubble" onclick="nav('map')">经营能力 <span class="count">3</span></span>
+              <span class="topic-bubble" onclick="nav('map')">课程开发 <span class="count">2</span></span>
+            </div>
+            <div class="divider"></div>
+            <div class="row" style="font-size: 12px; color: var(--text-3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+              <span><strong style="color: var(--primary);">数字化转型</strong> 是你最丰富的思想矿脉</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日工作流看板 -->
+      <div class="row-between mb-16">
+        <div>
+          <h2 style="font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; color: var(--ink);">今日待办</h2>
+          <p class="page-subtitle" style="margin-top: 2px;">按工作流阶段组织，点一项即可处理</p>
+        </div>
+      </div>
+      <div class="workflow-board mb-24">
+        <!-- 待校准 -->
+        <div class="workflow-col">
+          <div class="workflow-col-head amber">
+            <span class="dot"></span>
+            <span class="title">待校准</span>
+            <span class="count">3</span>
+          </div>
+          <div class="workflow-item" onclick="nav('candidates')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E1">E1</span><span class="pill pill-priority-A">A</span></div>
+            <div class="wi-title">判断力稀缺：AI 时代管理者的新护城河</div>
+            <div class="wi-meta">来自网页摘录 · 2 小时前</div>
+          </div>
+          <div class="workflow-item" onclick="nav('candidates')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E2">E2</span><span class="pill pill-priority-B">B</span></div>
+            <div class="wi-title">ERP 选型的三个隐性决策点</div>
+            <div class="wi-meta">来自会议转录 · 昨天</div>
+          </div>
+          <div class="workflow-item" onclick="nav('candidates')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E1">E1</span><span class="kernel-badge">内核候选</span></div>
+            <div class="wi-title">决策空心化：为什么中层不拍板</div>
+            <div class="wi-meta">来自引文金句 · 3 天前</div>
+          </div>
+        </div>
+
+        <!-- 待输出 -->
+        <div class="workflow-col">
+          <div class="workflow-col-head blue">
+            <span class="dot"></span>
+            <span class="title">可输出</span>
+            <span class="count">4</span>
+          </div>
+          <div class="workflow-item" onclick="nav('assets')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E3">E3</span></div>
+            <div class="wi-title">激励错位：KPI 与真实目标的背离</div>
+            <div class="wi-meta">7 天未输出 · 反馈 5 次</div>
+          </div>
+          <div class="workflow-item" onclick="nav('assets')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E4">E4</span></div>
+            <div class="wi-title">数字化是组织问题，不是技术问题</div>
+            <div class="wi-meta">高价值 · 客户认可</div>
+          </div>
+          <div class="workflow-item" onclick="nav('assets')">
+            <div class="row gap-8 mb-8"><span class="pill pill-E3">E3</span></div>
+            <div class="wi-title">数据治理的三个反常识</div>
+            <div class="wi-meta">本周升级 · 待生成大纲</div>
+          </div>
+        </div>
+
+        <!-- 待反馈 -->
+        <div class="workflow-col">
+          <div class="workflow-col-head green">
+            <span class="dot"></span>
+            <span class="title">待跟进反馈</span>
+            <span class="count">2</span>
+          </div>
+          <div class="workflow-item" onclick="nav('output')">
+            <div class="row gap-8 mb-8"><span class="pill pill-status-in_use">已用</span></div>
+            <div class="wi-title">CFO 沟通话术 · 财务数字化</div>
+            <div class="wi-meta">3 天前用 · 客户追问了</div>
+          </div>
+          <div class="workflow-item" onclick="nav('output')">
+            <div class="row gap-8 mb-8"><span class="pill pill-status-in_use">已用</span></div>
+            <div class="wi-title">公众号大纲 · AI 落地方法论</div>
+            <div class="wi-meta">5 天前用 · 待记录反应</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近活动 feed -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            最近活动
+          </h2>
+          <a class="text-xs" style="color: var(--primary); cursor: pointer;">查看全部 →</a>
+        </div>
+        <div class="card-body" style="padding-top: 8px; padding-bottom: 8px;">
+          <div class="activity-item">
+            <div class="activity-icon" style="background: var(--success-soft); color: var(--success);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="activity-content">
+              <div class="ac-title">资产 <strong>「判断力稀缺」</strong> 从 E1 升级到 <strong style="color: var(--primary);">E2</strong></div>
+              <div class="ac-time">2 小时前 · 基于客户反馈自动建议</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon" style="background: var(--accent-soft); color: var(--accent);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="activity-content">
+              <div class="ac-title">生成了 1 份 <strong>CFO 沟通话术</strong>，基于「财务数字化」3 张资产联合</div>
+              <div class="ac-time">昨天 16:32</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon" style="background: var(--violet-soft); color: var(--violet);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+            </div>
+            <div class="activity-content">
+              <div class="ac-title">系统识别出新的<strong style="color: var(--violet);">思想内核候选</strong>：「决策空心化」（3 张卡共识）</div>
+              <div class="ac-time">前天 · 待你确认</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-icon" style="background: var(--primary-soft); color: var(--primary);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="activity-content">
+              <div class="ac-title">收集箱新增 <strong>2 条</strong>观察，已自动整理为轻量卡</div>
+              <div class="ac-time">3 天前</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 2：资产库
+         ============================================ -->
+    <div class="page" id="page-assets" hidden>
+      <div class="row-between mb-24">
+        <div>
+          <h1 class="page-title">资产库</h1>
+          <p class="page-subtitle">42 张资产 · 来源：OpenClaw 加工 + 本应用整理 · 已选 0 张</p>
+        </div>
+        <div class="row gap-8">
+          <button class="btn" onclick="showToast('筛选面板')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            筛选
+          </button>
+          <button class="btn" onclick="showToast('切换排序')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/></svg>
+            排序
+          </button>
+          <button class="btn btn-primary" onclick="nav('inbox')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            新建
+          </button>
+        </div>
+      </div>
+
+      <!-- 筛选 chips -->
+      <div class="row gap-8 mb-24" style="flex-wrap: wrap;">
+        <span class="audience-chip active">全部 42</span>
+        <span class="audience-chip">数字化转型 11</span>
+        <span class="audience-chip">AI 落地 8</span>
+        <span class="audience-chip">组织治理 7</span>
+        <span class="audience-chip">财务数字化 6</span>
+        <span style="width: 1px; height: 20px; background: var(--line); margin: 0 4px;"></span>
+        <span class="audience-chip">E3+ 高证据</span>
+        <span class="audience-chip">A 级优先</span>
+      </div>
+
+      <div class="asset-grid">
+        <!-- 卡片 1 -->
+        <div class="asset-card e-E5" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E5">E5</span>
+            <span class="pill pill-priority-A">A</span>
+            <span class="kernel-badge">内核</span>
+          </div>
+          <h3 class="ac-title">数字化是组织问题，不是技术问题</h3>
+          <p class="ac-insight">所有失败的数字化转型，根因都不是技术选型，而是组织没有准备好接纳变化。技术只是放大器，放大的是组织已有的能力或 dysfunction。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> 数字化转型</span>
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 反馈 12</span>
+            <span style="margin-left: auto;">3 天前</span>
+          </div>
+        </div>
+
+        <!-- 卡片 2 -->
+        <div class="asset-card e-E4" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E4">E4</span>
+            <span class="pill pill-priority-A">A</span>
+          </div>
+          <h3 class="ac-title">AI 落地的第一性原理：先有流程，再谈智能</h3>
+          <p class="ac-insight">企业想用 AI 之前，必须先把现有流程显性化、标准化。没有清晰的流程地图，AI 只是在放大混乱。这是反常识的——多数人以为 AI 能"自动理顺"流程。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> AI 落地</span>
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 反馈 8</span>
+            <span style="margin-left: auto;">5 天前</span>
+          </div>
+        </div>
+
+        <!-- 卡片 3 -->
+        <div class="asset-card e-E3" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E3">E3</span>
+            <span class="pill pill-priority-A">A</span>
+          </div>
+          <h3 class="ac-title">激励错位：KPI 与真实目标的系统性背离</h3>
+          <p class="ac-insight">当 KPI 可被"优化"而真实目标不可测量时，组织会系统性地偏离价值创造。这不是道德问题，而是激励结构的设计缺陷。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> 组织治理</span>
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 反馈 5</span>
+            <span style="margin-left: auto;">1 周前</span>
+          </div>
+        </div>
+
+        <!-- 卡片 4 -->
+        <div class="asset-card e-E2" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E2">E2</span>
+            <span class="pill pill-priority-B">B</span>
+          </div>
+          <h3 class="ac-title">决策空心化：为什么中层管理者不拍板</h3>
+          <p class="ac-insight">中层不决策往往不是能力问题，而是决策权与决策风险不对等。当"做对没奖励、做错要担责"时，理性选择就是向上请示。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> 组织治理</span>
+            <span class="kernel-badge">内核候选</span>
+            <span style="margin-left: auto;">2 周前</span>
+          </div>
+        </div>
+
+        <!-- 卡片 5 -->
+        <div class="asset-card e-E3" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E3">E3</span>
+            <span class="pill pill-priority-A">A</span>
+          </div>
+          <h3 class="ac-title">数据治理的三个反常识</h3>
+          <p class="ac-insight">① 数据质量不是 IT 问题而是业务问题 ② 主数据治理要先于交易数据 ③ 元数据比数据本身更值钱——这些反直觉的判断来自 5 个真实项目。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> 财务数字化</span>
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 反馈 4</span>
+            <span style="margin-left: auto;">2 周前</span>
+          </div>
+        </div>
+
+        <!-- 卡片 6 -->
+        <div class="asset-card e-E2" onclick="nav('detail')">
+          <div class="asset-check" onclick="event.stopPropagation(); toggleCheck(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="ac-head">
+            <span class="pill pill-E2">E2</span>
+            <span class="pill pill-priority-B">B</span>
+          </div>
+          <h3 class="ac-title">判断力稀缺：AI 时代管理者的新护城河</h3>
+          <p class="ac-insight">当信息获取和初步分析被 AI 民主化后，真正的稀缺资源是"在不确定下做判断"的能力。判断力 × AI = 之前做不到的事。</p>
+          <div class="ac-footer">
+            <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg> AI 落地</span>
+            <span style="margin-left: auto;">3 周前</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 3：资产详情（阅读型布局）
+         ============================================ -->
+    <div class="page" id="page-detail" hidden>
+      <a onclick="nav('assets')" style="font-size: 12.5px; color: var(--text-3); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        返回资产库
+      </a>
+
+      <div class="detail-layout">
+        <!-- 主内容 -->
+        <div class="detail-main">
+          <div class="detail-meta-bar">
+            <span class="pill pill-E5">E5</span>
+            <span class="pill pill-priority-A">优先级 A</span>
+            <span class="kernel-badge">★ 思想内核</span>
+            <span class="pill pill-soft">数字化转型</span>
+            <span class="pill pill-soft">组织变革</span>
+          </div>
+
+          <h1 class="detail-title">数字化是组织问题，不是技术问题</h1>
+
+          <div class="insight-callout">
+            <strong style="color: var(--primary);">一句话洞察：</strong>所有失败的数字化转型，根因都不是技术选型，而是组织没有准备好接纳变化。
+          </div>
+          <div class="insight-callout accent">
+            <strong style="color: var(--accent);">反常识判断：</strong>多数人以为"先上系统，流程自然会顺"，但技术只是放大器——它放大的是组织已有的能力或 dysfunction，而不是修复它。
+          </div>
+
+          <!-- 正文（模拟 markdown 渲染） -->
+          <div style="font-size: 14.5px; line-height: 1.85; color: var(--text); margin-top: 24px;">
+            <h2 style="font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 400; margin: 28px 0 12px;">观察现象</h2>
+            <p style="margin: 0 0 14px;">在服务过的 12 个数字化转型项目中，有 9 个的核心矛盾都不在技术层。最常见的失败模式是：IT 部门主导选型 → 业务部门被动接受 → 系统上线 → 业务绕开系统用 Excel。</p>
+            <h2 style="font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 400; margin: 28px 0 12px;">行业判断</h2>
+            <p style="margin: 0 0 14px;">数字化转型的真正难点在于<strong>权力的重新分配</strong>。当数据透明化后，原本依赖信息不对称获得话语权的部门会本能抵抗。这不是变革管理能解决的"沟通问题"，而是结构性的利益冲突。</p>
+            <blockquote style="border-left: 3px solid var(--primary); padding: 12px 18px; background: var(--primary-soft); margin: 16px 0; border-radius: 0 8px 8px 0; color: var(--text-2);">
+              "技术决定转型的下限，组织决定转型的上限。" —— 某制造业客户 CIO
+            </blockquote>
+            <h2 style="font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 400; margin: 28px 0 12px;">我的观点</h2>
+            <p style="margin: 0 0 14px;">正确的顺序应该是：<strong>先理顺组织（权责、流程、激励）→ 再用技术固化</strong>。把数字化当成"组织变革的加速器"而非"组织变革的替代品"。</p>
+          </div>
+        </div>
+
+        <!-- 右侧操作面板 -->
+        <div class="detail-side">
+          <!-- 生成输出 -->
+          <div class="side-card">
+            <div class="side-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              生成输出
+            </div>
+            <div style="font-size: 11px; color: var(--text-3); margin-bottom: 6px; font-weight: 600;">面向对象</div>
+            <div class="row gap-8 mb-16" style="flex-wrap: wrap;">
+              <span class="audience-chip active">CIO</span>
+              <span class="audience-chip">CEO</span>
+              <span class="audience-chip">CFO</span>
+              <span class="audience-chip">业务负责人</span>
+            </div>
+            <div class="col gap-8">
+              <button class="btn btn-primary" onclick="showToast('正在生成客户沟通话术…')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                客户沟通话术
+              </button>
+              <button class="btn btn-accent" onclick="showToast('正在生成公众号大纲…')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                公众号大纲
+              </button>
+            </div>
+          </div>
+
+          <!-- 资产状态 -->
+          <div class="side-card">
+            <div class="side-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              进化轨迹
+            </div>
+            <div class="col gap-8" style="font-size: 12px;">
+              <div class="row-between">
+                <span class="text-muted">证据等级</span>
+                <span><strong style="color: var(--primary);">E5</strong> · 最高级</span>
+              </div>
+              <div class="row-between">
+                <span class="text-muted">反馈次数</span>
+                <span><strong>12 次</strong></span>
+              </div>
+              <div class="row-between">
+                <span class="text-muted">已被输出</span>
+                <span><strong>8 次</strong></span>
+              </div>
+              <div class="row-between">
+                <span class="text-muted">最近使用</span>
+                <span>3 天前</span>
+              </div>
+              <div class="divider" style="margin: 4px 0;"></div>
+              <div class="row-between">
+                <span class="text-muted">升级历史</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-3); line-height: 1.7;">
+                E1 → E2 · 客户共鸣<br>
+                E2 → E3 · 进入方案<br>
+                E3 → E4 · 客户认可<br>
+                E4 → E5 · 形成课程模块
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作 -->
+          <div class="side-card">
+            <div class="side-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33"/></svg>
+              资产操作
+            </div>
+            <div class="col gap-8">
+              <button class="btn btn-sm" onclick="showToast('打开反馈记录')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                记录反馈
+              </button>
+              <button class="btn btn-sm" onclick="showToast('已复制 Markdown')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                复制 Markdown
+              </button>
+              <button class="btn btn-sm" onclick="showToast('打开合并面板')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+                合并到其他卡
+              </button>
+            </div>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 10.5px; color: var(--text-3);">
+              <div style="font-weight: 600; margin-bottom: 4px;">文件位置</div>
+              <code style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); word-break: break-all; background: var(--bg-subtle); padding: 4px 6px; border-radius: 4px; display: block;">04_管理洞察/digital-org.md</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 相关资产 -->
+      <div style="margin-top: 48px;">
+        <div class="row-between mb-16">
+          <div>
+            <h2 style="font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; color: var(--ink);">相关资产</h2>
+            <p class="page-subtitle" style="margin-top: 2px;">基于共同主题「数字化转型」推荐 · 3 张</p>
+          </div>
+        </div>
+        <div class="asset-grid">
+          <div class="asset-card e-E4" onclick="nav('detail')">
+            <div class="ac-head"><span class="pill pill-E4">E4</span><span class="pill pill-soft">🤝 2 个共同主题</span></div>
+            <h3 class="ac-title">ERP 选型的三个隐性决策点</h3>
+            <p class="ac-insight">选型过程中真正决定成败的不是功能对比表，而是三个常被忽略的决策：数据迁移策略、流程适配深度、组织变革预算。</p>
+          </div>
+          <div class="asset-card e-E3" onclick="nav('detail')">
+            <div class="ac-head"><span class="pill pill-E3">E3</span><span class="pill pill-soft">🤝 数字化转型</span></div>
+            <h3 class="ac-title">变革阻力地图：识别组织中的"减速带"</h3>
+            <p class="ac-insight">每个组织都有结构性减速带：信息枢纽人、流程瓶颈岗、激励错位团队。识别它们比推动变革更重要。</p>
+          </div>
+          <div class="asset-card e-E2" onclick="nav('detail')">
+            <div class="ac-head"><span class="pill pill-E2">E2</span><span class="pill pill-soft">🤝 组织变革</span></div>
+            <h3 class="ac-title">为什么"试点成功，推广失败"</h3>
+            <p class="ac-insight">试点能成功是因为有特殊资源（人才、关注、容错），推广失败是因为这些资源无法复制。这是典型的幸存者偏差。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 4：收集箱
+         ============================================ -->
+    <div class="page" id="page-inbox" hidden>
+      <div class="mb-24">
+        <h1 class="page-title">收集箱</h1>
+        <p class="page-subtitle">把看到、听到、想到的随手丢进来，AI 帮你整理成可入库的资产</p>
+      </div>
+
+      <div class="grid-2 mb-24">
+        <!-- 左：输入区 -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              快速记录
+            </h2>
+            <div class="row gap-8">
+              <span class="audience-chip active">粘贴</span>
+              <span class="audience-chip">URL 抓取</span>
+              <span class="audience-chip">拖文件</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--text-3); font-weight: 600; margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase;">来源</div>
+            <div class="row gap-8 mb-16" style="flex-wrap: wrap;">
+              <span class="audience-chip active">网页摘录</span>
+              <span class="audience-chip">随手记</span>
+              <span class="audience-chip">会议转录</span>
+              <span class="audience-chip">引文金句</span>
+            </div>
+            <div style="background: var(--bg-subtle); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-height: 160px; font-size: 14px; color: var(--text-3); line-height: 1.7;" contenteditable="true">
+              今天和某制造业 CIO 聊天，他说："我们上了 ERP 三年，业务部门还在用 Excel。不是系统不好，是没人愿意改习惯。"这让我想到——
+            </div>
+            <div class="row-between mt-16">
+              <span class="text-xs text-muted">38 字</span>
+              <button class="btn btn-primary" onclick="showToast('AI 整理中…')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                AI 整理 →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：整理结果预览 -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              整理结果
+            </h2>
+            <span class="pill pill-status-candidate">待确认</span>
+          </div>
+          <div class="card-body">
+            <div class="row gap-8 mb-8"><span class="pill pill-E1">E1</span><span class="pill pill-priority-A">A</span><span class="kernel-badge">可能是内核</span></div>
+            <h3 style="font-family: 'DM Serif Display', serif; font-size: 18px; font-weight: 400; color: var(--ink); margin: 0 0 10px; line-height: 1.4;">系统上去了，习惯没改：数字化的"最后一公里"困境</h3>
+            <div class="insight-callout" style="margin-bottom: 10px;">
+              <strong style="color: var(--primary);">初始洞察：</strong>系统上线≠数字化成功，真正的难点在于改变业务人员的工作习惯。
+            </div>
+            <div class="insight-callout accent" style="margin-bottom: 14px;">
+              <strong style="color: var(--accent);">反常识：</strong>多数人以为是"系统不够好用"，其实是"组织没有为改变付出成本"。
+            </div>
+            <div class="row gap-8" style="flex-wrap: wrap;">
+              <span class="pill pill-soft">数字化转型</span>
+              <span class="pill pill-soft">组织变革</span>
+              <span class="pill pill-soft">习惯</span>
+            </div>
+            <div class="divider"></div>
+            <div class="row gap-8">
+              <button class="btn btn-sm">留在候选池</button>
+              <button class="btn btn-sm btn-primary" style="margin-left: auto;" onclick="nav('candidates')">确认入库 →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近收集 -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            最近收集（待整理）
+          </h2>
+          <span class="pill pill-status-candidate">3 条</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <div class="workflow-item">
+            <div class="row gap-8 mb-8"><span class="pill pill-E1">E1</span><span class="pill pill-priority-B">B</span></div>
+            <div class="wi-title">关于"数据中台"的争论本质是组织权责之争</div>
+            <div class="wi-meta">来自网页摘录 · 2 小时前 · 待校准</div>
+          </div>
+          <div class="workflow-item">
+            <div class="row gap-8 mb-8"><span class="pill pill-E1">E1</span><span class="pill pill-priority-C">C</span></div>
+            <div class="wi-title">CFO 说："数字化投入的 ROI 我们算不清"</div>
+            <div class="wi-meta">来自会议转录 · 昨天 · 待校准</div>
+          </div>
+          <div class="workflow-item">
+            <div class="row gap-8 mb-8"><span class="pill pill-E0">E0</span></div>
+            <div class="wi-title">某 SaaS 创始人：To B 增长靠的是"信任复利"不是流量</div>
+            <div class="wi-meta">来自引文金句 · 3 天前 · 待校准</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 5：资产地图
+         ============================================ -->
+    <div class="page" id="page-map" hidden>
+      <div class="mb-24">
+        <h1 class="page-title">资产地图</h1>
+        <p class="page-subtitle">7 个主题 · 42 张已分类资产 · 按思想矿脉组织</p>
+      </div>
+
+      <div class="stat-grid mb-24">
+        <div class="stat-card">
+          <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg></div>
+          <div class="stat-num">7</div>
+          <div class="stat-label">主题数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+          <div class="stat-num">42</div>
+          <div class="stat-label">已分类资产</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <div class="stat-num">数字化转型</div>
+          <div class="stat-label" style="font-size: 11px;">最丰富主题</div>
+          <div class="stat-sub">11 张 · 平均 E2.8</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <div class="stat-num">数字化转型</div>
+          <div class="stat-label" style="font-size: 11px;">最高 E 等级主题</div>
+          <div class="stat-sub">平均 E3.1</div>
+        </div>
+      </div>
+
+      <!-- 主题卡片列表 -->
+      <div class="col gap-16">
+        <div class="card">
+          <div class="card-header" style="background: linear-gradient(135deg, var(--primary-soft), transparent);">
+            <div class="row gap-8">
+              <span style="font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--primary); font-weight: 400;">#1</span>
+              <div>
+                <h2 style="font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 400; color: var(--ink);">数字化转型</h2>
+                <p style="font-size: 12px; color: var(--text-3); margin: 2px 0 0;">技术只是放大器，组织才是变量</p>
+              </div>
+            </div>
+            <div class="row gap-16 text-sm" style="color: var(--text-2);">
+              <span><strong style="color: var(--ink);">11</strong> 张</span>
+              <span>平均 <strong style="color: var(--ink);">E2.8</strong></span>
+              <span class="text-muted">最近 3 天前</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="font-size: 11px; color: var(--text-3); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 10px;">核心判断</div>
+            <div class="col gap-8 mb-16">
+              <div style="font-size: 13px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; color: var(--text);">数字化是组织问题，不是技术问题</div>
+              <div style="font-size: 13px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; color: var(--text);">失败的根因是权力重新分配的阻力，不是技术选型</div>
+              <div style="font-size: 13px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; color: var(--text);">正确顺序：先理顺组织 → 再用技术固化</div>
+            </div>
+            <div style="font-size: 11px; color: var(--text-3); font-weight: 700; letter-spacing: 0.06em; margin-bottom: 10px;">Top 资产</div>
+            <div class="col gap-8">
+              <div class="row gap-8" style="padding: 10px 14px; background: var(--bg-subtle); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                <span class="pill pill-E5">E5</span>
+                <span style="flex: 1; font-size: 13px; color: var(--ink); font-weight: 500;">数字化是组织问题，不是技术问题</span>
+                <span class="kernel-badge">内核</span>
+                <span class="text-xs text-muted">反馈 12</span>
+              </div>
+              <div class="row gap-8" style="padding: 10px 14px; background: var(--bg-subtle); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                <span class="pill pill-E4">E4</span>
+                <span style="flex: 1; font-size: 13px; color: var(--ink); font-weight: 500;">ERP 选型的三个隐性决策点</span>
+                <span class="text-xs text-muted">反馈 6</span>
+              </div>
+              <div class="row gap-8" style="padding: 10px 14px; background: var(--bg-subtle); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                <span class="pill pill-E3">E3</span>
+                <span style="flex: 1; font-size: 13px; color: var(--ink); font-weight: 500;">变革阻力地图：识别组织"减速带"</span>
+                <span class="text-xs text-muted">反馈 4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="row gap-8">
+              <span style="font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--primary); font-weight: 400;">#2</span>
+              <div>
+                <h2 style="font-family: 'DM Serif Display', serif; font-size: 20px; font-weight: 400; color: var(--ink);">AI 落地</h2>
+                <p style="font-size: 12px; color: var(--text-3); margin: 2px 0 0;">先有流程，再谈智能</p>
+              </div>
+            </div>
+            <div class="row gap-16 text-sm" style="color: var(--text-2);">
+              <span><strong style="color: var(--ink);">8</strong> 张</span>
+              <span>平均 <strong style="color: var(--ink);">E2.5</strong></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="col gap-8 mb-16">
+              <div style="font-size: 13px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;">AI 落地第一性原理：先有流程，再谈智能</div>
+              <div style="font-size: 13px; padding: 10px 14px; background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;">判断力稀缺是 AI 时代管理者的新护城河</div>
+            </div>
+            <div class="row gap-8" style="padding: 10px 14px; background: var(--bg-subtle); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+              <span class="pill pill-E4">E4</span>
+              <span style="flex: 1; font-size: 13px; color: var(--ink); font-weight: 500;">AI 落地的第一性原理：先有流程，再谈智能</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 6：资产图谱（新功能）
+         ============================================ -->
+    <div class="page" id="page-graph" hidden>
+      <div class="row-between mb-24">
+        <div>
+          <h1 class="page-title">资产图谱</h1>
+          <p class="page-subtitle">7 个主题 · 42 张资产 · 节点大小=反馈数，颜色=证据等级</p>
+        </div>
+        <div class="row gap-8">
+          <span class="audience-chip active">力导向图</span>
+          <span class="audience-chip">放射图</span>
+          <span class="audience-chip">矩阵图</span>
+        </div>
+      </div>
+
+      <div class="card mb-24">
+        <div class="card-body" style="padding: 0; position: relative; overflow: hidden;">
+          <svg viewBox="0 0 800 520" style="width: 100%; height: 520px; display: block; background: radial-gradient(circle at 50% 50%, var(--bg-panel), var(--bg-canvas));">
+            <!-- 连线 -->
+            <g stroke="#d4cbb5" stroke-width="1" opacity="0.4" fill="none">
+              <line x1="400" y1="260" x2="200" y2="140"/>
+              <line x1="400" y1="260" x2="600" y2="140"/>
+              <line x1="400" y1="260" x2="180" y2="380"/>
+              <line x1="400" y1="260" x2="620" y2="380"/>
+              <line x1="400" y1="260" x2="400" y2="100"/>
+              <line x1="400" y1="260" x2="400" y2="440"/>
+              <line x1="200" y1="140" x2="180" y2="380" stroke-dasharray="3,3"/>
+              <line x1="600" y1="140" x2="620" y2="380" stroke-dasharray="3,3"/>
+            </g>
+
+            <!-- 中心：思想内核 -->
+            <g>
+              <circle cx="400" cy="260" r="48" fill="#1a365d" opacity="0.15"/>
+              <circle cx="400" cy="260" r="34" fill="#1a365d"/>
+              <text x="400" y="256" text-anchor="middle" fill="white" font-size="10" font-weight="600">思想内核</text>
+              <text x="400" y="270" text-anchor="middle" fill="white" font-size="9" opacity="0.8">数字化·组织</text>
+              <text x="400" y="320" text-anchor="middle" fill="#1a365d" font-size="11" font-weight="600">数字化是组织问题</text>
+            </g>
+
+            <!-- 主题节点 -->
+            <g style="cursor: pointer;">
+              <circle cx="200" cy="140" r="28" fill="#3b82f6" opacity="0.2"/>
+              <circle cx="200" cy="140" r="20" fill="#3b82f6"/>
+              <text x="200" y="144" text-anchor="middle" fill="white" font-size="10" font-weight="600">E4</text>
+              <text x="200" y="105" text-anchor="middle" fill="#14171e" font-size="12" font-weight="600">数字化转型</text>
+              <text x="200" y="118" text-anchor="middle" fill="#767d8c" font-size="10">11 张</text>
+            </g>
+
+            <g style="cursor: pointer;">
+              <circle cx="600" cy="140" r="26" fill="#3b82f6" opacity="0.2"/>
+              <circle cx="600" cy="140" r="18" fill="#3b82f6"/>
+              <text x="600" y="144" text-anchor="middle" fill="white" font-size="10" font-weight="600">E3</text>
+              <text x="600" y="105" text-anchor="middle" fill="#14171e" font-size="12" font-weight="600">AI 落地</text>
+              <text x="600" y="118" text-anchor="middle" fill="#767d8c" font-size="10">8 张</text>
+            </g>
+
+            <g style="cursor: pointer;">
+              <circle cx="180" cy="380" r="22" fill="#60a5fa" opacity="0.2"/>
+              <circle cx="180" cy="380" r="15" fill="#60a5fa"/>
+              <text x="180" y="384" text-anchor="middle" fill="white" font-size="9" font-weight="600">E2</text>
+              <text x="180" y="412" text-anchor="middle" fill="#14171e" font-size="12" font-weight="600">组织治理</text>
+              <text x="180" y="425" text-anchor="middle" fill="#767d8c" font-size="10">7 张</text>
+            </g>
+
+            <g style="cursor: pointer;">
+              <circle cx="620" cy="380" r="22" fill="#60a5fa" opacity="0.2"/>
+              <circle cx="620" cy="380" r="15" fill="#60a5fa"/>
+              <text x="620" y="384" text-anchor="middle" fill="white" font-size="9" font-weight="600">E2</text>
+              <text x="620" y="412" text-anchor="middle" fill="#14171e" font-size="12" font-weight="600">财务数字化</text>
+              <text x="620" y="425" text-anchor="middle" fill="#767d8c" font-size="10">6 张</text>
+            </g>
+
+            <g style="cursor: pointer;">
+              <circle cx="400" cy="100" r="18" fill="#a78bfa" opacity="0.2"/>
+              <circle cx="400" cy="100" r="12" fill="#a78bfa"/>
+              <text x="400" y="80" text-anchor="middle" fill="#14171e" font-size="11" font-weight="600">客户沟通</text>
+              <text x="400" y="92" text-anchor="middle" fill="#767d8c" font-size="9">5 张</text>
+            </g>
+
+            <g style="cursor: pointer;">
+              <circle cx="400" cy="440" r="16" fill="#fbbf24" opacity="0.2"/>
+              <circle cx="400" cy="440" r="11" fill="#fbbf24"/>
+              <text x="400" y="466" text-anchor="middle" fill="#14171e" font-size="11" font-weight="600">经营能力</text>
+              <text x="400" y="478" text-anchor="middle" fill="#767d8c" font-size="9">3 张</text>
+            </g>
+
+            <!-- 卫星资产节点（小点） -->
+            <g fill="#1a365d" opacity="0.4">
+              <circle cx="140" cy="200" r="4"/><circle cx="120" cy="170" r="3"/><circle cx="160" cy="90" r="4"/>
+              <circle cx="240" cy="90" r="3"/><circle cx="270" cy="180" r="4"/>
+              <circle cx="540" cy="200" r="4"/><circle cx="660" cy="190" r="3"/><circle cx="680" cy="110" r="4"/>
+              <circle cx="560" cy="90" r="3"/><circle cx="500" cy="180" r="4"/>
+              <circle cx="120" cy="340" r="3"/><circle cx="220" cy="440" r="4"/><circle cx="100" cy="420" r="3"/>
+              <circle cx="680" cy="340" r="4"/><circle cx="560" cy="440" r="3"/><circle cx="700" cy="420" r="3"/>
+            </g>
+          </svg>
+
+          <!-- 图例 -->
+          <div style="position: absolute; bottom: 16px; left: 16px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 11px;">
+            <div style="font-weight: 700; color: var(--ink); margin-bottom: 6px;">图例</div>
+             <div class="row gap-8 mb-8"><span style="width: 10px; height: 10px; border-radius: 50%; background: #1a365d;"></span> 思想内核</div>
+            <div class="row gap-8 mb-8"><span style="width: 10px; height: 10px; border-radius: 50%; background: #3b82f6;"></span> E4+ 主题</div>
+            <div class="row gap-8 mb-8"><span style="width: 10px; height: 10px; border-radius: 50%; background: #60a5fa;"></span> E2-E3 主题</div>
+            <div class="row gap-8"><span style="width: 6px; height: 6px; border-radius: 50%; background: #1a365d; opacity: 0.4;"></span> 资产节点</div>
+          </div>
+
+          <!-- 操作提示 -->
+          <div style="position: absolute; top: 16px; right: 16px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 11px; color: var(--text-3);">
+            拖拽节点 · 滚轮缩放 · 点击进入
+          </div>
+        </div>
+      </div>
+
+      <!-- 内核候选区 -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+            思想内核候选
+          </h2>
+          <span class="kernel-badge">2 个待确认</span>
+        </div>
+        <div class="card-body">
+          <p style="font-size: 13px; color: var(--text-2); margin: 0 0 16px;">系统发现以下几组资产卡观点高度重合，可能形成可复用的思想内核。确认后将写入 <code style="background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 12px;">_kernel/</code> 目录，生成输出时优先引用。</p>
+          <div class="col gap-16">
+            <div style="padding: 16px; background: var(--violet-soft); border: 1px solid var(--violet); border-radius: var(--radius);">
+              <div class="row gap-8 mb-8"><span class="kernel-badge">候选 #1</span><span class="text-xs text-muted">共识度 87%</span></div>
+              <h3 style="font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: 400; color: var(--ink); margin: 0 0 8px;">决策空心化：组织权责设计的系统性缺陷</h3>
+              <p style="font-size: 12.5px; color: var(--text-2); margin: 0 0 10px;">来自 3 张卡的共识：「决策空心化」「激励错位」「中层不拍板」共同指向——决策权与风险不对等导致的系统性回避。</p>
+              <div class="row gap-8">
+                <span class="pill pill-soft">决策空心化</span>
+                <span class="pill pill-soft">激励错位</span>
+                <span class="pill pill-soft">中层授权</span>
+                <button class="btn btn-sm btn-primary" style="margin-left: auto;" onclick="showToast('已确认为思想内核')">确认内核</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 7：洞察助手（新功能 - 对话式调用）
+         ============================================ -->
+    <div class="page" id="page-assistant" hidden>
+      <div class="row-between mb-24">
+        <div>
+          <h1 class="page-title">洞察助手</h1>
+          <p class="page-subtitle">用自然语言调用你的资产库 · 不是搜索，是"对话调用"</p>
+        </div>
+        <span class="kernel-badge" style="background: var(--violet-soft); color: var(--violet);">实验功能</span>
+      </div>
+
+      <!-- 快捷问题 -->
+      <div class="row gap-8 mb-24" style="flex-wrap: wrap;">
+        <span class="audience-chip" onclick="askAssistant(this)">我下周见制造业 CFO，该带哪些卡？</span>
+        <span class="audience-chip" onclick="askAssistant(this)">关于「数据治理」我有哪些反常识判断？</span>
+        <span class="audience-chip" onclick="askAssistant(this)">哪些资产还没被输出过？</span>
+        <span class="audience-chip" onclick="askAssistant(this)">帮我组织一个 30 分钟的 AI 转型分享</span>
+      </div>
+
+      <!-- 对话区 -->
+      <div class="card mb-24">
+        <div class="card-body" style="min-height: 320px;">
+          <div class="col gap-16">
+            <!-- 用户问题 -->
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+              <div style="background: var(--primary); color: white; padding: 12px 16px; border-radius: var(--radius) var(--radius) 4px var(--radius); max-width: 70%; font-size: 13.5px; line-height: 1.6;">
+                我下周见制造业 CFO，该带哪些卡？
+              </div>
+            </div>
+            <!-- 助手回答 -->
+            <div style="display: flex; gap: 12px;">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--violet), #8b5cf6); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+              </div>
+              <div style="flex: 1;">
+                <div style="background: var(--bg-subtle); padding: 14px 18px; border-radius: 4px var(--radius) var(--radius) var(--radius); font-size: 13.5px; line-height: 1.7; color: var(--text);">
+                  基于你的资产库，针对<strong>制造业 CFO</strong> 场景，推荐带这 <strong style="color: var(--primary);">4 张卡</strong>，按沟通顺序排列：
+                </div>
+                <!-- 推荐资产 -->
+                <div class="col gap-8 mt-16">
+                  <div class="row gap-8" style="padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                    <span style="font-family: 'DM Serif Display', serif; color: var(--primary); font-size: 16px;">1</span>
+                    <span class="pill pill-E5">E5</span>
+                    <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--ink);">数字化是组织问题，不是技术问题</span>
+                    <span class="text-xs text-muted">开场建立共识</span>
+                  </div>
+                  <div class="row gap-8" style="padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                    <span style="font-family: 'DM Serif Display', serif; color: var(--primary); font-size: 16px;">2</span>
+                    <span class="pill pill-E4">E4</span>
+                    <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--ink);">ERP 选型的三个隐性决策点</span>
+                    <span class="text-xs text-muted">切中 CFO 痛点</span>
+                  </div>
+                  <div class="row gap-8" style="padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                    <span style="font-family: 'DM Serif Display', serif; color: var(--primary); font-size: 16px;">3</span>
+                    <span class="pill pill-E3">E3</span>
+                    <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--ink);">数据治理的三个反常识</span>
+                    <span class="text-xs text-muted">提供方法论</span>
+                  </div>
+                  <div class="row gap-8" style="padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;" onclick="nav('detail')">
+                    <span style="font-family: 'DM Serif Display', serif; color: var(--primary); font-size: 16px;">4</span>
+                    <span class="pill pill-E2">E2</span>
+                    <span style="flex: 1; font-size: 13px; font-weight: 600; color: var(--ink);">"数字化投入的 ROI 我们算不清"</span>
+                    <span class="text-xs text-muted">收尾转化钩子</span>
+                  </div>
+                </div>
+                <div class="row gap-8 mt-16">
+                  <button class="btn btn-sm btn-primary" onclick="showToast('基于 4 张卡生成话术…')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    一键生成联合话术
+                  </button>
+                  <button class="btn btn-sm">追问</button>
+                  <button class="btn btn-sm">换一组</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 输入框 -->
+      <div class="card">
+        <div class="card-body" style="padding: 12px;">
+          <div class="row gap-8">
+            <input type="text" placeholder="问任何关于你资产库的问题…" style="flex: 1; border: none; outline: none; background: transparent; font-size: 14px; font-family: inherit; padding: 8px;" onkeydown="if(event.key==='Enter') showToast('思考中…')">
+            <button class="btn btn-primary btn-icon" onclick="showToast('思考中…')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 8：输出历史（简化版）
+         ============================================ -->
+    <div class="page" id="page-output" hidden>
+      <div class="row-between mb-24">
+        <div>
+          <h1 class="page-title">输出历史</h1>
+          <p class="page-subtitle">12 个生成结果 · 联合输出 4 条 · 按时间倒序</p>
+        </div>
+        <button class="btn btn-primary" onclick="nav('assets')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          新建输出
+        </button>
+      </div>
+
+      <div class="tabs mb-24">
+        <button class="tab active">全部 12</button>
+        <button class="tab">联合 4</button>
+        <button class="tab">客户话术 7</button>
+        <button class="tab">公众号大纲 5</button>
+      </div>
+
+      <div class="col gap-16">
+        <div class="card card-hover" style="cursor: pointer;">
+          <div class="card-body">
+            <div class="row gap-8 mb-8">
+              <span class="pill" style="background: var(--primary); color: white;">联合 ×3</span>
+              <span class="pill pill-status-in_use">已用</span>
+            </div>
+            <h3 style="font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: 400; color: var(--ink); margin: 0 0 6px;">财务数字化 · CFO 沟通完整话术</h3>
+            <p class="text-sm text-muted" style="margin: 0 0 12px;">基于「数字化是组织问题」「数据治理反常识」「ERP 选型」3 张资产 · 昨天 16:32</p>
+            <div class="row gap-8">
+              <button class="btn btn-sm" onclick="showToast('已复制')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                复制
+              </button>
+              <button class="btn btn-sm">查看</button>
+              <button class="btn btn-sm" style="margin-left: auto;">记录反馈</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-hover" style="cursor: pointer;">
+          <div class="card-body">
+            <div class="row gap-8 mb-8">
+              <span class="pill pill-soft">公众号大纲</span>
+              <span class="pill pill-status-in_use">已用</span>
+            </div>
+            <h3 style="font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: 400; color: var(--ink); margin: 0 0 6px;">AI 落地方法论：先流程后智能</h3>
+            <p class="text-sm text-muted" style="margin: 0 0 12px;">来自「AI 落地第一性原理」· 3 天前 · 待记录读者反应</p>
+            <div class="row gap-8">
+              <button class="btn btn-sm" onclick="showToast('已复制')">复制</button>
+              <button class="btn btn-sm">查看</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card-hover" style="cursor: pointer;">
+          <div class="card-body">
+            <div class="row gap-8 mb-8">
+              <span class="pill pill-soft">客户话术</span>
+            </div>
+            <h3 style="font-family: 'DM Serif Display', serif; font-size: 17px; font-weight: 400; color: var(--ink); margin: 0 0 6px;">判断力稀缺 · CIO 沟通开场</h3>
+            <p class="text-sm text-muted" style="margin: 0;">来自「判断力稀缺」· 5 天前</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         页面 9：设置（简化）
+         ============================================ -->
+    <div class="page" id="page-settings" hidden>
+      <div class="mb-24">
+        <h1 class="page-title">设置</h1>
+        <p class="page-subtitle">LLM 接入 · 资产库路径 · 应用开关</p>
+      </div>
+
+      <div style="max-width: 720px;">
+        <div class="card mb-16">
+          <div class="card-body">
+            <div class="row gap-8 mb-16">
+              <span class="status-dot"></span>
+              <div class="flex-1">
+                <div style="font-size: 14px; font-weight: 600; color: var(--ink);">LLM 已启用</div>
+                <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">Key: sk-••••7f3a · DeepSeek · 上次更新 2 小时前</div>
+              </div>
+              <button class="btn btn-sm">测试连接</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mb-16">
+          <div class="card-header"><h2 class="card-title">⚡ 快速预设</h2></div>
+          <div class="card-body">
+            <div class="row gap-8" style="flex-wrap: wrap;">
+              <span class="audience-chip active">DeepSeek Chat</span>
+              <span class="audience-chip">DeepSeek Reasoner</span>
+              <span class="audience-chip">OpenAI 4o-mini</span>
+              <span class="audience-chip">本地 LLM</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">🤖 LLM 接入</h2></div>
+          <div class="card-body">
+            <div class="col gap-16">
+              <div>
+                <div style="font-size: 11px; font-weight: 600; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">Base URL</div>
+                <input class="input" value="https://api.deepseek.com/v1" style="width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 12.5px;">
+              </div>
+              <div>
+                <div style="font-size: 11px; font-weight: 600; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em;">Model</div>
+                <input class="input" value="deepseek-chat" style="width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 12.5px;">
+              </div>
+              <button class="btn btn-primary" style="align-self: flex-start;">💾 保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-text">操作成功</span>
+</div>
+
+<script>
+// 页面切换
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.hidden = true);
+  const target = document.getElementById('page-' + page);
+  if (target) {
+    target.hidden = false;
+    // 触发重绘以重新播放进入动画
+    target.style.animation = 'none';
+    target.offsetHeight;
+    target.style.animation = '';
+  }
+  // 更新侧边栏激活态
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navEl = document.querySelector(`.nav-item[data-nav="${page}"]`);
+  if (navEl) navEl.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Toast
+let toastTimer;
+function showToast(text) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// 资产卡多选
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+  const checked = document.querySelectorAll('.asset-check.checked').length;
+  showToast(checked > 0 ? `已选 ${checked} 张 · 可联合输出` : '已清空选择');
+}
+
+// 助手快捷问题
+function askAssistant(el) {
+  const q = el.textContent;
+  showToast(`已提问：${q.slice(0, 16)}…`);
+}
+
+// ⌘K 搜索
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    showToast('全局搜索（原型演示）');
+  }
+});
+
+// 证据等级条形图入场动画（仪表盘可见时）
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.querySelectorAll('.ev-bar-fill').forEach(bar => {
+      const w = bar.style.width;
+      bar.style.width = '0%';
+      requestAnimationFrame(() => {
+        setTimeout(() => bar.style.width = w, 50);
+      });
+    });
+  }, 100);
+});
+</script>
+</body>
+</html>

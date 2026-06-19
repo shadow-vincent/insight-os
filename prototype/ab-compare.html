@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Insight OS · 配色 A/B 对比</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .header {
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #f1f5f9;
+  }
+  .header p {
+    font-size: 12px;
+    margin: 4px 0 0;
+    color: #94a3b8;
+  }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .btn {
+    padding: 6px 12px;
+    background: #334155;
+    color: #e2e8f0;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+  }
+  .btn:hover { background: #475569; }
+  .btn-primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .container {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+  }
+  .pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .pane-label {
+    background: #334155;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #f1f5f9;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #475569;
+    flex-shrink: 0;
+  }
+  .pane-label .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  iframe {
+    flex: 1;
+    border: none;
+    background: white;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>🎨 Insight OS · 配色方案 A/B 对比</h1>
+      <p>左 A：当前深蓝 #1a365d + 冷白 #f7f9fc（深沉稳重） · 右 B：GLM 建议深墨绿 #1f5d4c + 暖米白 #faf8f3（咨询专业感）</p>
+    </div>
+    <div class="header-actions">
+      <a class="btn" href="ab-blue-cool.html" target="_blank">单独打开 A ↗</a>
+      <a class="btn btn-primary" href="insight-os-redesign.html" target="_blank">单独打开 B ↗</a>
+    </div>
+  </div>
+  <div class="container">
+    <div class="pane">
+      <div class="pane-label">
+        <span class="swatch" style="background: #1a365d;"></span>
+        A · 当前深蓝冷白（v0.1 实现版）
+      </div>
+      <iframe src="ab-blue-cool.html" title="A - 当前深蓝冷白"></iframe>
+    </div>
+    <div class="pane">
+      <div class="pane-label">
+        <span class="swatch" style="background: #1f5d4c;"></span>
+        B · GLM 建议深墨绿米白（v0.3 候选）
+      </div>
+      <iframe src="insight-os-redesign.html" title="B - GLM 建议深墨绿米白"></iframe>
+    </div>
+  </div>
+</body>
+</html>

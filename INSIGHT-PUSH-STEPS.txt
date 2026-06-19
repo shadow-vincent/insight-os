@@ -1,0 +1,22 @@
+# 用纯 ASCII 注释 + 单行命令（避免 zsh 解析问题）
+
+# ===== Step 1 =====
+cd /Users/vincent/Documents/insight-os
+
+# ===== Step 2 =====
+git init
+
+# ===== Step 3 =====
+git add .
+
+# ===== Step 4 =====
+git commit -m "v1.0.0 first public release"
+
+# ===== Step 5 =====
+git remote add origin https://github.com/shadow-vincent/insight-os.git
+
+# ===== Step 6 =====
+git branch -M main
+
+# ===== Step 7 =====
+git push -u origin main

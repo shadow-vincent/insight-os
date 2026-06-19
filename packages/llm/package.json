@@ -1,0 +1,21 @@
+{
+  "name": "@insight-os/llm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./prompts/light-card": "./src/prompts/light-card.ts",
+    "./prompts/calibrate": "./src/prompts/calibrate.ts",
+    "./prompts/asset-upgrade": "./src/prompts/asset-upgrade.ts",
+    "./prompts/output-generate": "./src/prompts/output-generate.ts"
+  },
+  "dependencies": {
+    "openai": "^4.73.0",
+    "@insight-os/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
