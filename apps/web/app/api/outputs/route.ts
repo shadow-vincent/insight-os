@@ -28,10 +28,11 @@ export async function GET() {
     }
 
     // 一次性查出所有相关资产
-    const assetRows = allAssetIds.size > 0
-      ? db.select().from(assets).where(inArray(assets.id, Array.from(allAssetIds))).all()
+    type AssetRow = typeof assets.$inferSelect;
+    const assetRows: AssetRow[] = allAssetIds.size > 0
+      ? db.select().from(assets).where(inArray(assets.id, Array.from(allAssetIds))).all() as AssetRow[]
       : [];
-    const assetMap = new Map(assetRows.map(a => [a.id, a]));
+    const assetMap = new Map<string, AssetRow>(assetRows.map(a => [a.id, a]));
 
     // 转换 shape
     const items = list.map(o => {

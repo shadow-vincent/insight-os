@@ -38,11 +38,13 @@ export async function GET() {
     }
 
     // 2. 拿所有主题（用于 hover 显示）
-    const allTopics = db.select().from(topics).all();
-    const topicById = new Map(allTopics.map(t => [t.id, t]));
+    type TopicRow = typeof topics.$inferSelect;
+    type AssetTopicRow = typeof assetTopics.$inferSelect;
+    const allTopics = db.select().from(topics).all() as TopicRow[];
+    const topicById = new Map<string, TopicRow>(allTopics.map(t => [t.id, t]));
 
     // 3. 拿所有 asset_topic 关系
-    const allAssetTopicLinks = db.select().from(assetTopics).all();
+    const allAssetTopicLinks = db.select().from(assetTopics).all() as AssetTopicRow[];
 
     // 4. 组装每个节点的 topic 信息
     const assetIdToTopics = new Map<string, { topicId: string; topicName: string; confidence: number }[]>();

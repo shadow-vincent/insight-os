@@ -15,22 +15,25 @@ export async function GET() {
     const db = getDb();
     const allTopics = db.select().from(topics).orderBy(topics.sortOrder).all();
     // v0.8：一次拿所有 kernel 摘要
-    const allKernels = db.select().from(topicKernels).all();
-    const kernelByTopic = new Map(allKernels.map(k => [k.topicId, k]));
+    type TopicKernelRow = typeof topicKernels.$inferSelect;
+    const allKernels = db.select().from(topicKernels).all() as TopicKernelRow[];
+    const kernelByTopic = new Map<string, TopicKernelRow>(allKernels.map(k => [k.topicId, k]));
 
     const result: any[] = [];
+    type AssetTopicRow = typeof assetTopics.$inferSelect;
+    type AssetRow = typeof assets.$inferSelect;
     for (const t of allTopics) {
-      const links = db.select().from(assetTopics).where(eq(assetTopics.topicId, t.id)).all();
-      const assetIds = links.map(l => l.assetId);
-      let topicAssets: any[] = [];
+      const links = db.select().from(assetTopics).where(eq(assetTopics.topicId, t.id)).all() as AssetTopicRow[];
+      const assetIds = links.map((l: AssetTopicRow) => l.assetId);
+      let topicAssets: AssetRow[] = [];
       let avgEvidence = 0;
       let lastUsedAt: number | null = null;
       let topAssets: any[] = [];
 
       if (assetIds.length > 0) {
-        topicAssets = db.select().from(assets).where(inArray(assets.id, assetIds)).all();
+        topicAssets = db.select().from(assets).where(inArray(assets.id, assetIds)).all() as AssetRow[];
         const evMap: Record<string, number> = { E0: 0, E1: 1, E2: 2, E3: 3, E4: 4, E5: 5 };
-        const sum = topicAssets.reduce((s, a) => s + (evMap[a.evidenceLevel] ?? 0), 0);
+        const sum = topicAssets.reduce((s: number, a: AssetRow) => s + (evMap[a.evidenceLevel] ?? 0), 0);
         avgEvidence = topicAssets.length > 0 ? sum / topicAssets.length : 0;
         const timestamps = topicAssets.map(a => a.lastUsedAt ?? a.updatedAt).filter(Boolean);
         lastUsedAt = timestamps.length > 0 ? Math.max(...timestamps) : null;

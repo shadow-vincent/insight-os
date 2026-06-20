@@ -15,25 +15,33 @@ import { getDb, assets } from '@insight-os/db';
 import { desc, eq, and, ne } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const status = url.searchParams.get('status');
-  const type = url.searchParams.get('type');
-  const includeAll = url.searchParams.get('all') === '1';
+  try {
+    const url = new URL(req.url);
+    const status = url.searchParams.get('status');
+    const type = url.searchParams.get('type');
+    const includeAll = url.searchParams.get('all') === '1';
 
-  const db = getDb();
-  let query = db.select().from(assets).$dynamic();
-  const conditions = [];
-  if (status) conditions.push(eq(assets.status, status as any));
-  if (type) {
-    conditions.push(eq(assets.type, type as any));
-  } else if (!includeAll) {
-    // 默认只返正式资产卡（排除 light 卡 / kernel 卡）
-    conditions.push(ne(assets.type, 'light'));
-  }
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
-  }
-  const list = query.orderBy(desc(assets.updatedAt)).all();
+    const db = getDb();
+    type AssetRow = typeof assets.$inferSelect;
+    let query = db.select().from(assets).$dynamic();
+    const conditions = [];
+    if (status) conditions.push(eq(assets.status, status as any));
+    if (type) {
+      conditions.push(eq(assets.type, type as any));
+    } else if (!includeAll) {
+      // 默认只返正式资产卡（排除 light 卡 / kernel 卡）
+      conditions.push(ne(assets.type, 'light'));
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    const list = query.orderBy(desc(assets.updatedAt)).all() as AssetRow[];
 
-  return NextResponse.json({ ok: true, count: list.length, items: list });
+    return NextResponse.json({ ok: true, count: list.length, items: list });
+  } catch (e: any) {
+    return NextResponse.json({
+      ok: false,
+      error: e.message || '资产列表查询失败',
+    }, { status: 500 });
+  }
 }

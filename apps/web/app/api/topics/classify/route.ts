@@ -125,7 +125,9 @@ ${topicList}
     }
 
     // 返回友好数据
-    const topicMap = new Map(allTopics.map(t => [t.id, t]));
+    type TopicRow = typeof topics.$inferSelect;
+    const allTopicsTyped = allTopics as TopicRow[];
+    const topicMap = new Map<string, TopicRow>(allTopicsTyped.map(t => [t.id, t]));
     return NextResponse.json({
       ok: true,
       topics: validClassifications.map(c => ({

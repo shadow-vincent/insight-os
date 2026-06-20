@@ -37,6 +37,8 @@ export default function CandidatesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'candidate' | 'in_use' | 'archived'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -58,6 +60,59 @@ export default function CandidatesPage() {
     candidate: list.filter(c => c.status === 'candidate').length,
     in_use: list.filter(c => c.status === 'in_use').length,
     archived: list.filter(c => c.status === 'archived').length,
+  };
+
+  // 多选：只对 candidate 状态可选
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectableFiltered = filtered.filter(c => c.status === 'candidate');
+  const allSelectableSelected = selectableFiltered.length > 0
+    && selectableFiltered.every(c => selected.has(c.id));
+
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(selectableFiltered.map(c => c.id)));
+    }
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const handleBatchPromote = async () => {
+    if (selected.size === 0 || batchBusy) return;
+    if (!confirm(`确认批量入库 ${selected.size} 张候选卡？\n（每张会调 LLM 生成 12 章节，5 张约 30 秒）`)) return;
+    setBatchBusy(true);
+    try {
+      const res = await fetch('/api/candidates/promote-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`批量入库完成：成功 ${data.promoted}/${selected.size} 张${data.failed > 0 ? `，失败 ${data.failed} 张` : ''}`);
+        clearSelection();
+        // 刷新列表
+        const refresh = await fetch('/api/candidates');
+        const refreshData = await refresh.json();
+        if (refreshData.ok) setList(refreshData.candidates);
+      } else {
+        toast.error('批量入库失败: ' + (data.error || '未知错误'));
+      }
+    } catch (e: any) {
+      toast.error('批量入库失败: ' + e.message);
+    } finally {
+      setBatchBusy(false);
+    }
   };
 
   if (loading) {
@@ -99,6 +154,49 @@ export default function CandidatesPage() {
         ))}
       </div>
 
+      {/* 批量操作栏 */}
+      {selected.size > 0 && (
+        <div className="card" style={{
+          marginBottom: 18, padding: '14px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'var(--primary-soft)', borderColor: 'var(--primary-line)',
+        }}>
+          <span style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600 }}>
+            已选 {selected.size} 张候选
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            批量入库：每张调 LLM 生成 12 章节
+          </span>
+          <div style={{ flex: 1 }} />
+          <button className="btn btn-sm" onClick={clearSelection} disabled={batchBusy}>清空</button>
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleBatchPromote}
+            disabled={batchBusy}
+            style={batchBusy ? { opacity: 0.6, cursor: 'wait' } : {}}
+          >
+            {batchBusy ? '批量入库中…' : `批量入库 ${selected.size} 张 →`}
+          </button>
+        </div>
+      )}
+
+      {/* 全选行（仅 candidate 状态可批量入库） */}
+      {selectableFiltered.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingLeft: 4,
+        }}>
+          <input
+            type="checkbox"
+            checked={allSelectableSelected}
+            onChange={toggleSelectAll}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            全选 {selectableFiltered.length} 张可入库（仅 candidate 状态）
+          </span>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="card empty-state">
           <div className="icon">📥</div>
@@ -111,8 +209,19 @@ export default function CandidatesPage() {
               key={c.id}
               c={c}
               expanded={expandedId === c.id}
+              isSelected={selected.has(c.id)}
+              selectable={c.status === 'candidate'}
               onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
+              onSelect={(e) => toggleSelect(c.id, e)}
               toast={toast}
+              onDeleted={(id) => {
+                setList(prev => prev.filter(x => x.id !== id));
+                setSelected(prev => {
+                  const next = new Set(prev);
+                  next.delete(id);
+                  return next;
+                });
+              }}
             />
           ))}
         </div>
@@ -121,9 +230,15 @@ export default function CandidatesPage() {
   );
 }
 
-function CandidateRow({ c, expanded, onToggle, toast }: {
-  c: Candidate; expanded: boolean; onToggle: () => void;
+function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect, toast, onDeleted }: {
+  c: Candidate;
+  expanded: boolean;
+  isSelected?: boolean;
+  selectable?: boolean;
+  onToggle: () => void;
+  onSelect?: (e: React.MouseEvent) => void;
   toast: { error: (m: string) => void; success: (m: string) => void; info: (m: string) => void };
+  onDeleted: (id: string) => void;
 }) {
   const date = new Date(c.createdAt * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const statusLabel = STATUS_LABEL[c.status] || c.status;
@@ -132,8 +247,29 @@ function CandidateRow({ c, expanded, onToggle, toast }: {
     : statusTone === 'accent' ? 'var(--accent)'
     : 'var(--text-3)';
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`确认删除「${c.title}」？\n（关联的 .md 文件也会被删除）`)) return;
+    try {
+      const res = await fetch(`/api/candidates/${c.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`已删除「${c.title}」`);
+        onDeleted(c.id);
+      } else {
+        toast.error('删除失败: ' + (data.error || '未知错误'));
+      }
+    } catch (err: any) {
+      toast.error('删除失败: ' + err.message);
+    }
+  };
+
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="card" style={{
+      padding: 0, overflow: 'hidden',
+      borderColor: isSelected ? 'var(--primary)' : undefined,
+      boxShadow: isSelected ? '0 0 0 2px var(--primary)' : undefined,
+    }}>
       <div
         onClick={onToggle}
         style={{
@@ -144,6 +280,16 @@ function CandidateRow({ c, expanded, onToggle, toast }: {
           gap: 14,
         }}
       >
+        {/* 复选框（仅 candidate 可选） */}
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={isSelected || false}
+            onChange={() => {}}
+            onClick={onSelect}
+            style={{ width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
+          />
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{
@@ -212,7 +358,9 @@ function CandidateRow({ c, expanded, onToggle, toast }: {
                   const res = await fetch(`/api/candidates/${c.id}/promote`, { method: 'POST' });
                   const data = await res.json();
                   if (data.ok) {
-                    window.location.reload();
+                    // 不 reload：fetch + setList 更新（保留滚动位置 + 更快）
+                    setList(prev => prev.map(x => x.id === c.id ? { ...x, status: 'in_use' } : x));
+                    toast.success(`「${c.title}」已入库`);
                   } else {
                     toast.error('入库失败: ' + (data.error || '未知错误'));
                   }
@@ -220,10 +368,54 @@ function CandidateRow({ c, expanded, onToggle, toast }: {
               >
                 确认入库 →
               </button>
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={handleDelete}
+                style={{
+                  padding: '6px 12px',
+                  background: 'transparent',
+                  color: 'var(--text-3)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 5, fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#dc2626';
+                  e.currentTarget.style.borderColor = '#dc2626';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-3)';
+                  e.currentTarget.style.borderColor = 'var(--line)';
+                }}
+              >
+                删除
+              </button>
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: 'var(--text-3)', paddingTop: 14, borderTop: '1px solid var(--line-soft)' }}>
-              状态：{statusLabel} · 不可编辑
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-3)', paddingTop: 14, borderTop: '1px solid var(--line-soft)' }}>
+              <span>状态：{statusLabel} · 不可编辑</span>
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={handleDelete}
+                style={{
+                  padding: '6px 12px',
+                  background: 'transparent',
+                  color: 'var(--text-3)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 5, fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#dc2626';
+                  e.currentTarget.style.borderColor = '#dc2626';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-3)';
+                  e.currentTarget.style.borderColor = 'var(--line)';
+                }}
+              >
+                删除
+              </button>
             </div>
           )}
         </div>

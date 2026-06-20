@@ -2,7 +2,8 @@
 // Run: node build-packages.mjs
 
 import { build } from 'esbuild';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
+import { execSync } from 'child_process';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, unlinkSync } from 'fs';
 import { join, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -46,6 +47,52 @@ async function buildEntry(pkgDir, entry, distDir) {
   });
 }
 
+/**
+ * 生成 .d.ts（用 tsc）
+ * esbuild 不生成 .d.ts，apps/web tsc 编译需要类型声明
+ */
+function generateDts(pkgDir, distDir, pkgName) {
+  try {
+    const tsconfigPath = join(pkgDir, '.tsconfig.build.json');
+    const tsconfig = {
+      compilerOptions: {
+        target: 'es2022',
+        module: 'esnext',
+        moduleResolution: 'node',
+        declaration: true,
+        emitDeclarationOnly: true,
+        outDir: distDir,
+        strict: false,
+        skipLibCheck: true,
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        allowImportingTsExtensions: true,
+        resolveJsonModule: true,
+        noEmit: false,
+      },
+      include: [join(pkgDir, 'src/**/*')],
+      exclude: [join(pkgDir, 'node_modules'), join(pkgDir, 'dist')],
+    };
+    writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2));
+    execSync(`npx tsc -p "${tsconfigPath}"`, { stdio: 'inherit', cwd: pkgDir });
+
+    // 给 db 包手动 emit client.d.ts（tsc 不会自动 emit re-export 的 d.ts）
+    if (pkgName === 'db') {
+      const clientTsconfig = { ...tsconfig, include: [join(pkgDir, 'src/client.ts')] };
+      const clientTsconfigPath = join(pkgDir, '.tsconfig.client.json');
+      writeFileSync(clientTsconfigPath, JSON.stringify(clientTsconfig, null, 2));
+      execSync(`npx tsc -p "${clientTsconfigPath}"`, { stdio: 'inherit', cwd: pkgDir });
+      unlinkSync(clientTsconfigPath);
+    }
+
+    // 清理临时 tsconfig
+    unlinkSync(tsconfigPath);
+    console.log(`  Generated d.ts for ${relative(__dirname, pkgDir)}`);
+  } catch (e) {
+    console.warn(`  d.ts generation failed for ${relative(__dirname, pkgDir)}: ${e.message}`);
+  }
+}
+
 for (const pkg of packages) {
   const pkgDir = join(__dirname, 'packages', pkg.name);
   if (!existsSync(pkgDir)) continue;
@@ -58,6 +105,9 @@ for (const pkg of packages) {
   for (const entry of (nestedEntries[pkg.name] || [])) {
     await buildEntry(pkgDir, entry, distDir);
   }
+
+  // 生成 .d.ts（让 apps/web TS 编译能找到类型）
+  generateDts(pkgDir, distDir, pkg.name);
 
   // Update package.json to point to dist
   const pkgJsonPath = join(pkgDir, 'package.json');

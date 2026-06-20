@@ -74,9 +74,10 @@ export async function POST(req: NextRequest) {
 
     // 读 N 张资产卡
     const db = getDb();
-    const found = db.select().from(assets).where(inArray(assets.id, assetIds)).all();
+    type AssetRow = typeof assets.$inferSelect;
+    const found = db.select().from(assets).where(inArray(assets.id, assetIds)).all() as AssetRow[];
     if (found.length !== assetIds.length) {
-      const foundIds = new Set(found.map(a => a.id));
+      const foundIds = new Set(found.map((a: AssetRow) => a.id));
       const missing = assetIds.filter(id => !foundIds.has(id));
       return NextResponse.json({
         ok: false,
@@ -85,12 +86,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 保持请求顺序
-    const assetMap = new Map(found.map(a => [a.id, a]));
-    const ordered = assetIds.map(id => assetMap.get(id)!);
+    const assetMap = new Map(found.map((a: AssetRow) => [a.id, a]));
+    const ordered: AssetRow[] = assetIds.map(id => assetMap.get(id)!);
 
     // 准备 Prompt ⑤ 的输入（含场景输出片段）
     const llmInput: CompositeOutputInput = {
-      assetSummaries: ordered.map(a => {
+      assetSummaries: ordered.map((a: AssetRow) => {
         let sceneOutputs: string | undefined;
         try {
           const content = readFileSync(a.filePath, 'utf-8');
@@ -133,8 +134,8 @@ export async function POST(req: NextRequest) {
     const outputId = `out_${randomUUID().slice(0, 8)}`;
 
     // 校验 assetReferences 完整性（LLM 漏掉的补空）
-    const refMap = new Map((result.data.assetReferences || []).map(r => [r.assetId, r]));
-    const assetReferences = ordered.map(a => {
+    const refMap = new Map((result.data.assetReferences || []).map((r: any) => [r.assetId, r]));
+    const assetReferences = ordered.map((a: AssetRow) => {
       const ref = refMap.get(a.id);
       return {
         assetId: a.id,

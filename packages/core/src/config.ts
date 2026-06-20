@@ -1,12 +1,19 @@
 /**
  * 本地配置文件存储
  *
- * 设计：配置存 storage/config.json，不进数据库
+ * 设计：配置存统一 user data dir（OS-aware）
+ *   macOS:   ~/Library/Application Support/InsightOS/config.json
+ *   Linux:   ~/.local/share/insightos/config.json
+ *   Windows: %APPDATA%/InsightOS/config.json
+ *
+ * 这样 web dev 和 packaged .app 共享同一份配置，不会出现 "桌面配了 web 看不到" 问题。
+ *
  * - 敏感字段（API key）只返回脱敏后的值
  * - 写入立即生效（不需重启）
+ * - 自动迁移：从旧的 apps/web/storage/config.json 升级
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 export interface AppConfig {
@@ -18,33 +25,31 @@ export interface AppConfig {
   };
   paths: {
     vaultPath: string;  // 指向 knowledge_base 根目录
-    appDataDir?: string; // v1.0 桌面 app 专用：Tauri app data 目录
   };
   lastUpdated: number;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   llm: {
-    baseUrl: process.env.LLM_BASE_URL ?? 'https://api.deepseek.com/v1',
+    baseUrl: process.env.LLM_BASE_URL ?? 'https://api.minimax.chat/v1',
     apiKey: process.env.LLM_API_KEY ?? '',
-    model: process.env.LLM_MODEL ?? 'deepseek-v4-flash',
+    model: process.env.LLM_MODEL ?? 'MiniMax-M2.7',
     enabled: false,
   },
   paths: {
     vaultPath: process.env.INSIGHT_VAULT_PATH ?? `${process.env.HOME ?? ''}/Documents/knowledge_base`,
-    appDataDir: process.env.INSIGHT_APP_DATA_DIR,
   },
   lastUpdated: 0,
 };
 
 /**
- * v1.0 桌面 app 数据目录（OS-aware）
- *   macOS:  ~/Library/Application Support/InsightOS/
- *   Linux:  ~/.local/share/insightos/
- *   Windows: %APPDATA%/InsightOS/
+ * OS-aware user data dir（dev / packaged 统一用）
  */
-export function getDefaultAppDataDir(): string {
-  if (process.env.INSIGHT_APP_DATA_DIR) return process.env.INSIGHT_APP_DATA_DIR;
+export function getUserDataDir(): string {
+  // env 优先（packaged .app 可以自己 override）
+  if (process.env.INSIGHT_USER_DATA_DIR) {
+    return process.env.INSIGHT_USER_DATA_DIR;
+  }
   const home = process.env.HOME ?? process.env.USERPROFILE ?? '/tmp';
   if (process.platform === 'darwin') {
     return `${home}/Library/Application Support/InsightOS`;
@@ -55,24 +60,48 @@ export function getDefaultAppDataDir(): string {
   }
 }
 
+/**
+ * 旧的 config 路径（用于自动迁移）
+ */
+function getLegacyConfigPaths(): string[] {
+  return [
+    // 旧 Tauri 时代的 config
+    `${process.env.HOME ?? ''}/Library/Application Support/com.vincent.enterprise-insight/config.json`,
+    // web dev 默认路径
+    resolve(process.cwd(), 'storage/config.json'),
+    // packaged .app 内部路径
+    resolve(process.cwd(), '../storage/config.json'),
+  ];
+}
+
+/**
+ * 解析 config 路径（统一到 user data dir）
+ */
 function resolveConfigPath(): string {
-  // 优先环境变量
+  // env 优先
   if (process.env.INSIGHT_CONFIG_PATH) {
     return resolve(process.env.INSIGHT_CONFIG_PATH);
   }
-  // v1.0: 桌面 app 模式（app data 目录有 config.json）— 优先用
-  const appDataDir = getDefaultAppDataDir();
-  const appDataConfig = resolve(appDataDir, 'config.json');
-  if (existsSync(appDataConfig)) {
-    return appDataConfig;
+  return resolve(getUserDataDir(), 'config.json');
+}
+
+/**
+ * 迁移旧 config 到新位置（只迁移一次）
+ */
+function migrateLegacyConfigIfNeeded(targetPath: string): void {
+  if (existsSync(targetPath)) return;
+  for (const legacyPath of getLegacyConfigPaths()) {
+    if (existsSync(legacyPath)) {
+      try {
+        mkdirSync(dirname(targetPath), { recursive: true });
+        copyFileSync(legacyPath, targetPath);
+        console.log(`[config] Migrated legacy config from ${legacyPath} to ${targetPath}`);
+        return;
+      } catch (e: any) {
+        console.warn(`[config] Failed to migrate from ${legacyPath}: ${e.message}`);
+      }
+    }
   }
-  // 1) 优先 apps/web/storage/config.json（Next.js 运行时）
-  const appPath = resolve(process.cwd(), 'storage/config.json');
-  if (existsSync(appPath)) {
-    return appPath;
-  }
-  // 2) fallback 到 monorepo 根 /storage/config.json
-  return resolve(process.cwd(), '../storage/config.json');
 }
 
 /**
@@ -80,13 +109,14 @@ function resolveConfigPath(): string {
  */
 export function readConfig(): AppConfig {
   const path = resolveConfigPath();
+  migrateLegacyConfigIfNeeded(path);
+
   if (!existsSync(path)) {
     return { ...DEFAULT_CONFIG };
   }
   try {
     const raw = readFileSync(path, 'utf-8');
     const parsed = JSON.parse(raw);
-    // 合并默认值（防止新版本加字段时旧配置缺字段）
     return {
       llm: { ...DEFAULT_CONFIG.llm, ...parsed.llm },
       paths: { ...DEFAULT_CONFIG.paths, ...parsed.paths },
@@ -126,12 +156,11 @@ export function updateConfig(partial: Partial<AppConfig>): AppConfig {
 
 /**
  * 脱敏后的配置（API key 只显示前 4 位 + ****）
- * 用于返回给前端展示
  */
 export interface SanitizedConfig {
   llm: {
     baseUrl: string;
-    apiKeyMasked: string;  // 永远不返回完整 key
+    apiKeyMasked: string;
     apiKeyConfigured: boolean;
     model: string;
     enabled: boolean;
@@ -153,7 +182,7 @@ export function sanitize(config: AppConfig): SanitizedConfig {
     llm: {
       baseUrl: config.llm.baseUrl,
       apiKeyMasked: maskApiKey(config.llm.apiKey),
-      apiKeyConfigured: !!config.llm.apiKey && config.llm.apiKey !== 'sk-placeholder',
+      apiKeyConfigured: !!config.llm.apiKey,
       model: config.llm.model,
       enabled: config.llm.enabled,
     },
@@ -165,9 +194,17 @@ export function sanitize(config: AppConfig): SanitizedConfig {
 }
 
 /**
- * 检查 LLM 是否已配置（用于前端状态指示）
+ * 检查 LLM 是否已配置
  */
 export function isLLMConfigured(): boolean {
   const c = readConfig();
-  return !!c.llm.apiKey && c.llm.apiKey !== 'sk-placeholder';
+  return !!c.llm.apiKey;
+}
+
+/**
+ * 旧 API 兼容（保留 getDefaultAppDataDir 别名）
+ * @deprecated Use getUserDataDir instead
+ */
+export function getDefaultAppDataDir(): string {
+  return getUserDataDir();
 }

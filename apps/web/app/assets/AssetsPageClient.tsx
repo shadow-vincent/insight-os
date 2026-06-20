@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useToast } from '@/components/ToastProvider';
 
 interface AssetItem {
   id: string;
@@ -10,11 +11,16 @@ interface AssetItem {
   evidenceLevel: string;
   priority: string | null;
   tagsJson: string;
+  filePath?: string | null;  // intake 来源的卡没 .md
 }
 
 export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showMultiModal, setShowMultiModal] = useState(false);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [list, setList] = useState<AssetItem[]>(all);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; hasFile: boolean } | null>(null);
+  const toast = useToast();
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -30,9 +36,38 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
   const clearSelection = () => setSelected(new Set());
 
   const selectedAssets = useMemo(
-    () => all.filter(a => selected.has(a.id)),
-    [all, selected]
+    () => list.filter(a => selected.has(a.id)),
+    [list, selected]
   );
+
+  const requestDelete = (id: string, title: string, hasFile: boolean) => {
+    setPendingDelete({ id, title, hasFile });
+  };
+
+  const cancelDelete = () => setPendingDelete(null);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { id, title, hasFile } = pendingDelete;
+    setPendingDelete(null);
+    try {
+      const res = await fetch(`/api/assets/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) {
+        setList(prev => prev.filter(a => a.id !== id));
+        setSelected(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        toast.success(`已删除「${title}」`);
+      } else {
+        toast.error('删除失败: ' + (data.error || '未知错误'));
+      }
+    } catch (err: any) {
+      toast.error('删除失败: ' + err.message);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -65,10 +100,18 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
             已选 {selected.size} 张资产
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            联合输出建议 2-5 张（最多 7 张）
+            联合输出建议 2-5 张（最多 7 张）· 合并建议 2-5 张
           </span>
           <div style={{ flex: 1 }} />
           <button className="btn btn-sm" onClick={clearSelection}>清空</button>
+          <button
+            className="btn btn-sm"
+            onClick={() => setShowMergeModal(true)}
+            disabled={selected.size < 2}
+            style={selected.size < 2 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          >
+            合并 →
+          </button>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => setShowMultiModal(true)}
@@ -80,7 +123,7 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
         </div>
       )}
 
-      {all.length === 0 ? (
+      {list.length === 0 ? (
         <div className="card empty-state">
           <div className="icon">📑</div>
           <p>还没有资产</p>
@@ -88,7 +131,7 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {all.map(a => {
+          {list.map(a => {
             const tags: string[] = JSON.parse(a.tagsJson || '[]');
             const isSelected = selected.has(a.id);
             return (
@@ -121,12 +164,32 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
                   {isSelected && '✓'}
                 </div>
 
+                {/* 删除按钮（左上角） */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); requestDelete(a.id, a.title, !!a.filePath); }}
+                  title="删除此资产"
+                  style={{
+                    position: 'absolute', top: 14, left: 14,
+                    width: 26, height: 26, borderRadius: 4,
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-3)',
+                    fontSize: 16, lineHeight: 1, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 120ms',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-3)'; }}
+                >
+                  ✕
+                </button>
+
                 {/* 卡片内容（点击进详情） */}
                 <Link
                   href={`/assets/${a.id}`}
                   style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingRight: 36 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, paddingLeft: 30, paddingRight: 36 }}>
                     <span className={`pill pill-${a.evidenceLevel.toLowerCase()}`}>{a.evidenceLevel}</span>
                     {a.priority && <span className={`pill pill-priority-${a.priority.toLowerCase()}`}>{a.priority}</span>}
                   </div>
@@ -162,6 +225,324 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
           }}
         />
       )}
+
+      {showMergeModal && (
+        <MergeModal
+          assets={selectedAssets}
+          onClose={() => setShowMergeModal(false)}
+          onComplete={async () => {
+            setShowMergeModal(false);
+            clearSelection();
+            // 不 reload：fetch 拉新列表
+            try {
+              const res = await fetch('/api/assets?all=1');
+              const data = await res.json();
+              if (data.ok) setList(data.items);
+              toast.success('合并成功');
+            } catch {
+              toast.error('刷新列表失败，请手动刷新');
+            }
+          }}
+        />
+      )}
+
+      {/* 删除确认 modal（轻量 inline confirm） */}
+      {pendingDelete && (
+        <div
+          onClick={cancelDelete}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 200, padding: 20,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: 420, width: '100%', background: 'var(--bg-card)',
+              borderRadius: 8, padding: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px', color: 'var(--ink)' }}>
+              确认删除资产？
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '0 0 8px', lineHeight: 1.6 }}>
+              「{pendingDelete.title}」
+            </p>
+            {pendingDelete.hasFile ? (
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 24px', lineHeight: 1.6 }}>
+                关联的 .md 文件也会一并删除（不可恢复）
+              </p>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 24px', lineHeight: 1.6 }}>
+                这张卡没有 .md 文件（仅删除数据库记录）
+              </p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn" onClick={cancelDelete}>取消</button>
+              <button
+                className="btn"
+                onClick={confirmDelete}
+                style={{
+                  background: '#dc2626', color: '#fff', borderColor: '#dc2626',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#b91c1c'}
+                onMouseLeave={e => e.currentTarget.style.background = '#dc2626'}
+              >
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 合并 Modal
+ * 选 2-5 张资产 → 填合并后标题/洞察/反常识/tags → 提交
+ * 旧资产 archived，新卡入库 in_use
+ */
+function MergeModal({
+  assets,
+  onClose,
+  onComplete,
+}: {
+  assets: AssetItem[];
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  // 默认合并内容：从第一张取 title / insight，tags 合并去重
+  const initialTags = Array.from(new Set(
+    assets.flatMap(a => JSON.parse(a.tagsJson || '[]'))
+  ));
+
+  const [title, setTitle] = useState(assets.map(a => a.title).join(' + ').slice(0, 80));
+  const [insight, setInsight] = useState(
+    assets.map(a => a.oneSentenceInsight).filter(Boolean).join('；').slice(0, 200)
+  );
+  const [antiCommonSense, setAntiCommonSense] = useState('');
+  const [tagsText, setTagsText] = useState(initialTags.join(', '));
+  const [evidenceLevel, setEvidenceLevel] = useState('E1');
+  const [priority, setPriority] = useState('B');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleMerge = async () => {
+    if (!title.trim() || !insight.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const tags = tagsText.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+      const res = await fetch('/api/assets/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetIds: assets.map(a => a.id),
+          mergedData: {
+            title: title.trim(),
+            oneSentenceInsight: insight.trim(),
+            antiCommonSense: antiCommonSense.trim() || undefined,
+            tags,
+            evidenceLevel,
+            priority,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        onComplete();
+      } else {
+        setError(data.error || '合并失败');
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(15, 23, 42, 0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 100, padding: 20,
+    }} onClick={onClose}>
+      <div
+        className="card"
+        style={{ maxWidth: 720, width: '100%', maxHeight: '90vh', overflow: 'auto', padding: 0 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '20px 28px', borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+              合并资产
+            </h2>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '4px 0 0' }}>
+              合并 {assets.length} 张资产 → 1 张入库卡（旧资产自动归档）
+            </p>
+          </div>
+          <button onClick={onClose} className="btn" style={{ padding: '4px 12px' }}>×</button>
+        </div>
+
+        {/* 已选预览 */}
+        <div style={{ padding: '16px 28px 0' }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>
+            合并来源（{assets.length} 张）
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+            {assets.map((a, i) => (
+              <div key={a.id} style={{
+                padding: '6px 10px', background: 'var(--bg-subtle)',
+                borderRadius: 5, fontSize: 12, color: 'var(--text)',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ color: 'var(--text-3)' }}>{i + 1}.</span>
+                <span style={{ flex: 1, color: 'var(--ink)' }}>{a.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 表单 */}
+        <div style={{ padding: '0 28px 28px' }}>
+          {/* 标题 */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+              合并后标题 *
+            </label>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="form-input"
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* 洞察 */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+              合并后一句话洞察 *
+            </label>
+            <textarea
+              value={insight}
+              onChange={e => setInsight(e.target.value)}
+              rows={3}
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                fontFamily: 'inherit', resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* 反常识 */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+              反常识（可选）
+            </label>
+            <textarea
+              value={antiCommonSense}
+              onChange={e => setAntiCommonSense(e.target.value)}
+              rows={2}
+              placeholder="如果新卡有反常识洞察，填这里"
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                fontFamily: 'inherit', resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Tags */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+              标签（逗号分隔，已自动合并去重）
+            </label>
+            <input
+              value={tagsText}
+              onChange={e => setTagsText(e.target.value)}
+              className="form-input"
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {/* Evidence + Priority */}
+          <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+                证据等级
+              </label>
+              <select
+                value={evidenceLevel}
+                onChange={e => setEvidenceLevel(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px',
+                  background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                  borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <option value="E0">E0 · 经验</option>
+                <option value="E1">E1 · 案例</option>
+                <option value="E2">E2 · 多案例</option>
+                <option value="E3">E3 · 研究</option>
+                <option value="E4">E4 · 实证</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 6, display: 'block' }}>
+                优先级
+              </label>
+              <select
+                value={priority}
+                onChange={e => setPriority(e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 12px',
+                  background: 'var(--bg-subtle)', border: '1px solid var(--line)',
+                  borderRadius: 6, fontSize: 13, color: 'var(--ink)',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <option value="A">A · 高</option>
+                <option value="B">B · 中</option>
+                <option value="C">C · 低</option>
+              </select>
+            </div>
+          </div>
+
+          {error && <div className="callout callout-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button onClick={onClose} className="btn">取消</button>
+            <button
+              onClick={handleMerge}
+              disabled={!title.trim() || !insight.trim() || busy}
+              className="btn btn-primary"
+            >
+              {busy ? '合并中…' : `合并 ${assets.length} 张 →`}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
