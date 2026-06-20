@@ -87,10 +87,44 @@ function generateDts(pkgDir, distDir, pkgName) {
 
     // 清理临时 tsconfig
     unlinkSync(tsconfigPath);
+    if (pkgName === 'db') {
+      tryUnlink(join(pkgDir, '.tsconfig.client.json'));
+    }
+
+    // 修复 d.ts 里的 .ts 后缀 import（tsc 不会自动转）
+    // 比如 index.d.ts 里写 `export * from './schema.ts'`，但实际文件是 schema.d.ts
+    // 必须改成 `export * from './schema'`
+    fixDtsImports(distDir);
+
     console.log(`  Generated d.ts for ${relative(__dirname, pkgDir)}`);
   } catch (e) {
     console.warn(`  d.ts generation failed for ${relative(__dirname, pkgDir)}: ${e.message}`);
   }
+}
+
+/**
+ * 把 d.ts 文件里的 .ts 后缀 import 改成无后缀
+ * 原因：tsc emit d.ts 时保留 src 的 .ts 后缀，但 dist 里实际是 .d.ts（无后缀）
+ */
+function fixDtsImports(distDir) {
+  const entries = readdirSync(distDir);
+  for (const name of entries) {
+    if (!name.endsWith('.d.ts')) continue;
+    const filePath = join(distDir, name);
+    let content = readFileSync(filePath, 'utf8');
+    // 把 './xxx.ts' 或 '../xxx.ts' 改成 './xxx' 或 '../xxx'
+    const before = content;
+    content = content.replace(/(from\s+['"])(\.\.?\/[^'"]+)\.ts(['"])/g, '$1$2$3');
+    // 同样处理 import type 和动态 import
+    content = content.replace(/(import\(['"])(\.\.?\/[^'"]+)\.ts(['"])/g, '$1$2$3');
+    if (content !== before) {
+      writeFileSync(filePath, content, 'utf8');
+    }
+  }
+}
+
+function tryUnlink(p) {
+  try { unlinkSync(p); } catch { /* ignore */ }
 }
 
 for (const pkg of packages) {

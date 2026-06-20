@@ -1,11 +1,12 @@
 // Insight Asset OS — Electron main process
-// 流程：app.whenReady() → 启动 next start 子进程 → 等 3000 ready → BrowserWindow 加载 3000
+// 流程：app.whenReady() → 设 userData env → 启动 next start 子进程 → 等 3000 ready → BrowserWindow 加载 3000
 // 退出：kill next start
 
 const { app, BrowserWindow, shell } = require('electron');
 const { spawn } = require('child_process');
 const net = require('net');
 const path = require('path');
+const fs = require('fs');
 
 const PORT = 3000;
 const isDev = process.argv.includes('--dev');
@@ -115,8 +116,67 @@ function killNextServer() {
   }
 }
 
+/**
+ * 设 userData 路径给 packaged 模式
+ *
+ * 关键修复（v1.1.1）：
+ * v1.0 / v1.1.0 桌面 .app 启动时没设 INSIGHT_APP_DATA_DIR，导致 db 写到
+ * .app bundle 内（process.resourcesPath/web-pkg/storage/insight.db）。
+ * 升级 .app 时老 bundle 被删，老 db 跟着没。
+ *
+ * 修法：packaged 模式启动时强制用 app.getPath('userData')/storage/，
+ * 同步设 INSIGHT_APP_DATA_DIR env 给 next start 子进程。
+ *
+ * 同时：自动迁移老 .app bundle 内的 db（v1.0 / v1.1.0 残留数据）
+ */
+function setupUserDataDir() {
+  if (isDev) return;
+
+  const userDataDir = app.getPath('userData');
+  const storageDir = path.join(userDataDir, 'storage');
+  fs.mkdirSync(storageDir, { recursive: true });
+
+  // v1.1.1 修复：强制写到 userData，不写到 .app bundle
+  process.env.INSIGHT_APP_DATA_DIR = storageDir;
+
+  // 自动迁移：老 .app bundle 内的 db（如果存在）拷到 userData
+  // v1.0 / v1.1.0 写过两个位置（client.ts 的 fallback candidates）：
+  //   - WEB_DIR/storage/insight.db        (cwd/storage)
+  //   - WEB_DIR/apps/web/storage/insight.db (cwd/apps/web/storage, 这是 .app bundle 内)
+  // 都要检查（.app bundle 是只读覆盖，但 v1.1.1 第一次启动时还能读）
+  const newDb = path.join(storageDir, 'insight.db');
+  if (fs.existsSync(newDb)) {
+    console.log(`[main] userData db exists, skip migration: ${newDb}`);
+    return;
+  }
+
+  const candidates = [
+    path.join(WEB_DIR, 'apps', 'web', 'storage', 'insight.db'),
+    path.join(WEB_DIR, 'storage', 'insight.db'),
+  ];
+
+  for (const oldDb of candidates) {
+    if (!fs.existsSync(oldDb)) continue;
+    console.log(`[migrate] copying db from .app bundle to userData: ${oldDb} -> ${newDb}`);
+    try {
+      fs.copyFileSync(oldDb, newDb);
+      const wal = oldDb + '-wal';
+      const shm = oldDb + '-shm';
+      if (fs.existsSync(wal)) fs.copyFileSync(wal, newDb + '-wal');
+      if (fs.existsSync(shm)) fs.copyFileSync(shm, newDb + '-shm');
+      console.log('[migrate] db migration complete');
+      break;
+    } catch (e) {
+      console.error('[migrate] failed:', e.message);
+    }
+  }
+
+  console.log(`[main] userData dir: ${storageDir}`);
+}
+
 app.whenReady().then(async () => {
   try {
+    setupUserDataDir();
     await startNextServer();
     createWindow();
   } catch (err) {

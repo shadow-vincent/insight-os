@@ -87,7 +87,7 @@ export function indexFile(filePath: string) {
         // 保留 status（不因为文件 mtime 变化就重置工作流状态）
         // 保留 evidenceLevel 的人工调整
         // 但如果文件的 evidenceLevel 升级了，且数据库没手动改过，则同步
-      })
+      } as any)  // drizzle 0.36.4 .set() 类型签名只显 required 字段
       .where(eq(assets.id, existing.id))
       .run();
     return { action: 'updated' as const, record: { ...existing, type, title, evidenceLevel, tagsJson: JSON.stringify(tags) } };
@@ -117,7 +117,7 @@ export function indexFile(filePath: string) {
         feedbackCount: 0,
         createdAt: now,
         updatedAt: now,
-      })
+      } as any)  // drizzle 0.36.4 .values() 类型签名只显 required 字段
       .run();
     return { action: 'indexed' as const, record: { id, type, title } };
   }
@@ -262,7 +262,7 @@ function resolveRelatedLinks(insightDir: string) {
 
     // 3. 写回 db
     db.update(assets)
-      .set({ relatedIdsJson: JSON.stringify(relatedIds) })
+      .set({ relatedIdsJson: JSON.stringify(relatedIds) } as any)
       .where(eq(assets.id, self.id))
       .run();
   }

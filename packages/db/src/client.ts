@@ -21,9 +21,15 @@ let _initialized = false;
  * 解析数据库路径
  * 优先级：
  *   1. 环境变量 DATABASE_URL (file:xxx)
- *   2. 环境变量 INSIGHT_APP_DATA_DIR/insight.db（v1.0 桌面 app）
- *   3. 已有 db 文件位置（apps/web/storage 或 ./storage）
- *   4. fallback 到 apps/web/storage（让 mkdir 兜底）
+ *   2. 环境变量 INSIGHT_APP_DATA_DIR/insight.db（v1.1.1+ 桌面 app，强制写到 userData）
+ *   3. 已有 db 文件位置（apps/web/storage 或 ./storage）— 兼容 web dev
+ *   4. fallback：app userData（packaged 模式）或 apps/web/storage（web dev）
+ *
+ * v1.1.1 修复：
+ * v1.0 / v1.1.0 packaged 模式 fall back 到 cwd 下，结果 db 写到 .app bundle 内，
+ * 升级 .app 时老 bundle 被删，老 db 跟着没。
+ * 修法：packaged 模式 fallback 用 process.env.HOME（macOS 兜底到 ~/Library/Application Support/），
+ * 实际由 main.js 设的 INSIGHT_APP_DATA_DIR 决定。
  */
 function resolveDbPath(): string {
   const url = process.env.DATABASE_URL;
@@ -31,13 +37,13 @@ function resolveDbPath(): string {
     return resolve(url.slice(5));
   }
 
-  // v1.0 桌面 app 模式：app data 目录
+  // v1.1.1+ 桌面 app 模式：app data 目录（userData）
   if (process.env.INSIGHT_APP_DATA_DIR) {
     return resolve(process.env.INSIGHT_APP_DATA_DIR, 'insight.db');
   }
 
   const cwd = process.cwd();
-  // 优先级顺序：apps/web/storage（生产数据） > monorepo 根（脚本） > cwd（Next.js dev）
+  // 检查 cwd 下的候选（兼容 web dev / 脚本 / 旧 v1.0-v1.1.0 packaged 残留）
   const candidates = [
     resolve(cwd, 'apps/web/storage/insight.db'),      // 脚本环境：cwd=根，要走 apps/web
     resolve(cwd, 'storage/insight.db'),               // Next.js dev：cwd=apps/web，走 ./storage
@@ -46,7 +52,16 @@ function resolveDbPath(): string {
   for (const p of candidates) {
     if (existsSync(p)) return p;
   }
-  // 找不到就用第一个（让 mkdir 兜底）
+
+  // 兜底：packaged 模式用 userData（Electron app.getPath('userData')），
+  // 其他场景（web dev / 脚本）用第一个候选（apps/web/storage/）
+  if (process.env.NODE_ENV === 'production' && process.resourcesPath) {
+    // packaged Electron：cwd 在 .app bundle 内，绝对不能写 .app bundle
+    // 兜底到 HOME（实际由 main.js 设 INSIGHT_APP_DATA_DIR 决定）
+    const home = process.env.HOME || '/tmp';
+    return resolve(home, 'Library', 'Application Support', 'insight-os-desktop', 'storage', 'insight.db');
+  }
+
   return candidates[0];
 }
 
@@ -259,7 +274,7 @@ export function getDb() {
   return _db;
 }
 
-export function getRawSqlite() {
+export function getRawSqlite(): Database.Database {
   if (!_sqlite) {
     getDb();
   }
