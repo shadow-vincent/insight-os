@@ -18,10 +18,16 @@ apps/desktop/dist/
 apps/desktop/node_modules/
 
 # 用户数据（绝不进 git）
+apps/web/storage/
 apps/web/storage/insight.db
 apps/web/storage/insight.db-wal
+apps/web/storage/insight.db-shm
 apps/web/storage/config.json
 apps/web/storage/04_管理洞察/
+
+# Build 产物（tsc emit 产生）
+apps/web/tsconfig.tsbuildinfo
+packages/*/tsconfig.build.json
 
 # Desktop packaged app user data
 ~/Library/Application Support/insight-os-desktop/

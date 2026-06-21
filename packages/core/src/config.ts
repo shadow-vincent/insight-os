@@ -26,6 +26,9 @@ export interface AppConfig {
   paths: {
     vaultPath: string;  // 指向 knowledge_base 根目录
   };
+  writing: {
+    activePreset: string;  // 当前激活的写作风格预设名（默认 'vincent-standard'）
+  };
   lastUpdated: number;
 }
 
@@ -38,6 +41,9 @@ const DEFAULT_CONFIG: AppConfig = {
   },
   paths: {
     vaultPath: process.env.INSIGHT_VAULT_PATH ?? `${process.env.HOME ?? ''}/Documents/knowledge_base`,
+  },
+  writing: {
+    activePreset: 'vincent-standard',
   },
   lastUpdated: 0,
 };
@@ -120,6 +126,7 @@ export function readConfig(): AppConfig {
     return {
       llm: { ...DEFAULT_CONFIG.llm, ...parsed.llm },
       paths: { ...DEFAULT_CONFIG.paths, ...parsed.paths },
+      writing: { ...DEFAULT_CONFIG.writing, ...(parsed.writing ?? {}) },
       lastUpdated: parsed.lastUpdated ?? 0,
     };
   } catch (e) {
@@ -148,6 +155,7 @@ export function updateConfig(partial: Partial<AppConfig>): AppConfig {
   const updated: AppConfig = {
     llm: { ...current.llm, ...(partial.llm ?? {}) },
     paths: { ...current.paths, ...(partial.paths ?? {}) },
+    writing: { ...current.writing, ...(partial.writing ?? {}) },
     lastUpdated: Date.now(),
   };
   writeConfig(updated);

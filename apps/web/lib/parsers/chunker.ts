@@ -130,9 +130,44 @@ function chunkByChapters(text: string): ParsedSegment[] {
 
 /**
  * 按段落切 + 合并到 SHORT_TEXT_LIMIT
+ *
+ * 兼容 3 种分隔：
+ *   - \n\n+ （标准 markdown 段落）
+ *   - \n （mammoth/pptx 提取的纯文本，单换行）
+ *   - 中文句号 。/！/？ （docx 无换行的纯文本块）
+ *
+ * 关键：保证每段都 ≤ SHORT_TEXT_LIMIT（LLM 输入上限）
  */
 function chunkByParagraphs(text: string): ParsedSegment[] {
-  const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0);
+  // 1. 把 \n\n 替换为哨兵，再按 \n 切（兼容 mammoth 输出的纯文本）
+  const sentinel = '\u0000PARA\u0000';
+  const normalized = text.replace(/\n\n+/g, sentinel);
+  const lines = normalized.split(/[\n\u0000]/).map(p => p.trim()).filter(p => p.length > 0);
+
+  // 2. 进一步切分：单行 > SHORT_TEXT_LIMIT 的，按中英文句号切
+  const paragraphs: string[] = [];
+  for (const line of lines) {
+    if (line.length <= SHORT_TEXT_LIMIT) {
+      paragraphs.push(line);
+    } else {
+      // 按句号/逗号/顿号切（保留分隔符）
+      // 中文：。！？，、；
+      // 英文：. ! ? , ; :
+      const sentences = line.split(/(?<=[。！？，、；.!?])\s*/).filter(s => s.length > 0);
+      for (const s of sentences) {
+        if (s.length <= SHORT_TEXT_LIMIT) {
+          paragraphs.push(s);
+        } else {
+          // 极端情况：一个句子本身 > SHORT_TEXT_LIMIT，强制按字符切到 ≤ 8000
+          for (let i = 0; i < s.length; i += SHORT_TEXT_LIMIT) {
+            paragraphs.push(s.slice(i, i + SHORT_TEXT_LIMIT));
+          }
+        }
+      }
+    }
+  }
+
+  // 3. 合并到 ≤ SHORT_TEXT_LIMIT
   const segments: ParsedSegment[] = [];
   let bucket: string[] = [];
   let bucketLen = 0;
@@ -145,7 +180,11 @@ function chunkByParagraphs(text: string): ParsedSegment[] {
   }
 
   for (const p of paragraphs) {
-    if (bucketLen + p.length > SHORT_TEXT_LIMIT && bucket.length > 0) {
+    // 预估 flush 后的实际段长度（含 \n\n 分隔符）
+    // 实际长度 = bucketLen + (bucket.length - 1) * 2 + p.length + 2
+    // 简化：只要 bucketLen + p.length + bucket.length * 2 > SHORT_TEXT_LIMIT 就 flush
+    const estLen = bucketLen + p.length + bucket.length * 2;
+    if (estLen >= SHORT_TEXT_LIMIT && bucket.length > 0) {
       flush();
     }
     bucket.push(p);

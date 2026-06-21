@@ -7,6 +7,9 @@
  * v0.1 只做 2 种输出：
  * - talk_script: 客户沟通话术（300-500 字，含开场白 + 3 个核心观点 + 收尾）
  * - article_outline: 公众号文章大纲（含标题、钩子、3-5 个核心段落）
+ *
+ * V1.1+ 新增：
+ * - article_full: 公众号完整文章（1500-2500 字，3-5 章节，Vincent 直接可发）
  */
 
 export const OUTPUT_GENERATE_SYSTEM = `你是 Vincent 的资深研究助理。Vincent 是一名独立管理咨询顾问。
@@ -43,7 +46,7 @@ export const OUTPUT_GENERATE_SYSTEM = `你是 Vincent 的资深研究助理。Vi
 
 **输出格式必须是严格 JSON**。`;
 
-export type OutputType = 'talk_script' | 'article_outline';
+export type OutputType = 'talk_script' | 'article_outline' | 'article_full' | 'speech' | 'book_note' | 'email';
 
 export interface OutputGenerateInput {
   assetSummaries: Array<{

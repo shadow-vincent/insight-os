@@ -18,14 +18,32 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 import type { ParseResult, SourceType } from './types.js';
+import { chunkText } from './chunker';
 
 /**
  * .docx → markdown
  */
 async function parseDocx(filePath: string): Promise<string> {
-  const buffer = readFileSync(filePath);
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value;
+  let buffer: Buffer;
+  try {
+    buffer = readFileSync(filePath);
+  } catch (e: any) {
+    throw new Error(`无法读取 docx 文件: ${e.message}`);
+  }
+
+  let result: Awaited<ReturnType<typeof mammoth.extractRawText>>;
+  try {
+    result = await mammoth.extractRawText({ buffer });
+  } catch (e: any) {
+    // mammoth 解析失败：文件损坏、加密、非标准 docx
+    throw new Error(`docx 解析失败（文件可能损坏或加密）：${e.message ?? e}`);
+  }
+
+  const text = result.value || '';
+  if (text.trim().length === 0) {
+    throw new Error('docx 中无可提取文本（可能是图片/扫描版 docx）');
+  }
+  return text;
 }
 
 /**
@@ -94,14 +112,18 @@ export async function parseOfficeFile(
   sourceType: SourceType
 ): Promise<ParseResult> {
   let text = '';
+  let docTitle = '';
 
   try {
     if (sourceType === 'docx') {
       text = await parseDocx(filePath);
+      docTitle = 'Word';
     } else if (sourceType === 'pptx') {
       text = await parsePptx(filePath);
+      docTitle = 'PPT';
     } else if (sourceType === 'xlsx') {
       text = parseXlsx(filePath);
+      docTitle = 'Excel';
     } else {
       throw new Error(`Unsupported office sourceType: ${sourceType}`);
     }
@@ -115,8 +137,9 @@ export async function parseOfficeFile(
     throw e;
   }
 
+  // 长 office 文档（> 8000 字）按章节切，避免 LLM 截断
   return {
-    segments: [{ text }],
+    segments: chunkText(text, sourceType, { title: docTitle }),
     sourceType,
     detectedKind: 'file',
     totalChars: text.length,

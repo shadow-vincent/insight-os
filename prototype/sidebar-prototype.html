@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Insight OS · Sidebar 改造方案对比</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --ink: #14171e;
+    --text: #3a4256;
+    --text-3: #7c7a72;
+    --line: #e4e2dc;
+    --line-soft: #eceae3;
+    --primary: #6366f1;
+    --primary-soft: #eef2ff;
+    --accent: #10b981;
+    --warning: #f59e0b;
+    --danger: #f43f5e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 40px 24px 80px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .sub { font-size: 15px; color: var(--text-3); margin-bottom: 32px; }
+
+  /* Tab 切换 */
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--line-soft); border-radius: 10px; margin-bottom: 32px; max-width: 720px; }
+  .tab { flex: 1; padding: 12px 16px; border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-3); cursor: pointer; border-radius: 7px; transition: all .15s; }
+  .tab:hover { color: var(--ink); }
+  .tab.active { background: white; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Variant panel */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .25s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Variant header */
+  .vheader { display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px; }
+  .vnum { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 4px 10px; background: var(--primary-soft); color: var(--primary); border-radius: 6px; font-weight: 600; }
+  .vtitle { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--ink); }
+  .vtag { font-size: 12px; padding: 3px 8px; background: var(--line-soft); color: var(--text); border-radius: 4px; }
+
+  /* Mock browser */
+  .mock {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    margin-bottom: 24px;
+  }
+  .mock-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px;
+    background: var(--line-soft);
+    border-bottom: 1px solid var(--line);
+  }
+  .mock-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--line); }
+  .mock-dot:nth-child(1) { background: #ff5f57; }
+  .mock-dot:nth-child(2) { background: #ffbd2e; }
+  .mock-dot:nth-child(3) { background: #28ca42; }
+  .mock-url { margin-left: 16px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-3); }
+
+  .mock-body { display: flex; min-height: 560px; }
+
+  /* === Sidebar mock 通用 === */
+  .sidebar-mock {
+    width: 260px;
+    flex-shrink: 0;
+    background: #fbfbfa;
+    border-right: 1px solid var(--line);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+  .sidebar-logo-dot {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .sidebar-section { font-size: 11px; text-transform: uppercase; color: var(--text-3); padding: 8px 8px 4px; letter-spacing: 0.05em; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px;
+    color: var(--text); cursor: pointer;
+  }
+  .nav-item.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* Main content area */
+  .main-mock { flex: 1; padding: 32px 40px; background: var(--bg); }
+  .main-title { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--ink); margin-bottom: 4px; }
+  .main-sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
+
+  /* === A1: Full sidebar chat === */
+  .a1-sidebar {
+    width: 320px;
+    background: white;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .a1-header { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 8px; }
+  .a1-workflow-btn { padding: 5px 10px; font-size: 11px; border: 1px solid var(--line); background: white; border-radius: 5px; color: var(--text); cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .a1-spacer { flex: 1; }
+  .a1-icon-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 5px; color: var(--text-3); cursor: pointer; }
+  .a1-icon-btn:hover { background: var(--bg); }
+  .a1-icon-btn svg { width: 16px; height: 16px; }
+
+  .a1-thread-list { padding: 12px; overflow-y: auto; flex: 0 0 auto; max-height: 200px; }
+  .a1-thread { padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text); margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+  .a1-thread.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
+  .a1-thread:hover { background: var(--bg); }
+  .a1-new-btn { padding: 8px 12px; border: 1px dashed var(--line); border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--text-3); text-align: center; margin-bottom: 6px; }
+  .a1-new-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  .a1-chat { flex: 1; padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  .a1-msg-user { align-self: flex-end; max-width: 85%; padding: 10px 14px; background: var(--primary); color: white; border-radius: 12px 12px 2px 12px; font-size: 13px; line-height: 1.5; }
+  .a1-msg-ai { align-self: flex-start; max-width: 90%; padding: 12px 14px; background: var(--bg); color: var(--ink); border-radius: 12px 12px 12px 2px; font-size: 13px; line-height: 1.6; }
+  .a1-msg-ai .role { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .a1-msg-ai strong { color: var(--primary); }
+
+  .a1-input { padding: 14px 16px; border-top: 1px solid var(--line-soft); display: flex; gap: 8px; }
+  .a1-input-field {
+    flex: 1; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: 8px; font-family: inherit; font-size: 13px; background: white;
+  }
+  .a1-send { padding: 10px 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 13px; cursor: pointer; }
+
+  /* === A2: split sidebar === */
+  .a2-sidebar {
+    width: 320px;
+    background: white;
+    border-right: 1px solid var(--line);
+    display: flex; flex-shrink: 0;
+  }
+  .a2-thread-panel { width: 100px; border-right: 1px solid var(--line-soft); padding: 12px 8px; overflow-y: auto; }
+  .a2-thread-mini { padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; color: var(--text-3); margin-bottom: 4px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .a2-thread-mini.active { background: var(--primary-soft); color: var(--primary); }
+  .a2-chat-panel { flex: 1; display: flex; flex-direction: column; }
+  .a2-header-bar { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 6px; }
+  .a2-chat-flow { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  .a2-msg { padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
+  .a2-msg.user { background: var(--primary); color: white; align-self: flex-end; max-width: 80%; }
+  .a2-msg.ai { background: var(--bg); color: var(--ink); align-self: flex-start; max-width: 90%; }
+  .a2-input { padding: 10px 12px; border-top: 1px solid var(--line-soft); }
+
+  /* === A3: Chat overlay === */
+  .a3-sidebar {
+    width: 240px;
+    background: #fbfbfa;
+    border-right: 1px solid var(--line);
+    padding: 16px 12px;
+    display: flex; flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .a3-chat-trigger {
+    position: relative;
+    padding: 10px 12px;
+    background: var(--primary-soft);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .a3-overlay {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px; bottom: 12px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+  }
+  .a3-overlay-header { display: flex; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line-soft); margin-bottom: 10px; }
+  .a3-overlay-close { margin-left: auto; cursor: pointer; color: var(--text-3); }
+  .a3-overlay-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .a3-overlay-input { padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; gap: 6px; }
+
+  /* 卡片 / 区块 */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 8px; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card-cmp {
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .card-cmp h3 { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+  .card-cmp .item { font-size: 13px; color: var(--text); padding: 6px 0; line-height: 1.55; display: flex; gap: 8px; }
+  .card-cmp .item::before { content: "·"; color: var(--primary); font-weight: 700; flex-shrink: 0; }
+  .card-cmp.good { border-left: 3px solid var(--accent); }
+  .card-cmp.bad { border-left: 3px solid var(--danger); }
+  .card-cmp.neutral { border-left: 3px solid var(--text-3); }
+
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; font-weight: 600; }
+  .label-good { background: #d1fae5; color: #047857; }
+  .label-bad { background: #fee2e2; color: #b91c1c; }
+
+  /* Insight OS 实际主页面内容 */
+  .insight-page { padding: 32px 40px; }
+  .insight-page h2 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--ink); margin-bottom: 8px; }
+  .insight-page .sub { font-size: 13px; color: var(--text-3); margin-bottom: 24px; }
+  .insight-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 12px; }
+  .insight-card-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .insight-card-body { font-size: 12px; color: var(--text); line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Sidebar 改造方案对比</h1>
+  <p class="sub">Insight OS 的 Sidebar 角色定位 — 当前是工作流导航，目标是「洞察助手」（AI 对话式）</p>
+
+  <!-- Tab 切换 -->
+  <div class="tabs">
+    <button class="tab active" onclick="showPanel('a1')">A1 · 全 sidebar 是 chat</button>
+    <button class="tab" onclick="showPanel('a2')">A2 · split 对话 + 列表</button>
+    <button class="tab" onclick="showPanel('a3')">A3 · 工作流 + chat overlay</button>
+  </div>
+
+  <!-- ============== A1 ============== -->
+  <div class="panel active" id="a1">
+    <div class="vheader">
+      <span class="vnum">A1</span>
+      <h2 class="vtitle">全 sidebar 是 chat</h2>
+      <span class="vtag">最像 chat 助手</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <div class="mock-dot"></div><div class="mock-dot"></div><div class="mock-dot"></div>
+        <div class="mock-url">http://localhost:4191/</div>
+      </div>
+      <div class="mock-body">
+        <!-- A1 sidebar -->
+        <div class="a1-sidebar">
+          <div class="a1-header">
+            <div class="sidebar-logo">
+              <div class="sidebar-logo-dot">I</div>
+              <span style="font-size: 13px;">Insight OS</span>
+            </div>
+            <div class="a1-spacer"></div>
+            <div class="a1-workflow-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              工作流
+            </div>
+            <div class="a1-icon-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6"/></svg>
+            </div>
+          </div>
+
+          <div class="a1-thread-list">
+            <div class="a1-new-btn">+ 新对话</div>
+            <div class="a1-thread active">📌 AI 落地的 3 个组织陷阱</div>
+            <div class="a1-thread">📌 客户沟通话术 · 制造业</div>
+            <div class="a1-thread">📌 关于判断力的笔记</div>
+            <div class="a1-thread">📌 演讲稿大纲 · 行业大会</div>
+          </div>
+
+          <div class="a1-chat">
+            <div class="a1-msg-user">帮我把 3 张 AI 资产卡生成一篇 2000 字文章，公众号风格</div>
+            <div class="a1-msg-ai">
+              <div class="role">Insight · AI 助手</div>
+              我找到 <strong>3 张匹配资产</strong>，主题「AI 时代的判断力」。
+              <br><br>
+              <strong>生成中</strong>（约 30s）... 会基于 <strong>vincent-standard</strong> preset 输出。
+            </div>
+            <div class="a1-msg-ai">
+              <div class="role">Insight · AI 助手</div>
+              文章已生成 · <strong style="color:var(--primary)">点击查看</strong> · 已自动保存到 outputs 表。
+              <br><br>
+              💡 <strong>建议下一步</strong>：试着用「📝 试写屏」调 5 维度 · 或「🤝 AI partner 改稿」改某一段。
+            </div>
+          </div>
+
+          <div class="a1-input">
+            <input class="a1-input-field" placeholder="问 Insight OS · 比如「从我的 5 张资产卡里找关于 AI 落地的」" />
+            <button class="a1-send">↑</button>
+          </div>
+        </div>
+
+        <!-- A1 主页面（dashboard 简化） -->
+        <div class="insight-page" style="background:#fafafa; flex: 1;">
+          <h2>📄 AI 时代的判断力 · 已生成</h2>
+          <p class="sub">vincent-standard preset · AI 味 82/100 · 数据扫描通过</p>
+          <div class="insight-card">
+            <div class="insight-card-title">📑 3 章 · 1520 字</div>
+            <div class="insight-card-body">花了三周调研 50 家企业的 AI 落地项目，发现一个共性：技术问题解决到 60 分之后，剩下的 40 分全是组织问题...</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-card-title">🎯 5 个核心观点</div>
+            <div class="insight-card-body">1. AI 工具不是答案<br>2. 组织吸收力是瓶颈<br>3. 员工抵触比技术更卡</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card-cmp good">
+        <h3><span class="label label-good">优点</span></h3>
+        <div class="item">Sidebar 全是 chat，沉浸感最强</div>
+        <div class="item">类似 ChatGPT / Claude.ai · 用户立刻会</div>
+        <div class="item">对话历史常驻，跨页面保留</div>
+        <div class="item">工作流按钮用 popover / 下拉</div>
+      </div>
+      <div class="card-cmp bad">
+        <h3><span class="label label-bad">缺点</span></h3>
+        <div class="item">工作流入口变深 · 用户要 2 步才能到收集箱</div>
+        <div class="item">需要重做 sidebar · 改 main 内容区</div>
+        <div class="item">工作流常驻感丢失（藏在 popover）</div>
+      </div>
+      <div class="card-cmp neutral">
+        <h3><span class="label">适合</span></h3>
+        <div class="item">"chat first" 产品哲学</div>
+        <div class="item">Insight OS 想转型为「对话式知识管理」</div>
+        <div class="item">用户主路径是 chat</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== A2 ============== -->
+  <div class="panel" id="a2">
+    <div class="vheader">
+      <span class="vnum">A2</span>
+      <h2 class="vtitle">split sidebar · 对话 + 列表</h2>
+      <span class="vtag">ChatGPT 经典布局</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <div class="mock-dot"></div><div class="mock-dot"></div><div class="mock-dot"></div>
+        <div class="mock-url">http://localhost:4191/</div>
+      </div>
+      <div class="mock-body">
+        <!-- A2 sidebar -->
+        <div class="a2-sidebar">
+          <div class="a2-thread-panel">
+            <div class="a2-thread-mini active">AI 落地的 3 个组织陷阱</div>
+            <div class="a2-thread-mini">客户沟通话术</div>
+            <div class="a2-thread-mini">关于判断力</div>
+            <div class="a2-thread-mini">演讲稿大纲</div>
+            <div class="a2-thread-mini">读书笔记 · AI 时代</div>
+            <div class="a2-thread-mini">5 维度迁移讨论</div>
+            <div style="padding:8px; font-size:10px; color:var(--text-3); text-align:center; cursor:pointer;">+ 新对话</div>
+          </div>
+
+          <div class="a2-chat-panel">
+            <div class="a2-header-bar">
+              <div class="sidebar-logo" style="font-size:12px;">
+                <div class="sidebar-logo-dot" style="width:20px; height:20px; font-size:10px;">I</div>
+                Insight
+              </div>
+              <div class="a1-spacer"></div>
+              <div class="a1-workflow-btn">工作流</div>
+              <div class="a1-icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6"/></svg></div>
+            </div>
+
+            <div class="a2-chat-flow">
+              <div class="a2-msg user">从资产库里找 AI 落地的，做个演讲稿</div>
+              <div class="a2-msg ai">
+                找到 <strong style="color:var(--primary)">3 张</strong> 匹配资产：判断力 / 组织吸收力 / AI 是分化加速器
+                <br><br>
+                正在生成 <strong>演讲稿（3000-5000 字）</strong>...
+              </div>
+              <div class="a2-msg ai">
+                ✅ 演讲稿已生成 · 3142 字 · 13 节<br>
+                💡 建议：用「🔀 风格迁移」把 vincent-standard + academic 混合出"专业演讲风"
+              </div>
+            </div>
+
+            <div class="a2-input">
+              <input class="a1-input-field" placeholder="问 Insight OS..." style="font-size:12px;" />
+              <button class="a1-send" style="padding:8px 10px;">↑</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="insight-page" style="background:#fafafa; flex: 1;">
+          <h2>🎤 演讲稿 · 已生成</h2>
+          <p class="sub">3000-5000 字口语化稿 · 适合 15-25 分钟客户分享会</p>
+          <div class="insight-card">
+            <div class="insight-card-title">📑 4 节 · 3142 字</div>
+            <div class="insight-card-body">各位，我问你一个问题：你公司买AI工具花的钱，和花在判断「哪些事值得让AI做」上的时间，比例是多少？...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card-cmp good">
+        <h3><span class="label label-good">优点</span></h3>
+        <div class="item">对话 list 常驻 · 跨页面保留</div>
+        <div class="item">和 ChatGPT 一致 · 用户零学习成本</div>
+        <div class="item">新对话点击便捷</div>
+      </div>
+      <div class="card-cmp bad">
+        <h3><span class="label label-bad">缺点</span></h3>
+        <div class="item">左侧 100px 留给对话 list · 主对话空间被压缩</div>
+        <div class="item">小屏幕上几乎没法用</div>
+        <div class="item">完全没工作流入口</div>
+      </div>
+      <div class="card-cmp neutral">
+        <h3><span class="label">适合</span></h3>
+        <div class="item">对话场景占 80% 以上</div>
+        <div class="item">用户已经有 ChatGPT 使用习惯</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== A3 ============== -->
+  <div class="panel" id="a3">
+    <div class="vheader">
+      <span class="vnum">A3</span>
+      <h2 class="vtitle">工作流 + chat overlay</h2>
+      <span class="vtag">保守方案 · 不破坏现状</span>
+    </div>
+
+    <div class="mock">
+      <div class="mock-bar">
+        <div class="mock-dot"></div><div class="mock-dot"></div><div class="mock-dot"></div>
+        <div class="mock-url">http://localhost:4191/assets</div>
+      </div>
+      <div class="mock-body">
+        <!-- A3 sidebar (with chat overlay open) -->
+        <div class="a3-sidebar" style="position: relative;">
+          <div class="sidebar-logo" style="font-size:13px;">
+            <div class="sidebar-logo-dot">I</div>
+            Insight OS
+          </div>
+
+          <div class="sidebar-section">工作流</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>仪表盘</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>开始写作</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 12h-6l-2 3h-4l-2-3H2"/></svg>收集箱</div>
+          <div class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16"/></svg>资产库</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>资产地图</div>
+          <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>资产图谱</div>
+
+          <div style="flex: 1;"></div>
+
+          <!-- chat trigger (collapsed) -->
+          <div class="a3-chat-trigger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            💬 洞察助手
+          </div>
+
+          <!-- overlay (open state) -->
+          <div class="a3-overlay">
+            <div class="a3-overlay-header">
+              <strong style="font-size:13px; color:var(--ink);">💬 洞察助手</strong>
+              <span class="a3-overlay-close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </span>
+            </div>
+            <div class="a3-overlay-body">
+              <div class="a2-msg user" style="font-size:11px; padding:6px 10px;">帮我把这 5 张资产整理成一份笔记</div>
+              <div class="a2-msg ai" style="font-size:11px; padding:6px 10px;">
+                好的，正在整理...<br>
+                ✅ 已生成 <strong style="color:var(--primary)">5 节笔记</strong>
+              </div>
+            </div>
+            <div class="a3-overlay-input">
+              <input class="a1-input-field" placeholder="问 Insight OS..." style="font-size:12px; padding:6px 8px;" />
+              <button class="a1-send" style="padding:6px 10px; font-size:11px;">↑</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="insight-page" style="background:#fafafa; flex: 1;">
+          <h2>📚 资产库</h2>
+          <p class="sub">20 张资产 · 按场景组织</p>
+          <div class="insight-card">
+            <div class="insight-card-title">AI 时代的判断力</div>
+            <div class="insight-card-body">AI 时代最稀缺的不是会用 AI 的人，是知道什么值得让 AI 做的人...</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-card-title">AI 是分化加速器</div>
+            <div class="insight-card-body">AI 不会让所有人变强，它只让强者更强...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card-cmp good">
+        <h3><span class="label label-good">优点</span></h3>
+        <div class="item">保留现有工作流 · 零破坏</div>
+        <div class="item">chat 是 overlay · 不抢 sidebar 空间</div>
+        <div class="item">开发量最小</div>
+        <div class="item">渐进式升级 · 后续可改为全 chat</div>
+      </div>
+      <div class="card-cmp bad">
+        <h3><span class="label label-bad">缺点</span></h3>
+        <div class="item">chat 不是常驻 · 沉浸感弱</div>
+        <div class="item">要打开 overlay 才能对话 · 1 步额外</div>
+        <div class="item">和"洞察助手"定位有 gap</div>
+      </div>
+      <div class="card-cmp neutral">
+        <h3><span class="label">适合</span></h3>
+        <div class="item">渐进式迁移</div>
+        <div class="item">保留工作流 + 加 chat · 不冒险</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 决策建议 -->
+  <div style="margin-top: 56px; padding: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 14px;">
+    <h2 style="font-family:'DM Serif Display',serif; font-size:22px; color:var(--ink); margin-bottom:14px;">🎯 我的建议</h2>
+    <div style="font-size:14px; line-height:1.8; color:var(--text);">
+      <p><strong style="color:var(--ink);">A1</strong> — 如果想 <strong>"chat first"</strong>，sidebar 全是 chat，工作流藏 popover。改造成本中等，但用户认知变化大。</p>
+      <p style="margin-top:8px;"><strong style="color:var(--ink);">A2</strong> — 类似 ChatGPT，对话 list 100px + 主对话 200px。开发快，但小屏幕难受。</p>
+      <p style="margin-top:8px;"><strong style="color:var(--ink);">A3</strong> — 保守 · 工作流保留 + chat overlay · 不破坏现状 · 渐进式升级。</p>
+      <p style="margin-top:16px; padding:14px; background:var(--primary-soft); border-radius:8px; border-left:3px solid var(--primary);">
+        <strong>建议 A1</strong> — Insight OS 核心是「判断力资产化」，chat 是主交互。但**改造大 · 1 周工作量**。如果你想快且稳，<strong>先 A3 跑 2 周</strong> → 用户反馈决定要不要做 A1。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function showPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

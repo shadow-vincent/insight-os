@@ -17,6 +17,7 @@ let _clientConfigHash: string | null = null;
 export interface LLMOptions {
   model?: string;
   temperature?: number;
+  topP?: number;
   maxTokens?: number;
   jsonMode?: boolean; // 强制 JSON 输出
 }
@@ -79,6 +80,7 @@ export async function callLLM<T = unknown>(
   const cfg = readCurrentConfig();
   const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.3;
+  const topP = options.topP;
   const maxTokens = options.maxTokens ?? 2000;
   const jsonMode = options.jsonMode ?? true;
 
@@ -87,6 +89,7 @@ export async function callLLM<T = unknown>(
     const response = await client.chat.completions.create({
       model,
       temperature,
+      ...(topP !== undefined ? { top_p: topP } : {}),
       max_tokens: maxTokens,
       ...(jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
       messages: [
@@ -122,6 +125,8 @@ export async function callLLM<T = unknown>(
       if (!data) {
         return { ok: false, data: null, raw: content, error: `JSON 解析失败: 无法从 LLM 输出中提取有效 JSON` };
       }
+      // 调试：把 raw 输出到 console（仅在 parse 失败时）
+      // console.log('[callLLM] raw output (parse failed):', content.slice(-500));
     } else {
       data = content as unknown as T;
     }
@@ -173,6 +178,7 @@ export async function* streamLLM(
   const cfg = readCurrentConfig();
   const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.5;
+  const topP = options.topP;
   const maxTokens = options.maxTokens ?? 1500;
 
   try {
@@ -180,6 +186,7 @@ export async function* streamLLM(
     const stream = await client.chat.completions.create({
       model,
       temperature,
+      ...(topP !== undefined ? { top_p: topP } : {}),
       max_tokens: maxTokens,
       stream: true,
       messages: [

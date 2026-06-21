@@ -9,7 +9,8 @@
     "./prompts/light-card": "./dist/prompts/light-card.js",
     "./prompts/calibrate": "./dist/prompts/calibrate.js",
     "./prompts/asset-upgrade": "./dist/prompts/asset-upgrade.js",
-    "./prompts/output-generate": "./dist/prompts/output-generate.js"
+    "./prompts/output-generate": "./dist/prompts/output-generate.js",
+    "./prompts/writing/style-extractor": "./dist/prompts/writing/style-extractor.js"
   },
   "dependencies": {
     "openai": "^4.73.0",

@@ -102,19 +102,44 @@ export async function POST(req: NextRequest) {
     const db = getDb();
 
     // 自动生成 slug（如果没传）
-    const finalSlug = (slug && typeof slug === 'string' && slug.trim())
-      ? slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-')
-      : name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // 规则：
+    //   1. 全部转小写
+    //   2. 空格/全角空格 → -
+    //   3. 中文/字母/数字/- 保留，其他标点删除
+    //   4. 多个连续 - 合并成单个
+    //   5. 去首尾 -
+    //   6. 中文名直接保留中文（如 "组织治理" → "组织治理"）
+    const userProvidedSlug = (slug && typeof slug === 'string' && slug.trim())
+      ? slug.trim()
+      : null;
+    const finalSlug = (userProvidedSlug ?? name.trim())
+      .toLowerCase()
+      .replace(/[\s\u3000]+/g, '-')           // 空格转 -
+      .replace(/[^\w\u4e00-\u9fa5-]/g, '')    // 删除非单词字符（保留中文 \u4e00-\u9fa5）
+      .replace(/-+/g, '-')                     // 合并多个 -
+      .replace(/^-|-$/g, '');                  // 去首尾 -
 
     if (!finalSlug) {
-      return NextResponse.json({ ok: false, error: 'slug 解析失败' }, { status: 400 });
+      return NextResponse.json({
+        ok: false,
+        error: 'slug 解析失败：主题名必须包含中文字符、英文字母或数字',
+      }, { status: 400 });
     }
 
-    // 重名检测
-    const existing = db.select().from(topics).where(eq(topics.slug, finalSlug)).get();
-    if (existing) {
-      return NextResponse.json({ ok: false, error: `slug 已存在: ${finalSlug}` }, { status: 400 });
+    // 重名检测：slug 重复时自动加 -2 / -3 / ... 后缀
+    let candidateSlug = finalSlug;
+    let counter = 2;
+    while (db.select().from(topics).where(eq(topics.slug, candidateSlug)).get()) {
+      candidateSlug = `${finalSlug}-${counter}`;
+      counter += 1;
+      if (counter > 100) {
+        return NextResponse.json({
+          ok: false,
+          error: `slug 重复超过 100 次: ${finalSlug}`,
+        }, { status: 400 });
+      }
     }
+    const actualSlug = candidateSlug;
 
     // 名称也查重（避免同 name 不同 slug）
     const nameExists = db.select().from(topics).all().find(t => t.name === name.trim());
@@ -133,7 +158,7 @@ export async function POST(req: NextRequest) {
       .values({
         id,
         name: name.trim(),
-        slug: finalSlug,
+        slug: actualSlug,
         description: description?.trim() ?? null,
         coreBeliefsJson: JSON.stringify(Array.isArray(coreBeliefs) ? coreBeliefs : []),
         sortOrder: maxSort + 1,
@@ -147,7 +172,7 @@ export async function POST(req: NextRequest) {
       topic: {
         id,
         name: name.trim(),
-        slug: finalSlug,
+        slug: actualSlug,
         description: description?.trim() ?? null,
       },
     });

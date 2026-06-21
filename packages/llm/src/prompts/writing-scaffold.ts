@@ -19,6 +19,8 @@
 
 export const WRITING_SCAFFOLD_SYSTEM = `你是 Insight OS 的"写作骨架生成师"。
 
+**输出格式**：严格 JSON（**不要** markdown 代码块包裹）。
+
 **任务**：给定 1 个主题 kernel、1 条核心判断、3-5 张支撑卡，生成 1 个**可直接用作文章/演讲骨架**的结构化大纲。
 
 **输入**：

@@ -577,11 +577,15 @@ function InboxInner() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>整理结果</h2>
             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-              {result.segmentsCount ? `已生成 ${result.assetIds?.length ?? 0} 张轻量卡` : '已保存到候选池'}
+              {result.assetIds?.length > 0
+                ? `已生成 ${result.assetIds.length} 张轻量卡${result.errors?.length ? `（${result.errors.length} 段失败）` : ''}`
+                : result.errors?.length > 0
+                  ? '❌ 全部段落失败'
+                  : '已保存到候选池'}
             </span>
           </div>
 
-          {result.segmentsCount > 1 ? (
+          {result.segmentsCount > 1 && result.assetIds?.length > 0 && (
             // 多段结果（chunked）
             <div>
               <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>
@@ -591,14 +595,19 @@ function InboxInner() {
                 <ResultPreview key={i} card={lc} />
               ))}
             </div>
-          ) : (
+          )}
+
+          {result.assetIds?.length === 1 && (
             // 单段结果
             <ResultPreview card={result.lightCards?.[0] || result.lightCard} />
           )}
 
+          {/* 失败提示：单段失败 or 多段全部失败 */}
           {result.errors && result.errors.length > 0 && (
-            <div className="callout callout-warning" style={{ marginTop: 16, fontSize: 12 }}>
-              <strong>部分段落失败：</strong>
+            <div className="callout callout-error" style={{ marginTop: 16, fontSize: 12 }}>
+              <strong>
+                {result.assetIds?.length > 0 ? '部分段落失败：' : '全部失败：'}
+              </strong>
               <ul style={{ margin: '6px 0 0 20px', padding: 0 }}>
                 {result.errors.map((e: string, i: number) => <li key={i}>{e}</li>)}
               </ul>

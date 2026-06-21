@@ -1,0 +1,2720 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="blue">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insight OS · 写作风格配置原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   Insight OS · 写作风格配置原型 v0.1
+   单文件 HTML · 4 屏 · 双主题 · 完全可交互
+   ============================================ */
+
+/* === Theme: blue (默认) === */
+:root,
+[data-theme="blue"] {
+  --bg-canvas: #f7f9fc;
+  --bg-panel: #ffffff;
+  --bg-subtle: #eef2f7;
+  --bg-elevated: #ffffff;
+  --line: #e2e8f0;
+  --line-soft: #eef2f7;
+  --line-strong: #cbd5e1;
+  --text: #1a2332;
+  --text-2: #475569;
+  --text-3: #64748b;
+  --text-muted: #94a3b8;
+  --ink: #0f172a;
+  --primary: #1a365d;
+  --primary-hover: #142847;
+  --primary-soft: rgba(26, 54, 93, 0.07);
+  --primary-line: rgba(26, 54, 93, 0.18);
+  --primary-glow: rgba(26, 54, 93, 0.12);
+  --accent: #ea580c;
+  --accent-soft: rgba(234, 88, 12, 0.08);
+  --violet: #6d5bc9;
+  --violet-soft: rgba(109, 91, 201, 0.1);
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.08);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.08);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --shadow-xs: 0 1px 2px rgba(20, 23, 30, 0.04);
+  --shadow-sm: 0 2px 8px -2px rgba(20, 23, 30, 0.06);
+  --shadow-md: 0 4px 16px -4px rgba(20, 23, 30, 0.08);
+  --shadow-lg: 0 12px 32px -8px rgba(20, 23, 30, 0.12);
+  --shadow-xl: 0 24px 64px -12px rgba(20, 23, 30, 0.18);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+
+/* === Theme: green === */
+[data-theme="green"] {
+  --bg-canvas: #faf8f3;
+  --bg-panel: #ffffff;
+  --bg-subtle: #f3efe6;
+  --bg-elevated: #ffffff;
+  --line: #e8e2d4;
+  --line-soft: #f0ebdf;
+  --line-strong: #d4cbb5;
+  --text: #2a2f3a;
+  --text-2: #4a5160;
+  --text-3: #767d8c;
+  --text-muted: #a3a8b3;
+  --ink: #14171e;
+  --primary: #1f5d4c;
+  --primary-hover: #174739;
+  --primary-soft: rgba(31, 93, 76, 0.08);
+  --primary-line: rgba(31, 93, 76, 0.2);
+  --primary-glow: rgba(31, 93, 76, 0.12);
+  --accent: #d97706;
+  --accent-soft: rgba(217, 119, 6, 0.1);
+}
+
+* { box-sizing: border-box; }
+* { text-wrap: pretty; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', -apple-system, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  background: var(--bg-canvas);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-os-smoothing: grayscale;
+  transition: background 240ms, color 240ms;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--ink);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+/* ============================================
+   布局
+   ============================================ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--bg-subtle);
+  border-right: 1px solid var(--line);
+  padding: 18px 12px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 24px;
+  padding: 0 8px;
+  letter-spacing: -0.005em;
+}
+
+.sidebar-logo-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--primary), #2d4a73);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar-section {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 16px 10px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-2);
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 1px;
+  text-decoration: none;
+  transition: all 120ms;
+}
+
+.nav-item:hover { background: var(--bg-panel); color: var(--ink); }
+
+.nav-item.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 500;
+}
+
+.nav-icon { width: 16px; height: 16px; opacity: 0.8; flex-shrink: 0; }
+.nav-item.active .nav-icon { opacity: 1; }
+
+.app-main {
+  padding: 28px 36px 60px;
+  width: 100%;
+  min-width: 0;
+  max-width: 1480px;
+}
+
+/* ============================================
+   页面标题
+   ============================================ */
+.page-title {
+  font-family: 'DM Serif Display', 'Noto Serif SC', serif;
+  font-size: 30px;
+  font-weight: 400;
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  font-size: 13.5px;
+  color: var(--text-3);
+  margin: 6px 0 0;
+}
+
+/* ============================================
+   顶部 tab 导航
+   ============================================ */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin: 24px 0 28px;
+}
+
+.tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 140ms;
+  font-family: inherit;
+  margin-bottom: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab:hover { color: var(--ink); }
+
+.tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.tab-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  color: var(--text-3);
+}
+
+.tab.active .tab-num {
+  background: var(--primary);
+  color: white;
+}
+
+/* ============================================
+   顶部工具条
+   ============================================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.toolbar-left { display: flex; align-items: center; gap: 12px; }
+.toolbar-right { display: flex; align-items: center; gap: 8px; }
+
+/* ============================================
+   通用工具
+   ============================================ */
+.row { display: flex; align-items: center; gap: 8px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.col { display: flex; flex-direction: column; }
+.gap-4 { gap: 4px; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; } .gap-16 { gap: 16px; } .gap-24 { gap: 24px; }
+.mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; } .mb-16 { margin-bottom: 16px; } .mb-24 { margin-bottom: 24px; }
+.mt-8 { margin-top: 8px; } .mt-16 { margin-top: 16px; }
+.flex-1 { flex: 1; min-width: 0; }
+.hidden { display: none !important; }
+.text-mono { font-family: 'JetBrains Mono', monospace; }
+.text-3 { color: var(--text-3); }
+.text-2 { color: var(--text-2); }
+.text-muted { color: var(--text-muted); }
+.text-sm { font-size: 12px; }
+.text-xs { font-size: 11px; }
+.text-lg { font-size: 16px; }
+.fw-600 { font-weight: 600; }
+.fw-500 { font-weight: 500; }
+.uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.italic { font-style: italic; }
+
+/* ============================================
+   Card
+   ============================================ */
+.card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+}
+
+.card-pad-md { padding: 16px; }
+.card-pad-lg { padding: 24px; }
+.card-pad-none { padding: 0; }
+
+.card-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.card-body { padding: 20px; }
+
+.card-hover {
+  transition: all 160ms;
+  cursor: pointer;
+}
+.card-hover:hover {
+  border-color: var(--primary-line);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-hero {
+  border: 1.5px solid var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* ============================================
+   Button
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 120ms;
+  white-space: nowrap;
+}
+
+.btn:hover { border-color: var(--line-strong); background: var(--bg-subtle); }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--line); background: var(--bg-panel); }
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-accent:hover { background: #c2410c; border-color: #c2410c; }
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+}
+.btn-ghost:hover { background: var(--bg-subtle); border-color: transparent; }
+
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--line);
+}
+.btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.btn-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* ============================================
+   Pill / Badge
+   ============================================ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+
+.pill-soft {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.pill-success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.pill-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.pill-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pill-violet {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+/* ============================================
+   Form
+   ============================================ */
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 7px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--ink);
+  font-family: inherit;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.6;
+  min-height: 72px;
+}
+
+.input-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.input-sm { padding: 4px 10px; font-size: 12px; }
+
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.label-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 6px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ============================================
+   Chip (segmented / multi)
+   ============================================ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 120ms;
+  user-select: none;
+  font-family: inherit;
+}
+
+.chip:hover { border-color: var(--primary-line); color: var(--ink); }
+
+.chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.chip-multi {
+  position: relative;
+}
+
+.chip-multi.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--primary-line);
+}
+
+.chip-multi.active::before {
+  content: "✓";
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-subtle);
+}
+
+/* ============================================
+   Slider
+   ============================================ */
+.slider-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 50px;
+  align-items: center;
+  gap: 14px;
+}
+
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--bg-panel);
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 120ms;
+  box-shadow: 0 0 0 0 var(--primary-soft);
+}
+
+.slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+.slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--bg-panel);
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.slider-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  text-align: right;
+  font-weight: 500;
+}
+
+/* ============================================
+   Toggle
+   ============================================ */
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 160ms;
+  flex-shrink: 0;
+  border: none;
+  padding: 0;
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 160ms;
+  box-shadow: var(--shadow-xs);
+}
+
+.toggle.on { background: var(--primary); }
+.toggle.on::after { transform: translateX(16px); }
+
+/* ============================================
+   Callout
+   ============================================ */
+.callout {
+  padding: 12px 16px;
+  border-left: 3px solid var(--primary);
+  background: var(--primary-soft);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.callout-warning {
+  border-left-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--text);
+}
+
+.callout-accent {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.callout-success {
+  border-left-color: var(--success);
+  background: var(--success-soft);
+}
+
+/* ============================================
+   Divider
+   ============================================ */
+.divider {
+  height: 1px;
+  background: var(--line-soft);
+  margin: 16px 0;
+  border: none;
+}
+
+.divider-strong { background: var(--line); margin: 24px 0; }
+
+/* ============================================
+   屏 1 · Preset 列表
+   ============================================ */
+.active-preset-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 20px 24px;
+  background: var(--bg-panel);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  margin-bottom: 28px;
+}
+
+.active-preset-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.active-preset-info h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.active-preset-meta {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.active-preset-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.active-preset-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 列表行 */
+.preset-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.preset-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 120ms;
+  cursor: pointer;
+}
+
+.preset-row:last-child { border-bottom: none; }
+.preset-row:hover { background: var(--bg-subtle); }
+
+.preset-row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.preset-row.active .preset-row-icon {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.preset-row-info h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-row-info p {
+  font-size: 12px;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.preset-row-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.preset-row:hover .preset-row-actions { opacity: 1; }
+
+.preset-row.active .preset-row-actions { opacity: 1; }
+
+/* 系统预设卡片 */
+.system-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.system-preset-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 140ms;
+  position: relative;
+}
+
+.system-preset-card:hover {
+  border-color: var(--primary-line);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.system-preset-card .system-icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.system-preset-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.system-preset-card p {
+  font-size: 11px;
+  color: var(--text-3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.system-preset-card .lock-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* 空状态 */
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.empty-state-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+/* ============================================
+   屏 2 · 5 维度编辑器
+   ============================================ */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .editor-layout { grid-template-columns: 1fr 360px; gap: 16px; }
+}
+
+.editor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 维度折叠区 */
+.dim-section {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: all 140ms;
+}
+
+.dim-section.open {
+  border-color: var(--primary-line);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.dim-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-panel);
+  transition: background 120ms;
+}
+
+.dim-header:hover { background: var(--bg-subtle); }
+.dim-section.open .dim-header { background: var(--primary-soft); }
+
+.dim-letter {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--bg-subtle);
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'DM Serif Display', serif;
+}
+
+.dim-section.open .dim-letter {
+  background: var(--primary);
+  color: white;
+}
+
+.dim-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dim-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.dim-arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  transition: transform 140ms;
+}
+
+.dim-section.open .dim-arrow {
+  transform: rotate(90deg);
+  color: var(--primary);
+}
+
+.dim-body {
+  display: none;
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--bg-panel);
+}
+
+.dim-section.open .dim-body { display: block; }
+
+.dim-row {
+  margin-bottom: 18px;
+}
+.dim-row:last-child { margin-bottom: 0; }
+
+.dim-row-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dim-row-label .label { margin-bottom: 0; }
+
+.dim-row-label .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* 实时预览面板 */
+.preview-panel {
+  position: sticky;
+  top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.preview-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.preview-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-subtle);
+}
+
+.preview-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.preview-card-body {
+  padding: 20px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.preview-output {
+  font-family: 'Outfit', 'Noto Serif SC', serif;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.preview-output h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 18px 0 8px;
+}
+
+.preview-output h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 14px 0 6px;
+}
+
+.preview-output p {
+  margin: 0 0 10px;
+}
+
+.preview-output .hook {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.preview-output .quote {
+  border-left: 3px solid var(--accent);
+  padding: 6px 12px;
+  background: var(--accent-soft);
+  font-style: italic;
+  margin: 12px 0;
+  color: var(--text-2);
+}
+
+/* 风格画像 */
+.style-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.style-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.style-bar {
+  display: grid;
+  grid-template-columns: 56px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.style-bar-label {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.style-bar-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.style-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 120ms;
+}
+
+.style-dot.on { background: var(--primary); }
+.style-dot.on.accent { background: var(--accent); }
+
+.style-bar-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: right;
+}
+
+/* ============================================
+   屏 3 · YAML 视图
+   ============================================ */
+.yaml-view {
+  background: #0f172a;
+  border-radius: var(--radius);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.yaml-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.yaml-view-title {
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.yaml-view-actions { display: flex; gap: 6px; }
+
+.yaml-view-actions .btn {
+  background: #334155;
+  border-color: #475569;
+  color: #cbd5e1;
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+.yaml-view-actions .btn:hover { background: #475569; color: white; }
+
+.yaml-body {
+  padding: 20px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #e2e8f0;
+  overflow-x: auto;
+  max-height: 720px;
+  overflow-y: auto;
+}
+
+.yaml-line {
+  display: flex;
+  gap: 12px;
+  white-space: pre;
+}
+
+.yaml-line-no {
+  color: #475569;
+  user-select: none;
+  text-align: right;
+  min-width: 28px;
+}
+
+.yaml-line-content { flex: 1; }
+
+.yaml-key { color: #7dd3fc; }
+.yaml-string { color: #fde68a; }
+.yaml-number { color: #c4b5fd; }
+.yaml-bool { color: #f0abfc; }
+.yaml-null { color: #94a3b8; }
+.yaml-comment { color: #64748b; font-style: italic; }
+.yaml-bracket { color: #94a3b8; }
+.yaml-dash { color: #f472b6; }
+
+[data-theme="green"] .yaml-view {
+  background: #1a2e26;
+}
+
+[data-theme="green"] .yaml-view-header {
+  background: #234536;
+  border-bottom-color: #2f5c47;
+}
+
+/* ============================================
+   屏 4 · 模态
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+  padding: 24px;
+}
+
+.modal-card {
+  background: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  max-width: 560px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-body { padding: 24px; }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--bg-subtle);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.modal-close:hover { background: var(--bg-subtle); color: var(--ink); }
+
+/* 拖拽区 */
+.dropzone {
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 36px 24px;
+  text-align: center;
+  background: var(--bg-subtle);
+  cursor: pointer;
+  transition: all 140ms;
+  margin-bottom: 20px;
+}
+
+.dropzone:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.dropzone-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  color: var(--text-3);
+}
+
+.dropzone-text {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+/* 已识别配置 */
+.parsed-card {
+  background: var(--bg-subtle);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.parsed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.parsed-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.parsed-row .k { color: var(--text-3); min-width: 80px; }
+.parsed-row .v { color: var(--text); flex: 1; }
+
+/* 冲突项 */
+.conflict-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.conflict-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.conflict-list li::before {
+  content: "·";
+  color: var(--warning);
+  font-weight: 700;
+}
+
+/* ============================================
+   主题切换器（浮在右上）
+   ============================================ */
+.theme-toggle {
+  display: inline-flex;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.theme-toggle button {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.theme-toggle button.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* ============================================
+   Few-shot 列表
+   ============================================ */
+.fewshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fewshot-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.fewshot-item .fewshot-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fewshot-item .fewshot-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.fewshot-item .fewshot-text .t {
+  color: var(--ink);
+  font-weight: 500;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.fewshot-item .fewshot-text .m {
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.fewshot-item .fewshot-action {
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.fewshot-item .fewshot-action:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.fewshot-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-3);
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  font-family: inherit;
+  transition: all 120ms;
+}
+
+.fewshot-add:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+/* ============================================
+   底部状态条
+   ============================================ */
+.status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 220px;
+  right: 0;
+  height: 28px;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-3);
+  z-index: 50;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  display: inline-block;
+}
+
+/* ============================================
+   响应式
+   ============================================ */
+@media (max-width: 1024px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .app-main { padding: 20px; }
+  .editor-layout { grid-template-columns: 1fr; }
+  .preview-panel { position: static; }
+  .system-preset-grid { grid-template-columns: repeat(2, 1fr); }
+  .status-bar { left: 0; }
+  .responsive-warn { display: flex !important; }
+}
+
+@media (max-width: 768px) {
+  .system-preset-grid { grid-template-columns: 1fr; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+}
+
+.responsive-warn {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--warning);
+  margin-bottom: 16px;
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ============ Sidebar ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="sidebar-logo-dot">i</span>
+      <span>Insight OS</span>
+    </div>
+
+    <div class="sidebar-section">工作流</div>
+    <a class="nav-item" href="#"><span class="nav-icon">◇</span><span>仪表盘</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">▤</span><span>收件箱</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">◐</span><span>候选池</span><span class="pill pill-soft" style="margin-left:auto">12</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">◆</span><span>资产库</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">⌬</span><span>图谱</span></a>
+
+    <div class="sidebar-section">输出</div>
+    <a class="nav-item" href="#"><span class="nav-icon">✎</span><span>写作</span></a>
+    <a class="nav-item" href="#"><span class="nav-icon">▶</span><span>输出</span></a>
+    <a class="nav-item active" href="#"><span class="nav-icon">⚙</span><span>设置</span></a>
+
+    <div class="sidebar-section" style="margin-top: 24px;">当前</div>
+    <a class="nav-item" href="#" style="font-size: 12px; color: var(--text-3);">
+      <span class="nav-icon" style="color: var(--success);">●</span>
+      <span>Vincent 标准版</span>
+    </a>
+  </aside>
+
+  <!-- ============ Main ============ -->
+  <main class="app-main">
+
+    <!-- Responsive warning -->
+    <div class="responsive-warn">
+      <span>⚠</span>
+      <span>配置页建议在桌面端查看（≥1024px）。当前视窗偏窄，控件可能错位。</span>
+    </div>
+
+    <!-- ============ 顶部：标题 + tabs + 主题切换 ============ -->
+    <div class="row-between mb-12">
+      <div>
+        <h1 class="page-title">写作风格配置</h1>
+        <p class="page-subtitle">本地 YAML 文件 · 切换预设让 LLM 写出不同味道的文章 · 当前 3 套自定义 + 6 套系统预设</p>
+      </div>
+      <div class="row gap-12">
+        <div class="theme-toggle" id="themeToggle">
+          <button data-theme="blue" class="active">深蓝</button>
+          <button data-theme="green">墨绿</button>
+        </div>
+        <button class="btn btn-ghost btn-icon" title="关闭">✕</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="screenTabs">
+      <button class="tab active" data-screen="list">
+        <span class="tab-num">1</span>Preset 列表
+      </button>
+      <button class="tab" data-screen="editor">
+        <span class="tab-num">2</span>5 维度编辑器
+      </button>
+      <button class="tab" data-screen="yaml">
+        <span class="tab-num">3</span>YAML 预览
+      </button>
+      <button class="tab" data-screen="modal">
+        <span class="tab-num">4</span>导入 / 导出
+      </button>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- 屏 1 · Preset 列表                                              -->
+    <!-- ============================================================== -->
+    <section data-screen-panel="list">
+
+      <!-- 当前激活预设卡 -->
+      <div class="active-preset-card">
+        <div class="active-preset-icon">★</div>
+        <div class="active-preset-info">
+          <h2>Vincent 标准版 <span class="pill pill-soft">当前激活</span></h2>
+          <div class="active-preset-meta">最后更新 · 2026-06-20 14:32 · 来自 outputs/writing 38 篇</div>
+          <div class="active-preset-tags">
+            <span class="pill">专业但有温度</span>
+            <span class="pill">数字+提问标题</span>
+            <span class="pill">长短句交替</span>
+            <span class="pill">总分总结构</span>
+            <span class="pill">2500字</span>
+            <span class="pill pill-violet">5 维度</span>
+          </div>
+        </div>
+        <div class="active-preset-actions">
+          <button class="btn btn-primary" onclick="openEditor('vincent-standard')">编辑</button>
+          <div class="row gap-4">
+            <button class="btn btn-sm" onclick="openModal('export')">导出</button>
+            <button class="btn btn-sm" onclick="openModal('export')">复制</button>
+            <button class="btn btn-sm btn-ghost" title="复制为新预设">⎘</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 我的预设 -->
+      <div class="card-pad-none mb-24">
+        <div class="card-header" style="border-bottom: 1px solid var(--line-soft); background: var(--bg-subtle);">
+          <h2 class="card-title">我的预设 <span class="text-3 text-sm fw-400">· 3 套</span></h2>
+          <div class="row gap-8">
+            <button class="btn btn-sm">🔍 搜索</button>
+            <button class="btn btn-sm">⇅ 排序</button>
+            <button class="btn btn-sm" onclick="openEditor('new')">+ 新建空白</button>
+            <button class="btn btn-sm btn-primary" onclick="openModal('import')">↥ 从 YAML 导入</button>
+          </div>
+        </div>
+        <div class="preset-list">
+          <div class="preset-row active" onclick="openEditor('vincent-standard')">
+            <div class="preset-row-icon">★</div>
+            <div class="preset-row-info">
+              <h3>Vincent 标准版 <span class="pill pill-soft">活跃</span></h3>
+              <p>专业·提问式标题·2500字·公众号长文</p>
+            </div>
+            <div class="preset-row-actions">
+              <button class="btn btn-sm btn-ghost">停用</button>
+              <button class="btn btn-sm">编辑</button>
+              <button class="btn btn-sm" onclick="event.stopPropagation(); openModal('export')">导出</button>
+              <button class="btn btn-sm btn-ghost" title="更多">⋯</button>
+            </div>
+          </div>
+          <div class="preset-row" onclick="openEditor('client-comm')">
+            <div class="preset-row-icon">✉</div>
+            <div class="preset-row-info">
+              <h3>客户沟通版</h3>
+              <p>温和·叙事化·1800字·邮件 / 简短报告 · fork 自"标准版"</p>
+            </div>
+            <div class="preset-row-actions">
+              <button class="btn btn-sm btn-primary">激活</button>
+              <button class="btn btn-sm">编辑</button>
+              <button class="btn btn-sm" onclick="event.stopPropagation(); openModal('export')">导出</button>
+              <button class="btn btn-sm btn-ghost" title="更多">⋯</button>
+            </div>
+          </div>
+          <div class="preset-row" onclick="openEditor('academic')">
+            <div class="preset-row-icon">🎓</div>
+            <div class="preset-row-info">
+              <h3>学术严谨版</h3>
+              <p>严谨·数据驱动·4000字·论文 / 研究报告 · fork 自"标准版"</p>
+            </div>
+            <div class="preset-row-actions">
+              <button class="btn btn-sm btn-primary">激活</button>
+              <button class="btn btn-sm">编辑</button>
+              <button class="btn btn-sm" onclick="event.stopPropagation(); openModal('export')">导出</button>
+              <button class="btn btn-sm btn-ghost" title="更多">⋯</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 系统预设 -->
+      <div class="card-pad-none">
+        <div class="card-header" style="border-bottom: 1px solid var(--line-soft); background: var(--bg-subtle);">
+          <h2 class="card-title">系统预设 <span class="text-3 text-sm fw-400">· 只读，fork 后可编辑</span></h2>
+          <button class="btn btn-sm">查看全部 6 套 →</button>
+        </div>
+        <div class="card-body">
+          <div class="system-preset-grid">
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">🎓</span>
+              <h4>学术论文版</h4>
+              <p>严谨·引证密集·5000字·论文 / 报告</p>
+            </div>
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">🎤</span>
+              <h4>演讲口播版</h4>
+              <p>口语化·短句主导·故事性·1500字</p>
+            </div>
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">📖</span>
+              <h4>读书笔记版</h4>
+              <p>第一人称·结构松散·1500字·阅读心得</p>
+            </div>
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">📱</span>
+              <h4>公众号长文版</h4>
+              <p>通俗·金句密·小标题密集·3000字</p>
+            </div>
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">✉️</span>
+              <h4>客户邮件版</h4>
+              <p>礼貌·直入主题·500字·短邮件</p>
+            </div>
+            <div class="system-preset-card" onclick="alert('Fork 后可编辑：系统预设只读。')">
+              <span class="lock-badge">🔒</span>
+              <span class="system-icon">💼</span>
+              <h4>内部周报版</h4>
+              <p>结构化·数据优先·800字·内部沟通</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- 屏 2 · 5 维度编辑器                                              -->
+    <!-- ============================================================== -->
+    <section data-screen-panel="editor" hidden>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn" onclick="showScreen('list')">← 返回列表</button>
+          <div>
+            <div style="font-size: 15px; font-weight: 600; color: var(--ink);" id="editor-title">Vincent 标准版 <span class="text-sm text-3 fw-400">✏️</span></div>
+            <div class="text-xs text-3">最后更新 · 2026-06-20 14:32 · fork 自 <span class="text-mono">null</span></div>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <span class="text-xs text-3" id="dirty-state">● 未修改</span>
+          <button class="btn">取消</button>
+          <button class="btn btn-accent" id="saveBtn" disabled onclick="alert('保存到 ~/.insight-os/writing-configs/vincent-standard.yaml (mock)')">💾 保存</button>
+        </div>
+      </div>
+
+      <div class="editor-layout">
+
+        <!-- ========== 左侧：5 维度表单 ========== -->
+        <div class="editor-main">
+
+          <!-- 基础信息 -->
+          <div class="dim-section open">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">i</span>
+              <div class="dim-name">基础信息 <span class="dim-desc">预设标识 + 适用场景</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">Preset 名</span></div>
+                <input class="input" value="Vincent 标准版" oninput="markDirty()">
+                <div class="label-hint">支持中文 · 显示在 preset 列表 · 也是导出 YAML 的 filename</div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">outputType</span></div>
+                <div class="chip-group" data-group="outputType" data-multi="false">
+                  <span class="chip active">公众号长文</span>
+                  <span class="chip">演讲稿</span>
+                  <span class="chip">读书笔记</span>
+                  <span class="chip">客户邮件</span>
+                  <span class="chip">内部周报</span>
+                </div>
+                <div class="label-hint">决定 4 步 wizard 用哪个模板 + scaffold 提示词的差异</div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">描述（可选）</span></div>
+                <textarea class="textarea" placeholder="一句话说清这个预设适合什么场景..." oninput="markDirty()">专业顾问的对外发声 · 公众号长文 · 偏观点输出</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- A 风格 -->
+          <div class="dim-section">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">A</span>
+              <div class="dim-name">风格 <span class="dim-desc">语气 · 立场 · 人设 · 视角</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="dim-row">
+                <div class="dim-row-label">
+                  <span class="label">tone 语气温度</span>
+                  <span class="value" id="val-tone">70 / 100</span>
+                </div>
+                <div class="slider-row">
+                  <span class="text-xs text-3">冷峻 0</span>
+                  <input type="range" min="0" max="100" value="70" class="slider" data-style-var="tone" oninput="syncSlider(this)">
+                  <span class="text-xs text-3">100 温暖</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">stance 立场</span></div>
+                <div class="chip-group" data-group="stance" data-multi="false">
+                  <span class="chip">中立</span>
+                  <span class="chip active">建议</span>
+                  <span class="chip">批判</span>
+                  <span class="chip">教练</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">persona 人设</span></div>
+                <input class="input" value="资深独立顾问" oninput="markDirty()">
+                <div class="label-hint">"你是什么身份在说话"·影响 LLM 第一人称表达</div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">viewpoint 视角</span></div>
+                <div class="chip-group" data-group="viewpoint" data-multi="false">
+                  <span class="chip">第一人称</span>
+                  <span class="chip active">第二人称为主</span>
+                  <span class="chip">第三人称</span>
+                  <span class="chip">混合</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">termDensity 术语密度</span></div>
+                <div class="chip-group" data-group="termDensity" data-multi="false">
+                  <span class="chip">低</span>
+                  <span class="chip active">中</span>
+                  <span class="chip">高</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label">
+                  <span class="label">temperature 创造性</span>
+                  <span class="value" id="val-temperature">0.6</span>
+                </div>
+                <div class="slider-row">
+                  <span class="text-xs text-3">保守 0.0</span>
+                  <input type="range" min="0" max="10" value="6" class="slider" data-style-var="temperature" data-divisor="10" oninput="syncSlider(this)">
+                  <span class="text-xs text-3">1.0 发散</span>
+                </div>
+                <div class="label-hint">LLM 采样温度 · 高=更有创造性但可能跑偏</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- B 句式 -->
+          <div class="dim-section">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">B</span>
+              <div class="dim-name">句式 <span class="dim-desc">节奏 · 短长比 · 段落 · 修辞</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">rhythm 节奏</span></div>
+                <div class="chip-group" data-group="rhythm" data-multi="false">
+                  <span class="chip">短句主导</span>
+                  <span class="chip active">长短交替</span>
+                  <span class="chip">长句主导</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label">
+                  <span class="label">shortRatio 短句占比</span>
+                  <span class="value" id="val-shortRatio">40%</span>
+                </div>
+                <div class="slider-row">
+                  <span class="text-xs text-3">0%</span>
+                  <input type="range" min="0" max="10" value="4" class="slider" data-style-var="shortRatio" data-divisor="10" data-pct="true" oninput="syncSlider(this)">
+                  <span class="text-xs text-3">100%</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label">
+                  <span class="label">paragraphLength 段落字数</span>
+                  <span class="value">中文字</span>
+                </div>
+                <input type="number" class="input" value="120" min="40" max="400" oninput="markDirty()">
+                <div class="label-hint">单段目标字数 · 实际由 LLM 自由浮动 ±30%</div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">rhetoric 修辞偏好（多选）</span></div>
+                <div class="chip-group" data-group="rhetoric" data-multi="true">
+                  <span class="chip chip-multi">比喻</span>
+                  <span class="chip chip-multi active">类比</span>
+                  <span class="chip chip-multi active">反问</span>
+                  <span class="chip chip-multi">故事</span>
+                  <span class="chip chip-multi">数据</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- C 结构 -->
+          <div class="dim-section">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">C</span>
+              <div class="dim-name">结构 <span class="dim-desc">标题 · 核心位置 · 论证 · 收尾</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">headingStyle 标题风格</span></div>
+                <div class="chip-group" data-group="headingStyle" data-multi="false">
+                  <span class="chip active">数字+提问</span>
+                  <span class="chip">提问</span>
+                  <span class="chip">陈述</span>
+                  <span class="chip">对仗</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">corePosition 核心位置</span></div>
+                <div class="chip-group" data-group="corePosition" data-multi="false">
+                  <span class="chip">标题</span>
+                  <span class="chip active">首段</span>
+                  <span class="chip">中段</span>
+                  <span class="chip">结尾</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">argumentPattern 论证模式</span></div>
+                <div class="chip-group" data-group="argumentPattern" data-multi="false">
+                  <span class="chip active">总分总</span>
+                  <span class="chip">层层递进</span>
+                  <span class="chip">并列</span>
+                  <span class="chip">对照</span>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">sectionCount 章节数</span></div>
+                <input type="number" class="input" value="5" min="2" max="8" oninput="markDirty()">
+                <div class="label-hint">与 D · sectionCount 联动 · 修改会双向同步</div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label"><span class="label">ending 收尾</span></div>
+                <div class="chip-group" data-group="ending" data-multi="false">
+                  <span class="chip active">行动呼吁</span>
+                  <span class="chip">金句收尾</span>
+                  <span class="chip">留白</span>
+                  <span class="chip">总结</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- D 长度 -->
+          <div class="dim-section">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">D</span>
+              <div class="dim-name">长度 <span class="dim-desc">字数 · 章节 · 单章 · 金句</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="form-row">
+                <div>
+                  <div class="dim-row-label"><span class="label">targetWords 总字数</span></div>
+                  <input type="number" class="input" value="2500" min="300" max="10000" oninput="markDirty()">
+                </div>
+                <div>
+                  <div class="dim-row-label"><span class="label">sectionCount 章节</span></div>
+                  <input type="number" class="input" value="5" min="2" max="8" oninput="markDirty()">
+                </div>
+              </div>
+              <div class="form-row-3" style="margin-top: 14px;">
+                <div>
+                  <div class="dim-row-label"><span class="label">单章字数</span></div>
+                  <input type="number" class="input" value="500" min="100" max="1500" oninput="markDirty()">
+                </div>
+                <div>
+                  <div class="dim-row-label"><span class="label">变体数</span></div>
+                  <input type="number" class="input" value="1" min="1" max="5" oninput="markDirty()">
+                </div>
+                <div>
+                  <div class="dim-row-label"><span class="label">关键金句</span></div>
+                  <input type="number" class="input" value="3" min="0" max="10" oninput="markDirty()">
+                </div>
+              </div>
+              <div class="label-hint" style="margin-top: 10px;">targetWords ≈ sectionCount × perSectionWords · 偏差超 30% 会在保存时警告</div>
+            </div>
+          </div>
+
+          <!-- E 质检 -->
+          <div class="dim-section">
+            <div class="dim-header" onclick="toggleDim(this)">
+              <span class="dim-letter">E</span>
+              <div class="dim-name">质检 <span class="dim-desc">禁用词 · 数据严谨 · AI 味 · few-shot</span></div>
+              <span class="dim-arrow">▸</span>
+            </div>
+            <div class="dim-body">
+              <div class="form-row">
+                <div>
+                  <div class="dim-row-label"><span class="label">citationLimit 引用上限</span></div>
+                  <input type="number" class="input" value="5" min="0" max="20" oninput="markDirty()">
+                </div>
+                <div>
+                  <div class="dim-row-label"><span class="label">dataFidelity 数据真实性</span></div>
+                  <div class="chip-group" data-group="dataFidelity" data-multi="false">
+                    <span class="chip active">严格</span>
+                    <span class="chip">宽松</span>
+                    <span class="chip">不约束</span>
+                  </div>
+                </div>
+              </div>
+              <div class="dim-row" style="margin-top: 14px;">
+                <div class="dim-row-label"><span class="label">bannedWords 禁用词（一行一词）</span></div>
+                <textarea class="textarea input-mono" rows="3" oninput="markDirty()">赋能
+抓手
+闭环
+对齐
+打通
+颗粒度
+底层逻辑</textarea>
+                <div class="label-hint">生成时会触发独立 pipeline 扫描 · 命中后强制 LLM 重写</div>
+              </div>
+              <div class="dim-row">
+                <div class="row-between">
+                  <div>
+                    <div class="label">aiTasteCheck AI 味自检</div>
+                    <div class="label-hint" style="margin-bottom: 0;">生成后用独立 prompt 评估 · 命中"总分总/排比/..."规则则打回</div>
+                  </div>
+                  <button class="toggle on" onclick="this.classList.toggle('on'); markDirty()"></button>
+                </div>
+              </div>
+              <div class="dim-row">
+                <div class="dim-row-label">
+                  <span class="label">few-shot 真实样例（2 / 5）</span>
+                  <button class="btn btn-sm" onclick="alert('从已发布 outputs 选 few-shot (mock)')">+ 添加</button>
+                </div>
+                <div class="fewshot-list">
+                  <div class="fewshot-item">
+                    <span class="fewshot-icon">A</span>
+                    <div class="fewshot-text">
+                      <span class="t">复盘为什么总是没用？</span>
+                      <span class="m">公众号长文 · 2026-04-12 · 2432 字</span>
+                    </div>
+                    <span class="fewshot-action" title="移除">✕</span>
+                  </div>
+                  <div class="fewshot-item">
+                    <span class="fewshot-icon">B</span>
+                    <div class="fewshot-text">
+                      <span class="t">咨询顾问的 3 个隐形税</span>
+                      <span class="m">公众号长文 · 2026-05-08 · 2612 字</span>
+                    </div>
+                    <span class="fewshot-action" title="移除">✕</span>
+                  </div>
+                </div>
+                <button class="fewshot-add" style="margin-top: 8px;">+ 从已发布 outputs 中选择</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ========== 右侧：实时预览 ========== -->
+        <div class="preview-panel">
+
+          <!-- 输出预览 -->
+          <div class="preview-card">
+            <div class="preview-card-header">
+              <div class="preview-card-title">
+                <span>📄</span> 输出预览
+              </div>
+              <div class="row gap-4">
+                <button class="btn btn-sm btn-ghost" title="基于当前 5 维度 mock">⏎ 重新生成</button>
+                <button class="btn btn-sm btn-ghost" title="复制">📋</button>
+              </div>
+            </div>
+            <div class="preview-card-body">
+              <div class="preview-output">
+                <div class="hook">为什么 80% 的战略复盘都没有用？</div>
+                <p>我做了 12 年独立顾问，见过太多团队在复盘会上认认真真地"反思"——然后下个季度，一切照旧。</p>
+                <p>问题不在态度。在结构。</p>
+                <h3>01 复盘的隐形前提：被掩盖的归因</h3>
+                <p>多数复盘失败，不是因为团队不愿意面对真相，而是因为真相从来就没被允许浮出水面。</p>
+                <div class="quote">复盘的第一性原理：你必须先承认"这件事其实可以做成"——否则你永远在解释"为什么没做成"。</div>
+                <h3>02 真正有效的三步：观察—解构—重构</h3>
+                <p>...</p>
+                <p class="text-3 text-sm" style="margin-top: 16px; font-style: italic;">[底部还有约 800 字...]</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 风格画像 -->
+          <div class="style-card">
+            <div class="style-card-title">风格画像 · 实时</div>
+            <div class="style-bar">
+              <span class="style-bar-label">温度</span>
+              <div class="style-bar-dots" data-bar="tone" data-max="5" data-val="3">
+                <span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>3/5</span>
+            </div>
+            <div class="style-bar">
+              <span class="style-bar-label">锐度</span>
+              <div class="style-bar-dots" data-bar="stance" data-max="5" data-val="2">
+                <span class="style-dot on accent"></span><span class="style-dot on accent"></span><span class="style-dot"></span><span class="style-dot"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>2/5</span>
+            </div>
+            <div class="style-bar">
+              <span class="style-bar-label">句长</span>
+              <div class="style-bar-dots" data-bar="shortRatio" data-max="5" data-val="2">
+                <span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot"></span><span class="style-dot"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>2/5</span>
+            </div>
+            <div class="style-bar">
+              <span class="style-bar-label">结构</span>
+              <div class="style-bar-dots" data-bar="structure" data-max="5" data-val="4">
+                <span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>4/5</span>
+            </div>
+            <div class="style-bar">
+              <span class="style-bar-label">引经</span>
+              <div class="style-bar-dots" data-bar="citation" data-max="5" data-val="2">
+                <span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot"></span><span class="style-dot"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>2/5</span>
+            </div>
+            <div class="style-bar">
+              <span class="style-bar-label">故事</span>
+              <div class="style-bar-dots" data-bar="story" data-max="5" data-val="3">
+                <span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot on"></span><span class="style-dot"></span><span class="style-dot"></span>
+              </div>
+              <span class="style-bar-value" data-val-display>3/5</span>
+            </div>
+
+            <div class="callout callout-warning" style="margin-top: 14px; font-size: 12px; padding: 10px 12px;">
+              <div class="fw-600" style="color: var(--warning); margin-bottom: 4px;">⚠ 检测到 1 项冲突</div>
+              <div style="color: var(--text-2); font-size: 11.5px; line-height: 1.5;">短句比 40% 与段落 200 字难以同时满足 · 建议调整其一</div>
+            </div>
+          </div>
+
+          <!-- 输出参数 -->
+          <div class="style-card">
+            <div class="style-card-title">LLM 参数</div>
+            <div class="form-row" style="margin-bottom: 10px;">
+              <div>
+                <div class="label">model</div>
+                <input class="input input-mono" value="deepseek-chat" oninput="markDirty()">
+              </div>
+              <div>
+                <div class="label">topP</div>
+                <input class="input input-mono" value="0.9" oninput="markDirty()">
+              </div>
+            </div>
+            <div class="label-hint" style="margin-top: 4px;">与 settings · LLM 接入共享 · 修改会同步</div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- 屏 3 · YAML 预览                                                  -->
+    <!-- ============================================================== -->
+    <section data-screen-panel="yaml" hidden>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="btn" onclick="showScreen('editor')">← 返回编辑</button>
+          <div>
+            <div style="font-size: 15px; font-weight: 600; color: var(--ink);">Vincent 标准版 · YAML 预览</div>
+            <div class="text-xs text-3">存储路径 · <span class="text-mono">~/.insight-os/writing-configs/vincent-standard.yaml</span></div>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn">📋 复制</button>
+          <button class="btn">⬇ 下载 .yaml</button>
+        </div>
+      </div>
+
+      <div class="yaml-view">
+        <div class="yaml-view-header">
+          <div class="yaml-view-title">⌬ vincent-standard.yaml</div>
+          <div class="yaml-view-actions">
+            <button class="btn">复制全文</button>
+            <button class="btn">下载</button>
+          </div>
+        </div>
+        <div class="yaml-body" id="yamlBody"><!-- JS 注入 --></div>
+      </div>
+
+      <div class="callout" style="margin-top: 16px;">
+        <div class="fw-600" style="color: var(--primary); margin-bottom: 4px;">💡 YAML 是这份预设的最终存储格式</div>
+        <div style="color: var(--text-2); font-size: 12.5px; line-height: 1.6;">
+          所有修改请回 <strong>5 维度编辑器</strong> 操作 · 此视图只读 · 修改 YAML 文件后下次启动会被识别但跳过格式校验，可能导致 LLM 提示词拼接异常。
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================== -->
+    <!-- 屏 4 · 导入 / 导出 (实际上以模态显示，主屏是介绍)                -->
+    <!-- ============================================================== -->
+    <section data-screen-panel="modal" hidden>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div>
+            <div style="font-size: 15px; font-weight: 600; color: var(--ink);">导入 / 导出</div>
+            <div class="text-xs text-3">把预设交付给客户 / 同事 / 自己的另一台设备</div>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-primary" onclick="openModal('import')">↥ 导入 YAML</button>
+          <button class="btn btn-accent" onclick="openModal('export')">↧ 导出当前预设</button>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header">
+          <h2 class="card-title">📥 导入工作流</h2>
+        </div>
+        <div class="card-body">
+          <ol style="padding-left: 20px; line-height: 1.8; font-size: 13px; color: var(--text);">
+            <li>点右上 <strong>导入 YAML</strong>，弹出模态对话框</li>
+            <li>拖拽 <code class="text-mono text-xs" style="background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px;">.yaml</code> 文件到拖拽区，或点"选择文件"</li>
+            <li>系统自动解析并显示：预设名 / 来源 / 5 维度摘要</li>
+            <li>如检测到 <strong>冲突</strong>（如 bannedWords 与现有预设重复）会列出</li>
+            <li>可改名（默认用 YAML 里的 name）· 点"导入并保存"</li>
+            <li>新预设出现在"我的预设"列表，状态为 <span class="pill pill-soft">未激活</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header">
+          <h2 class="card-title">↧ 导出工作流</h2>
+        </div>
+        <div class="card-body">
+          <ol style="padding-left: 20px; line-height: 1.8; font-size: 13px; color: var(--text);">
+            <li>在 preset 列表点"导出"或在本页点"导出当前预设"</li>
+            <li>弹出模态显示：当前预设元信息 + 2 个 toggle
+              <ul style="margin-top: 6px; list-style: none; padding-left: 0;">
+                <li>· <strong>包含 LLM 参数</strong>（默认关）· 关掉可避免把 temperature 等个人偏好传出去</li>
+                <li>· <strong>包含 few-shot 引用</strong>（默认开）· few-shot 引用是公开 ID，对方拿到后能正常加载</li>
+              </ul>
+            </li>
+            <li>点"下载 .yaml" 存到本地 / "复制到剪贴板" 微信发给客户</li>
+            <li>对方收到后丢到自己的 <code class="text-mono text-xs" style="background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px;">~/.insight-os/writing-configs/</code> 目录，<strong>重启应用</strong>即可识别</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="callout callout-accent">
+        <div class="fw-600" style="color: var(--accent); margin-bottom: 4px;">💼 这是 Insight OS 的"知识资产交付"工作流</div>
+        <div style="color: var(--text-2); font-size: 12.5px; line-height: 1.6;">
+          咨询顾问交付项目时，风格配置和最终文章一样重要 · 把"Vincent 标准版"发给客户 = 客户能复现你的写作味道 · 这是这个工具的隐形护城河。
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<!-- 状态条 -->
+<div class="status-bar">
+  <span><span class="status-dot"></span> LLM 已连接</span>
+  <span>·</span>
+  <span>3 套自定义预设</span>
+  <span>·</span>
+  <span>当前激活: <strong style="color: var(--ink);">Vincent 标准版</strong></span>
+  <span style="margin-left: auto;">DeepSeek Chat · 8K context</span>
+</div>
+
+<!-- ============ 模态：导入 ============ -->
+<div class="modal-overlay hidden" id="modal-import">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title"><span style="font-size: 18px;">📥</span> 导入写作风格预设</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="dropzone" onclick="alert('选择 .yaml 文件 (mock)')">
+        <div class="dropzone-icon">⬇</div>
+        <div class="dropzone-text">拖拽 <code class="text-mono text-xs" style="background: var(--bg-subtle); padding: 1px 5px; border-radius: 3px;">.yaml</code> 文件到这里</div>
+        <button class="btn btn-sm">或 选择文件</button>
+      </div>
+
+      <div class="parsed-card">
+        <div class="parsed-header">
+          <span>✓</span> 解析成功
+        </div>
+        <div class="parsed-row"><span class="k">名称</span><span class="v">麦肯锡资深顾问版</span></div>
+        <div class="parsed-row"><span class="k">来源</span><span class="v">外部导入（无 forkedFrom）</span></div>
+        <div class="parsed-row"><span class="k">outputType</span><span class="v">article_full</span></div>
+        <div class="parsed-row"><span class="k">风格画像</span><span class="v">严谨 · 数据驱动 · 4000 字</span></div>
+
+        <ul class="conflict-list">
+          <li>bannedWords 与现有"Vincent 标准版"重复 3 个（赋能、抓手、闭环）</li>
+          <li>llmParams.temperature 0.3 比标准版更保守，可能导致输出更"教科书"</li>
+        </ul>
+      </div>
+
+      <div class="dim-row">
+        <div class="dim-row-label"><span class="label">保存为</span></div>
+        <input class="input" value="麦肯锡资深顾问版">
+        <div class="label-hint">如与现有预设重名会自动加后缀 _2</div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="closeModal(); alert('已导入：麦肯锡资深顾问版 (mock)')">✓ 导入并保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 模态：导出 ============ -->
+<div class="modal-overlay hidden" id="modal-export">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title"><span style="font-size: 18px;">↧</span> 导出当前预设</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="parsed-card">
+        <div class="parsed-header" style="color: var(--primary);">
+          <span>⌬</span> Vincent 标准版
+        </div>
+        <div class="parsed-row"><span class="k">outputType</span><span class="v">article_full（公众号长文）</span></div>
+        <div class="parsed-row"><span class="k">forkedFrom</span><span class="v">null（原创）</span></div>
+        <div class="parsed-row"><span class="k">更新时间</span><span class="v">2026-06-20 14:32</span></div>
+        <div class="parsed-row"><span class="k">包含维度</span><span class="v">A 风格 · B 句式 · C 结构 · D 长度 · E 质检</span></div>
+        <div class="parsed-row"><span class="k">few-shot</span><span class="v">2 个引用</span></div>
+      </div>
+
+      <div class="dim-row" style="margin-top: 4px;">
+        <div class="row-between" style="padding: 10px 0; border-bottom: 1px solid var(--line-soft);">
+          <div>
+            <div class="label" style="margin-bottom: 2px;">包含 LLM 参数</div>
+            <div class="label-hint" style="margin-bottom: 0;">model · temperature · topP · 关掉避免暴露个人偏好</div>
+          </div>
+          <button class="toggle" id="toggle-llm" onclick="this.classList.toggle('on')"></button>
+        </div>
+        <div class="row-between" style="padding: 10px 0;">
+          <div>
+            <div class="label" style="margin-bottom: 2px;">包含 few-shot 引用</div>
+            <div class="label-hint" style="margin-bottom: 0;">few-shot 是公开 ID · 默认开 · 对方能正常加载</div>
+          </div>
+          <button class="toggle on" id="toggle-fewshot" onclick="this.classList.toggle('on')"></button>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top: 8px; font-size: 12px;">
+        <div style="color: var(--primary); font-weight: 600; margin-bottom: 4px;">📁 文件名</div>
+        <code class="text-mono text-xs" style="background: var(--bg-panel); padding: 4px 8px; border-radius: 3px; display: block;">vincent-standard.yaml</code>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn" onclick="closeModal(); alert('已复制到剪贴板 (mock)')">📋 复制</button>
+      <button class="btn btn-primary" onclick="closeModal(); alert('已下载 vincent-standard.yaml (mock)')">⬇ 下载 .yaml</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   交互逻辑
+   ============================================ */
+
+// 当前数据状态
+const STATE = {
+  currentScreen: 'list',
+  currentEditor: 'vincent-standard',
+  dirty: false,
+  activeModal: null,
+};
+
+// === 屏切换 ===
+function showScreen(name) {
+  document.querySelectorAll('[data-screen-panel]').forEach(el => el.hidden = true);
+  const target = document.querySelector(`[data-screen-panel="${name}"]`);
+  if (target) target.hidden = false;
+  document.querySelectorAll('#screenTabs .tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.screen === name);
+  });
+  STATE.currentScreen = name;
+  window.scrollTo(0, 0);
+
+  // 切到 yaml 屏时重新渲染
+  if (name === 'yaml') renderYaml();
+}
+
+// tab 绑定
+document.querySelectorAll('#screenTabs .tab').forEach(tab => {
+  tab.addEventListener('click', () => showScreen(tab.dataset.screen));
+});
+
+// === 主题切换 ===
+document.querySelectorAll('#themeToggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', btn.dataset.theme);
+    document.querySelectorAll('#themeToggle button').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
+// === 维度折叠 ===
+function toggleDim(header) {
+  const section = header.closest('.dim-section');
+  section.classList.toggle('open');
+}
+
+// === 滑块联动 ===
+function syncSlider(input) {
+  const varName = input.dataset.styleVar;
+  const divisor = input.dataset.divisor ? parseFloat(input.dataset.divisor) : 1;
+  const isPct = input.dataset.pct === 'true';
+  const val = parseFloat(input.value) / divisor;
+
+  // 更新右侧数值
+  const valEl = document.getElementById(`val-${varName}`);
+  if (valEl) {
+    if (isPct) valEl.textContent = Math.round(val * 100) + '%';
+    else if (divisor === 1 && input.max == 100) valEl.textContent = Math.round(val) + ' / 100';
+    else valEl.textContent = val.toFixed(1);
+  }
+
+  // 联动右侧"风格画像"
+  updateStyleBar(varName, val);
+  markDirty();
+}
+
+function updateStyleBar(varName, val) {
+  // 把 slider 0-1 映射到 1-5 个 dot
+  const barMap = {
+    'tone': 'tone',
+    'temperature': 'stance',     // 创造性 → 锐度
+    'shortRatio': 'shortRatio',  // 短句比 → 句长
+  };
+  const barKey = barMap[varName];
+  if (!barKey) return;
+
+  const bar = document.querySelector(`[data-bar="${barKey}"]`);
+  if (!bar) return;
+  const dots = bar.querySelectorAll('.style-dot');
+  const filled = Math.round(val * 5);
+  dots.forEach((d, i) => {
+    d.classList.toggle('on', i < filled);
+  });
+  const display = bar.nextElementSibling;
+  if (display && display.hasAttribute('data-val-display')) {
+    display.textContent = `${filled}/5`;
+  }
+  bar.dataset.val = filled;
+}
+
+// === Chip 选中 ===
+document.querySelectorAll('.chip-group').forEach(group => {
+  group.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip || chip.classList.contains('chip-disabled')) return;
+    const isMulti = group.dataset.multi === 'true';
+    if (isMulti) {
+      chip.classList.toggle('active');
+    } else {
+      group.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    }
+    markDirty();
+  });
+});
+
+// === 标记修改 ===
+function markDirty() {
+  STATE.dirty = true;
+  const saveBtn = document.getElementById('saveBtn');
+  const dirtyState = document.getElementById('dirty-state');
+  if (saveBtn) saveBtn.disabled = false;
+  if (dirtyState) {
+    dirtyState.textContent = '● 未保存的修改';
+    dirtyState.style.color = 'var(--accent)';
+  }
+}
+
+// === 模态 ===
+function openModal(type) {
+  const id = type === 'import' ? 'modal-import' : 'modal-export';
+  document.getElementById(id).classList.remove('hidden');
+  STATE.activeModal = type;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
+  document.body.style.overflow = '';
+  STATE.activeModal = null;
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeModal();
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && STATE.activeModal) closeModal();
+});
+
+// === 打开编辑器 ===
+function openEditor(presetId) {
+  STATE.currentEditor = presetId;
+  const titleMap = {
+    'vincent-standard': 'Vincent 标准版',
+    'client-comm': '客户沟通版',
+    'academic': '学术严谨版',
+    'new': '自定义预设 1',
+  };
+  const titleEl = document.getElementById('editor-title');
+  if (titleEl) titleEl.innerHTML = (titleMap[presetId] || '自定义预设') + ' <span class="text-sm text-3 fw-400">✏️</span>';
+  showScreen('editor');
+}
+
+// === YAML 渲染（语法高亮）===
+function renderYaml() {
+  const data = {
+    name: 'Vincent 标准版',
+    outputType: 'article_full',
+    forkedFrom: null,
+    updatedAt: '2026-06-20 14:32',
+    description: '专业顾问的对外发声 · 公众号长文 · 偏观点输出',
+    dimensions: {
+      style: {
+        tone: '专业但有温度',
+        toneVal: 70,
+        stance: '顾问式建议',
+        persona: '资深独立顾问',
+        viewpoint: '第二人称为主',
+        termDensity: '中等',
+        temperature: 0.6,
+      },
+      sentence: {
+        rhythm: '长短交替',
+        shortRatio: 0.4,
+        paragraphLength: 120,
+        rhetoric: ['类比', '反问'],
+      },
+      structure: {
+        headingStyle: '数字+提问',
+        corePosition: '首段',
+        argumentPattern: '总分总',
+        sectionCount: 5,
+        ending: '行动呼吁',
+      },
+      length: {
+        targetWords: 2500,
+        sectionCount: 5,
+        perSectionWords: 500,
+        variants: 1,
+        keyQuotes: 3,
+      },
+      quality: {
+        citationLimit: 5,
+        bannedWords: ['赋能', '抓手', '闭环', '对齐', '打通', '颗粒度', '底层逻辑'],
+        dataFidelity: '严格',
+        aiTasteCheck: true,
+        fewShotRefs: ['out_2026_04_12', 'out_2026_05_08'],
+      },
+    },
+    llmParams: {
+      model: 'deepseek-chat',
+      temperature: 0.6,
+      topP: 0.9,
+    },
+  };
+
+  const lines = [
+    { type: 'comment', text: '# 写作风格预设 · ' + data.name },
+    { type: 'comment', text: '# 上次更新: ' + data.updatedAt },
+    { type: 'blank' },
+    { type: 'kv', key: 'name', value: data.name, valueType: 'string' },
+    { type: 'kv', key: 'outputType', value: data.outputType, valueType: 'string' },
+    { type: 'kv', key: 'forkedFrom', value: data.forkedFrom, valueType: 'null' },
+    { type: 'kv', key: 'updatedAt', value: data.updatedAt, valueType: 'string' },
+    { type: 'kv', key: 'description', value: data.description, valueType: 'string' },
+    { type: 'blank' },
+    { type: 'key', text: 'dimensions:' },
+    { type: 'sub-key', text: 'style:' },
+    { type: 'kv-sub', key: 'tone', value: data.dimensions.style.tone, comment: '# 温度 ' + data.dimensions.style.toneVal },
+    { type: 'kv-sub', key: 'stance', value: data.dimensions.style.stance },
+    { type: 'kv-sub', key: 'persona', value: data.dimensions.style.persona },
+    { type: 'kv-sub', key: 'viewpoint', value: data.dimensions.style.viewpoint },
+    { type: 'kv-sub', key: 'termDensity', value: data.dimensions.style.termDensity },
+    { type: 'kv-sub', key: 'temperature', value: data.dimensions.style.temperature, valueType: 'number' },
+    { type: 'blank' },
+    { type: 'sub-key', text: 'sentence:' },
+    { type: 'kv-sub', key: 'rhythm', value: data.dimensions.sentence.rhythm },
+    { type: 'kv-sub', key: 'shortRatio', value: data.dimensions.sentence.shortRatio, valueType: 'number', comment: '# 40%' },
+    { type: 'kv-sub', key: 'paragraphLength', value: data.dimensions.sentence.paragraphLength, valueType: 'number', comment: '# 字' },
+    { type: 'kv-list', key: 'rhetoric', items: data.dimensions.sentence.rhetoric },
+    { type: 'blank' },
+    { type: 'sub-key', text: 'structure:' },
+    { type: 'kv-sub', key: 'headingStyle', value: data.dimensions.structure.headingStyle },
+    { type: 'kv-sub', key: 'corePosition', value: data.dimensions.structure.corePosition },
+    { type: 'kv-sub', key: 'argumentPattern', value: data.dimensions.structure.argumentPattern },
+    { type: 'kv-sub', key: 'sectionCount', value: data.dimensions.structure.sectionCount, valueType: 'number' },
+    { type: 'kv-sub', key: 'ending', value: data.dimensions.structure.ending },
+    { type: 'blank' },
+    { type: 'sub-key', text: 'length:' },
+    { type: 'kv-sub', key: 'targetWords', value: data.dimensions.length.targetWords, valueType: 'number' },
+    { type: 'kv-sub', key: 'sectionCount', value: data.dimensions.length.sectionCount, valueType: 'number' },
+    { type: 'kv-sub', key: 'perSectionWords', value: data.dimensions.length.perSectionWords, valueType: 'number' },
+    { type: 'kv-sub', key: 'variants', value: data.dimensions.length.variants, valueType: 'number' },
+    { type: 'kv-sub', key: 'keyQuotes', value: data.dimensions.length.keyQuotes, valueType: 'number' },
+    { type: 'blank' },
+    { type: 'sub-key', text: 'quality:' },
+    { type: 'kv-sub', key: 'citationLimit', value: data.dimensions.quality.citationLimit, valueType: 'number' },
+    { type: 'kv-list', key: 'bannedWords', items: data.dimensions.quality.bannedWords },
+    { type: 'kv-sub', key: 'dataFidelity', value: data.dimensions.quality.dataFidelity },
+    { type: 'kv-sub', key: 'aiTasteCheck', value: data.dimensions.quality.aiTasteCheck, valueType: 'bool' },
+    { type: 'kv-list', key: 'fewShotRefs', items: data.dimensions.quality.fewShotRefs, itemType: 'string' },
+    { type: 'blank' },
+    { type: 'key', text: 'llmParams:' },
+    { type: 'kv-sub', key: 'model', value: data.llmParams.model, valueType: 'string' },
+    { type: 'kv-sub', key: 'temperature', value: data.llmParams.temperature, valueType: 'number' },
+    { type: 'kv-sub', key: 'topP', value: data.llmParams.topP, valueType: 'number' },
+  ];
+
+  const html = lines.map((line, i) => {
+    const lineNo = (i + 1).toString().padStart(2, ' ');
+    let content = '';
+    if (line.type === 'blank') {
+      content = '&nbsp;';
+    } else if (line.type === 'comment') {
+      content = `<span class="yaml-comment">${escapeHtml(line.text)}</span>`;
+    } else if (line.type === 'key') {
+      content = `<span class="yaml-key">${escapeHtml(line.text)}</span>`;
+    } else if (line.type === 'sub-key') {
+      content = `<span class="yaml-key">${escapeHtml(line.text)}</span>`;
+    } else if (line.type === 'kv') {
+      content = `<span class="yaml-key">${escapeHtml(line.key)}</span>: <span class="${valueClass(line.valueType)}">${formatValue(line.value, line.valueType)}</span>`;
+    } else if (line.type === 'kv-sub') {
+      const indent = '  ';
+      const valStr = formatValue(line.value, line.valueType);
+      const comment = line.comment ? ` <span class="yaml-comment">${escapeHtml(line.comment)}</span>` : '';
+      content = `${indent}<span class="yaml-key">${escapeHtml(line.key)}</span>: <span class="${valueClass(line.valueType)}">${valStr}</span>${comment}`;
+    } else if (line.type === 'kv-list') {
+      const indent = '  ';
+      const items = line.items.map((item, idx) => {
+        const sep = idx === 0 ? '' : '  ';
+        const sepHtml = idx === 0 ? '' : '<span class="yaml-bracket">,</span> ';
+        return `${sep}<span class="${valueClass(line.itemType || 'string')}">${formatValue(item, line.itemType || 'string')}</span>`;
+      }).join('');
+      const indent2 = '    ';
+      const fullList = `${indent}<span class="yaml-key">${escapeHtml(line.key)}</span>: <span class="yaml-bracket">[</span>\n${indent2}${items}\n${indent}<span class="yaml-bracket">]</span>`;
+      return `<div class="yaml-line"><span class="yaml-line-no">${lineNo}</span><span class="yaml-line-content">${fullList}</span></div>`;
+    }
+    return `<div class="yaml-line"><span class="yaml-line-no">${lineNo}</span><span class="yaml-line-content">${content}</span></div>`;
+  }).join('');
+
+  document.getElementById('yamlBody').innerHTML = html;
+}
+
+function formatValue(value, type) {
+  if (value === null) return '<span class="yaml-null">null</span>';
+  if (type === 'string') return `<span class="yaml-string">"${escapeHtml(value)}"</span>`;
+  if (type === 'number') return `<span class="yaml-number">${value}</span>`;
+  if (type === 'bool') return `<span class="yaml-bool">${value}</span>`;
+  return escapeHtml(value);
+}
+
+function valueClass(type) {
+  if (type === 'string') return 'yaml-string';
+  if (type === 'number') return 'yaml-number';
+  if (type === 'bool') return 'yaml-bool';
+  if (type === 'null') return 'yaml-null';
+  return '';
+}
+
+function escapeHtml(s) {
+  if (typeof s !== 'string') return s;
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// === 初始化 ===
+showScreen('list');
+</script>
+
+</body>
+</html>

@@ -98,7 +98,7 @@ export const outputs = sqliteTable('outputs', {
   id: text('id').primaryKey(),
   assetIdsJson: text('asset_ids_json').notNull(), // JSON 数组
   outputType: text('output_type', {
-    enum: ['talk_script', 'article_outline', 'writing'],
+    enum: ['talk_script', 'article_outline', 'article_full', 'writing', 'speech', 'book_note', 'email'],
   }).notNull(),
   title: text('title').notNull(),
   content: text('content').notNull(), // 完整内容

@@ -556,7 +556,7 @@ function MultiOutputModal({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const [outputType, setOutputType] = useState<'talk_script' | 'article_outline'>('article_outline');
+  const [outputType, setOutputType] = useState<'talk_script' | 'article_outline' | 'article_full'>('article_outline');
   const [audience, setAudience] = useState('');
   const [context, setContext] = useState('');
   const [busy, setBusy] = useState(false);
@@ -649,18 +649,66 @@ function MultiOutputModal({
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>
                 输出类型
               </label>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button
+                  onClick={() => setOutputType('article_full')}
+                  className={outputType === 'article_full' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>联合完整文章（3-5 张最合适）</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    1500-2500 字 · Vincent 直接可发 · 公众号长文
+                  </div>
+                </button>
                 <button
                   onClick={() => setOutputType('article_outline')}
                   className={outputType === 'article_outline' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
                 >
-                  联合文章大纲（3-5 张最合适）
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>联合文章大纲（3-5 张最合适）</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    5 段骨架 + 钩子 + 收尾，写作前先看大纲
+                  </div>
                 </button>
                 <button
                   onClick={() => setOutputType('talk_script')}
                   className={outputType === 'talk_script' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
                 >
-                  客户沟通话术（2-3 张最合适）
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>客户沟通话术（2-3 张最合适）</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    500-800 字 · 3-5 分钟 · 客户现场开口用
+                  </div>
+                </button>
+                <button
+                  onClick={() => setOutputType('speech')}
+                  className={outputType === 'speech' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>演讲稿（3-5 张最合适）🆕</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    3000-5000 字口语化 · 15-25 分钟 · 客户分享会/行业大会
+                  </div>
+                </button>
+                <button
+                  onClick={() => setOutputType('book_note')}
+                  className={outputType === 'book_note' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>读书笔记（2-3 张最合适）🆕</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    1000-1500 字 · 作者原话 + 你的延展 · 卡片化资产
+                  </div>
+                </button>
+                <button
+                  onClick={() => setOutputType('email')}
+                  className={outputType === 'email' ? 'btn btn-primary' : 'btn'}
+                  style={{ textAlign: 'left', padding: '10px 14px' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>邮件（2-3 张最合适）🆕</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                    500-1000 字 · 3 段结构 + 明确 CTA · 客户沟通/项目汇报
+                  </div>
                 </button>
               </div>
             </div>
@@ -777,16 +825,26 @@ function ResultView({ result, assets }: { result: any; assets: AssetItem[] }) {
 
       {/* 主版本 */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 8, letterSpacing: '0.05em' }}>
-          主版本
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.05em' }}>
+            主版本
+          </div>
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              navigator.clipboard.writeText(data.primary_version);
+              // 不阻塞弹 toast
+              setTimeout(() => {
+                const ev = new CustomEvent('toast-success', { detail: '已复制全文' });
+                window.dispatchEvent(ev);
+              }, 0);
+            }}
+            style={{ fontSize: 11, padding: '3px 10px' }}
+          >
+            复制全文
+          </button>
         </div>
-        <pre style={{
-          margin: 0, padding: 16, background: 'var(--bg-subtle)',
-          borderRadius: 6, fontSize: 13, lineHeight: 1.7, color: 'var(--text)',
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
-        }}>
-          {data.primary_version}
-        </pre>
+        <RenderedContent content={data.primary_version} />
       </div>
 
       {/* 变体 */}
@@ -828,6 +886,116 @@ function ResultView({ result, assets }: { result: any; assets: AssetItem[] }) {
           <strong style={{ color: 'var(--primary)' }}>使用建议：</strong> {data.usage_suggestion}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 轻量 markdown 渲染（不引第三方库）
+ * 支持：
+ *   - ## 二级标题
+ *   - **xxx** 加粗
+ *   - > 引用块
+ *   - [来源: 卡N] 来源标注（蓝色小标）
+ */
+function RenderedContent({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  function renderInline(text: string, key: string): React.ReactNode {
+    // 处理加粗 + 来源标注
+    const parts: React.ReactNode[] = [];
+    let remaining = text;
+    let partKey = 0;
+
+    while (remaining.length > 0) {
+      // 优先匹配 [来源: ...]
+      const sourceMatch = remaining.match(/\[来源:[^\]]+\]/);
+      // 然后匹配 **xxx**
+      const boldMatch = remaining.match(/\*\*[^*]+\*\*/);
+
+      let firstMatch: { idx: number; len: number; type: 'source' | 'bold'; text: string } | null = null;
+      if (sourceMatch && sourceMatch.index !== undefined) {
+        firstMatch = { idx: sourceMatch.index, len: sourceMatch[0].length, type: 'source', text: sourceMatch[0] };
+      }
+      if (boldMatch && boldMatch.index !== undefined) {
+        if (!firstMatch || boldMatch.index < firstMatch.idx) {
+          firstMatch = { idx: boldMatch.index, len: boldMatch[0].length, type: 'bold', text: boldMatch[0] };
+        }
+      }
+
+      if (!firstMatch) {
+        parts.push(remaining);
+        break;
+      }
+
+      if (firstMatch.idx > 0) {
+        parts.push(remaining.slice(0, firstMatch.idx));
+      }
+
+      if (firstMatch.type === 'source') {
+        parts.push(
+          <span key={`${key}-s${partKey++}`} style={{
+            fontSize: 10, color: 'var(--primary)', fontWeight: 600,
+            background: 'var(--primary-soft)', padding: '1px 5px',
+            borderRadius: 3, marginLeft: 4, verticalAlign: 'middle',
+          }}>
+            {firstMatch.text}
+          </span>
+        );
+      } else {
+        parts.push(<strong key={`${key}-b${partKey++}`}>{firstMatch.text.slice(2, -2)}</strong>);
+      }
+
+      remaining = remaining.slice(firstMatch.idx + firstMatch.len);
+    }
+
+    return <span key={key}>{parts}</span>;
+  }
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('## ')) {
+      elements.push(
+        <h3 key={i} style={{
+          fontSize: 17, fontWeight: 600, color: 'var(--ink)',
+          margin: '20px 0 10px', paddingBottom: 6,
+          borderBottom: '1px solid var(--line-soft)',
+        }}>
+          {renderInline(trimmed.slice(3), `h${i}`)}
+        </h3>
+      );
+    } else if (trimmed.startsWith('> ')) {
+      elements.push(
+        <div key={i} style={{
+          padding: '10px 14px', margin: '8px 0',
+          background: 'var(--bg-subtle)', borderLeft: '3px solid var(--primary)',
+          fontStyle: 'italic', color: 'var(--text)', fontSize: 13, lineHeight: 1.7,
+        }}>
+          {renderInline(trimmed.slice(2), `q${i}`)}
+        </div>
+      );
+    } else if (trimmed.length === 0) {
+      // 空行：跳过（保持自然间距）
+    } else {
+      elements.push(
+        <p key={i} style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--text)', lineHeight: 1.85 }}>
+          {renderInline(trimmed, `p${i}`)}
+        </p>
+      );
+    }
+    i += 1;
+  }
+
+  return (
+    <div style={{
+      padding: 18, background: 'var(--bg-subtle)',
+      borderRadius: 6, border: '1px solid var(--line-soft)',
+    }}>
+      {elements}
     </div>
   );
 }

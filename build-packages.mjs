@@ -27,6 +27,7 @@ const nestedEntries = {
 const sharedExternals = [
   'next', 'react', 'react-dom', 'next/server',
   'drizzle-orm', 'better-sqlite3', '@insight-os/*',
+  'yaml', 'zod',
   'fs', 'path', 'crypto', 'os', 'util', 'stream', 'http', 'https', 'url',
 ];
 

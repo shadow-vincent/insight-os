@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useTheme } from '@/components/ThemeProvider';
 
 interface SanitizedConfig {
@@ -13,6 +14,9 @@ interface SanitizedConfig {
   };
   paths: {
     vaultPath: string;
+  };
+  writing?: {
+    activePreset: string;
   };
   lastUpdated: number;
 }
@@ -117,8 +121,23 @@ export default function SettingsPage() {
     <div style={{ maxWidth: 720 }}>
       <div style={{ marginBottom: 24 }}>
         <h1 className="page-title">设置</h1>
-        <p className="page-subtitle">主题外观 · LLM 接入 · 资产库路径</p>
+        <p className="page-subtitle">主题外观 · LLM 接入 · 资产库路径 · 写作风格</p>
       </div>
+
+      {/* 写作风格配置入口 */}
+      <Link href="/settings/writing" className="card card-hover" style={{ display: 'block', marginBottom: 16, padding: 18, textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>✎</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>写作风格配置</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              当前激活: <strong style={{ color: 'var(--primary)' }}>{config?.writing?.activePreset ?? 'vincent-standard'}</strong>
+              {' · '}3 套 ship-ready 预设 · 自定义 5 维度
+            </div>
+          </div>
+          <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+        </div>
+      </Link>
 
       {/* 主题切换 */}
       <div className="card" style={{ padding: 28, marginBottom: 16 }}>
