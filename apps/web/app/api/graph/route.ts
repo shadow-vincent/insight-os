@@ -22,6 +22,32 @@ import { ne, eq } from 'drizzle-orm';
 // 注意：节点颜色由前端根据系统主题计算（深色用 dark palette，浅色用 light palette）
 // 旧代码 hardcode 了 dark palette 在这里，已删除 — 现在 GraphNode 不再带 color 字段
 
+// 12 色主题映射（按 topic name hash 分配，确保同一主题总是同一颜色）
+const TOPIC_PALETTE = [
+  '#f472b6', // 粉 - AI 落地
+  '#60a5fa', // 蓝 - 组织
+  '#34d399', // 绿 - 管理
+  '#fbbf24', // 金 - 战略
+  '#a78bfa', // 紫 - 思维
+  '#fb923c', // 橙 - 判断力
+  '#22d3ee', // 青 - 数字化
+  '#f87171', // 红 - 变革
+  '#c084fc', // 浅紫 - 哲学
+  '#4ade80', // 浅绿 - 决策
+  '#fde047', // 黄 - 价值
+  '#94a3b8', // 灰 - 通用
+];
+
+/** 主题名 -> 颜色 hex（稳定 hash，同名同色） */
+function topicColor(name: string | undefined | null): string {
+  if (!name) return TOPIC_PALETTE[11]; // 灰 fallback
+  let h = 0;
+  for (let i = 0; i < name.length; i++) {
+    h = ((h << 5) - h + name.charCodeAt(i)) | 0;
+  }
+  return TOPIC_PALETTE[Math.abs(h) % TOPIC_PALETTE.length];
+}
+
 export async function GET() {
   try {
     const db = getDb();
@@ -77,6 +103,8 @@ export async function GET() {
         feedbackCount: a.feedbackCount ?? 0,
         topicCount: topics.length,
         topicNames: topics.map(t => t.topicName),
+        primaryTopic: topics[0]?.topicName ?? null,
+        color: topicColor(topics[0]?.topicName),  // v2: 主主题色（深色背景上的亮色）
         relatedIds,                     // v0.6 血脉图用：直接传 ID 列表
         relatedCount,
         oneSentenceInsight: a.oneSentenceInsight ?? null,
