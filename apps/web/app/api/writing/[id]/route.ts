@@ -21,11 +21,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
     const row = rows[0];
 
-    // 解析 scaffoldJson（如果存在）
+    // 解析 scaffold（3 个 fallback 顺序）
+    // 1. scaffoldJson 列（新 API /api/writing/scaffold 写入）
+    // 2. content 列（老 API /api/output/scaffold 直接 JSON.stringify 写入 — 历史数据全在这）
+    // 3. 都没有 → null（显示空状态）
     let scaffold = null;
-    if (row.scaffoldJson) {
+    const scaffoldRaw = (row as any).scaffoldJson ?? (row as any).scaffold_json ?? null;
+    if (scaffoldRaw) {
       try {
-        scaffold = JSON.parse(row.scaffoldJson);
+        scaffold = JSON.parse(scaffoldRaw);
+      } catch { /* ignore */ }
+    }
+    if (!scaffold && row.content) {
+      // 老 schema 直接把 scaffold JSON 写到 content 列
+      try {
+        const parsed = JSON.parse(row.content);
+        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.sections)) {
+          scaffold = parsed;
+        }
       } catch { /* ignore */ }
     }
 
