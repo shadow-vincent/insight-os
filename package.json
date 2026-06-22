@@ -19,11 +19,13 @@
     "index": "node scripts/index-assets.mjs",
     "index:watch": "node scripts/index-assets.mjs --watch",
     "build:packages": "node build-packages.mjs",
-    "build:desktop": "cd apps/desktop && npx electron-builder --mac",
-    "build:desktop:dir": "cd apps/desktop && npx electron-builder --mac --dir",
+    "build:desktop": "npm run rebuild:native && npm run build && npm run build:packages && cd apps/desktop && npx electron-builder --mac",
+    "build:desktop:dir": "npm run rebuild:native && npm run build && npm run build:packages && cd apps/desktop && npx electron-builder --mac --dir",
     "rebuild:native": "cd apps/web && npx electron-rebuild -f -w better-sqlite3 -v 32.2.5"
   },
   "dependencies": {
+    "d3-force": "^3.0.0",
+    "d3-quadtree": "^3.0.1",
     "playwright": "^1.61.0"
   },
   "devDependencies": {

@@ -2,11 +2,12 @@
 // 流程：app.whenReady() → 设 userData env → 启动 next start 子进程 → 等 3000 ready → BrowserWindow 加载 3000
 // 退出：kill next start
 
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog } = require('electron');
 const { spawn } = require('child_process');
 const net = require('net');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 
 const PORT = 3000;
 const isDev = process.argv.includes('--dev');
@@ -34,6 +35,31 @@ function waitForPort(port, timeoutMs = 30000) {
     function retry() {
       if (Date.now() - start > timeoutMs) return reject(new Error('next start timeout'));
       setTimeout(attempt, 250);
+    }
+    attempt();
+  });
+}
+
+/**
+ * 验证 next-server 真在响应（不止 LISTEN，要 HTTP 200）
+ * 修 V1.2.0 bug：之前只 waitForPort 端口 LISTEN 就过，但 next SSR 失败时端口也是 LISTEN
+ * 结果 BrowserWindow 加载到 500 error page → 用户看到"黑屏"
+ */
+function waitForHttpOk(port, timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    function attempt() {
+      const req = http.get({ hostname: '127.0.0.1', port, path: '/api/health', timeout: 2000 }, (res) => {
+        // 任何非 5xx 都算 OK（/api/health 不存在时 next 会回 404，但 next 自身在响应）
+        if (res.statusCode < 500) return resolve();
+        retry();
+      });
+      req.on('error', () => retry());
+      req.on('timeout', () => { req.destroy(); retry(); });
+    }
+    function retry() {
+      if (Date.now() - start > timeoutMs) return reject(new Error('next http response timeout'));
+      setTimeout(attempt, 300);
     }
     attempt();
   });
@@ -84,7 +110,8 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'Insight OS',
-    backgroundColor: '#0a0e1a',
+    // 跟 app shell 浅色一致，避免加载失败时显示深色"洞穴"
+    backgroundColor: '#f7f9fc',
     titleBarStyle: 'hiddenInset',
     webPreferences: {
       contextIsolation: true,
@@ -178,9 +205,21 @@ app.whenReady().then(async () => {
   try {
     setupUserDataDir();
     await startNextServer();
+    // 修 V1.2.0 bug：waitForPort 只检测端口 LISTEN，但 better-sqlite3 ABI 不匹配时
+    // next-server 进程能 listen 端口 + 接受 TCP，但 SSR 渲染直接 500
+    // → 浏览器看到 error page + 用户感受"黑屏"
+    // 加 HTTP 探测：确保 next 真能返回非 5xx 才打开 window
+    await waitForHttpOk(PORT);
     createWindow();
   } catch (err) {
     console.error('[main] failed to start:', err);
+    // 修 V1.2.0 bug：之前 catch err 直接 app.quit()，用户看不到任何错误
+    // 现在弹错误对话框，告诉他哪里出问题了
+    const message = (err && err.message) || String(err);
+    dialog.showErrorBox(
+      'Insight OS 启动失败',
+      `无法启动 next 服务（端口 ${PORT}）。\n\n错误：${message}\n\n常见原因：\n1. better-sqlite3 native module ABI 不匹配（请跑 npm run rebuild:native）\n2. 端口 ${PORT} 被其他应用占用\n3. Web 资源未正确打包（web-pkg/.next 缺失）`
+    );
     app.quit();
   }
 });
