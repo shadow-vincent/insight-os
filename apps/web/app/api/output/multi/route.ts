@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets, outputs } from '@insight-os/db';
+import { getDb, assets, outputs, getActiveKernelsForInjection } from '@insight-os/db';
 import { eq, inArray } from 'drizzle-orm';
 import {
   callLLM,
@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
     const variantCount = Math.min(Math.max(parseInt(String(variants ?? 1)) || 1, 1), 3);  // 限制 1-3
     if (variantCount === 1) {
       // 单个版本（保持原行为）
+      const kernel = getActiveKernelsForInjection();
       const result = await callLLM<CompositeOutputOutput>(
         COMPOSITE_OUTPUT_SYSTEM,
         userPromptWithFewShot,
@@ -186,6 +187,7 @@ export async function POST(req: NextRequest) {
           temperature: presetTemp ?? defaultTemp,
           topP: presetTopP,
           maxTokens: defaultMaxTokens,
+          kernel,
         }
       );
       var llmResult = result;  // 单个转成数组

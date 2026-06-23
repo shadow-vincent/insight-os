@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets, outputs } from '@insight-os/db';
+import { getDb, assets, outputs, getActiveKernelsForInjection } from '@insight-os/db';
 import { eq } from 'drizzle-orm';
 import { callLLM, buildOutputGenerateUserPrompt, OUTPUT_GENERATE_SYSTEM, type OutputGenerateInput, type OutputGenerateOutput, type OutputType } from '@insight-os/llm';
 import { isLLMConfigured, readConfig } from '@insight-os/core';
@@ -82,10 +82,12 @@ export async function POST(req: NextRequest) {
 
     // 调 LLM
     const userPrompt = buildOutputGenerateUserPrompt(llmInput);
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<OutputGenerateOutput>(
       OUTPUT_GENERATE_SYSTEM,
       userPrompt,
-      { temperature: 0.7, maxTokens: 2000 }
+      { temperature: 0.7, maxTokens: 2000 ,
+      kernel,}
     );
 
     if (!result.ok || !result.data) {

@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets } from '@insight-os/db';
+import { getDb, assets, getActiveKernelsForInjection } from '@insight-os/db';
 import { eq } from 'drizzle-orm';
 import {
   buildAssetUpgradeUserPrompt,
@@ -90,10 +90,12 @@ export async function POST(
       keywords: tags,
     });
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<AssetUpgradeOutput>(
       ASSET_UPGRADE_SYSTEM,
       userPrompt,
-      { temperature: 0.5, maxTokens: 8000 }
+      { temperature: 0.5, maxTokens: 8000 ,
+      kernel,}
     );
 
     if (!result.ok || !result.data) {

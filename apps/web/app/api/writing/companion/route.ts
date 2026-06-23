@@ -18,7 +18,7 @@
 
 import { NextRequest } from 'next/server';
 import { eq, ne, and, desc, inArray } from 'drizzle-orm';
-import { getDb, outputs, assets } from '@insight-os/db';
+import { getDb, outputs, assets, getActiveKernelsForInjection } from '@insight-os/db';
 import { isLLMConfigured } from '@insight-os/core';
 import { callLLM } from '@insight-os/llm';
 import {
@@ -126,10 +126,12 @@ export async function POST(req: NextRequest) {
       cards,
       recentOutputs,
     });
+    const kernel = getActiveKernelsForInjection();
     const res = await callLLM<CompanionResponse>(WRITING_COMPANION_SYSTEM, userPrompt, {
       jsonMode: true,
       temperature: 0.6,
       maxTokens: 800,
+      kernel,
     });
     if (!res.ok || !res.data) {
       return Response.json({ ok: false, error: `LLM 陪练失败：${res.error ?? '未知错误'}` }, { status: 500 });

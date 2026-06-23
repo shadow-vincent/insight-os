@@ -14,6 +14,7 @@
  *   5. 返回结果（不存 outputs 表，试写是临时预览）
  */
 
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   callLLM,
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
     const defaultMaxTokens = isSpeech ? 6000 : isFullArticle ? 5000 : 3500;
     const defaultTemp = isSpeech ? 0.7 : isFullArticle ? 0.75 : 0.7;
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<CompositeOutputOutput>(
       COMPOSITE_OUTPUT_SYSTEM,
       userPromptWithDims,
@@ -97,6 +99,7 @@ export async function POST(req: NextRequest) {
         temperature: config?.llmParams?.temperature ?? defaultTemp,
         topP: config?.llmParams?.topP,
         maxTokens: defaultMaxTokens,
+      kernel,
       }
     );
 

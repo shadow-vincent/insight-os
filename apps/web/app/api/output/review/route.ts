@@ -16,6 +16,7 @@
  * Response: { ok, suggestion: string, reasoning: string }
  */
 
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { callLLM, serializeDimensions } from '@insight-os/llm';
 import { isLLMConfigured, readPreset } from '@insight-os/core';
@@ -71,6 +72,7 @@ ${dimensionsBlock ? `${dimensionsBlock}\n` : ''}
 
 请按 JSON 格式输出改写建议。`;
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<{
       suggestion: string;
       reasoning: string;
@@ -78,6 +80,7 @@ ${dimensionsBlock ? `${dimensionsBlock}\n` : ''}
       temperature: 0.6,
       maxTokens: 1500,
       jsonMode: true,
+      kernel,
     });
 
     if (!result.ok || !result.data) {

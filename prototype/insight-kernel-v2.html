@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Insight Kernel v2 · 让 AI 带着你的判断方式工作</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --ink: #14171e;
+    --text: #3a4256;
+    --text-3: #7c7a72;
+    --line: #e4e2dc;
+    --line-soft: #eceae3;
+    --primary: #6366f1;
+    --primary-soft: #eef2ff;
+    --accent: #10b981;
+    --warning: #f59e0b;
+    --danger: #f43f5e;
+    --belief: #6366f1;
+    --contrarian: #f43f5e;
+    --expertise: #10b981;
+    --challenge: #f59e0b;
+    --counter: #ef4444;
+    --evidence: #8b5cf6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .topnav {
+    background: white; border-bottom: 1px solid var(--line);
+    padding: 12px 32px; display: flex; align-items: center; gap: 24px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topnav-logo { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); }
+  .topnav-logo-dot {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .topnav-tabs { display: flex; gap: 4px; }
+  .topnav-tab { padding: 6px 14px; font-size: 13px; color: var(--text-3); border-radius: 6px; cursor: pointer; }
+  .topnav-tab.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
+  .topnav-spacer { flex: 1; }
+  .topnav-actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 8px 14px; border: 1px solid var(--line);
+    background: white; border-radius: 7px; font-family: inherit;
+    font-size: 13px; color: var(--ink); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--bg); border-color: var(--primary); color: var(--primary); }
+  .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+  .btn-primary:hover { background: #4f46e5; border-color: #4f46e5; color: white; }
+  .btn-warn { background: var(--warning); color: white; border-color: var(--warning); }
+  .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn svg { width: 14px; height: 14px; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 32px 80px; }
+  .section { margin-bottom: 56px; }
+  .section-eyebrow {
+    font-size: 11px; color: var(--primary); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif; font-size: 38px;
+    color: var(--ink); font-weight: 400; line-height: 1.2;
+    letter-spacing: -0.01em; margin-bottom: 12px;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif; font-size: 26px;
+    color: var(--ink); font-weight: 400; margin-bottom: 12px; letter-spacing: -0.005em;
+  }
+  h3 {
+    font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 8px;
+  }
+  .lead { font-size: 15px; color: var(--text-3); max-width: 760px; margin-bottom: 24px; }
+  .lead strong { color: var(--ink); }
+
+  /* ====== Toolbar ====== */
+  .toolbar {
+    display: flex; gap: 8px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;
+  }
+  .toolbar-spacer { flex: 1; }
+  .toolbar-stat {
+    font-size: 12px; color: var(--text-3);
+    padding: 6px 12px; background: var(--bg); border-radius: 6px;
+    display: flex; gap: 12px;
+  }
+  .toolbar-stat strong { color: var(--ink); font-weight: 600; }
+
+  /* ====== 4 类 Tab ====== */
+  .type-tabs {
+    display: flex; gap: 0; margin-bottom: 16px;
+    background: white; border: 1px solid var(--line); border-radius: 10px;
+    padding: 4px;
+  }
+  .type-tab {
+    flex: 1; padding: 10px 14px; border-radius: 7px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: all .15s;
+    font-size: 13px; color: var(--text);
+  }
+  .type-tab.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
+  .type-tab-icon { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .type-tab-count {
+    margin-left: auto; font-size: 11px;
+    padding: 2px 8px; background: var(--bg); border-radius: 10px;
+    color: var(--text-3);
+  }
+  .type-tab.active .type-tab-count { background: white; color: var(--primary); }
+
+  /* ====== 内核卡片（升级版：含 4 元字段 + 证据关联） ====== */
+  .kernel-list { display: flex; flex-direction: column; gap: 12px; }
+  .kernel-card {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; transition: all .2s;
+  }
+  .kernel-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+  .kernel-card-main {
+    padding: 18px 20px; display: flex; align-items: flex-start; gap: 14px;
+  }
+  .kernel-color-bar { width: 4px; align-self: stretch; border-radius: 2px; flex-shrink: 0; }
+  .kernel-color-bar.belief { background: var(--belief); }
+  .kernel-color-bar.contrarian { background: var(--contrarian); }
+  .kernel-color-bar.expertise { background: var(--expertise); }
+  .kernel-color-bar.challenge { background: var(--challenge); }
+
+  .kernel-content { flex: 1; min-width: 0; }
+  .kernel-content-text {
+    font-size: 14px; color: var(--ink); font-weight: 600; line-height: 1.5; margin-bottom: 6px;
+  }
+  .kernel-content-source { font-size: 11px; color: var(--text-3); margin-bottom: 10px; font-style: italic; }
+
+  /* 元字段行 */
+  .kernel-meta-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 768px) { .kernel-meta-grid { grid-template-columns: repeat(2, 1fr); } }
+  .kernel-meta {
+    padding: 8px 10px; background: var(--bg); border-radius: 6px;
+    font-size: 11px;
+  }
+  .kernel-meta-label {
+    color: var(--text-3); font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 3px; font-weight: 600;
+  }
+  .kernel-meta-value { color: var(--ink); font-weight: 500; font-size: 12px; }
+  .kernel-meta-value.kind-belief { color: var(--belief); }
+  .kernel-meta-value.kind-hypothesis { color: var(--warning); }
+  .kernel-meta-value.kind-experience { color: var(--expertise); }
+  .kernel-meta-value.kind-contrarian { color: var(--contrarian); }
+  .kernel-meta-value.conf-high { color: var(--accent); }
+  .kernel-meta-value.conf-mid { color: var(--warning); }
+  .kernel-meta-value.conf-low { color: var(--danger); }
+
+  /* 证据关联 + 反例 */
+  .kernel-detail-row {
+    display: flex; gap: 10px; margin-bottom: 12px;
+  }
+  .kernel-detail-col { flex: 1; }
+  .kernel-detail-label {
+    font-size: 10px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 4px; font-weight: 600;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .kernel-detail-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .kernel-evidence-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kernel-evidence-tag {
+    font-size: 10px; padding: 3px 8px; border-radius: 4px;
+    background: rgba(139,92,246,0.1); color: var(--evidence); font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* counter example 高亮 */
+  .counter-example {
+    padding: 8px 10px; background: rgba(244,63,94,0.06);
+    border-radius: 6px; border-left: 3px solid var(--counter);
+  }
+  .counter-example-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+
+  /* 卡片底部 actions */
+  .kernel-footer {
+    background: var(--bg); padding: 10px 20px;
+    display: flex; align-items: center; gap: 12px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .kernel-footer-stats { display: flex; gap: 12px; font-size: 11px; color: var(--text-3); }
+  .kernel-footer-stats strong { color: var(--ink); font-weight: 600; }
+  .kernel-footer-spacer { flex: 1; }
+  .kernel-footer-actions { display: flex; gap: 4px; }
+  .kernel-footer-actions button {
+    width: 26px; height: 26px; border: none; background: transparent;
+    color: var(--text-3); cursor: pointer; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .kernel-footer-actions button:hover { background: var(--line-soft); color: var(--ink); }
+  .kernel-footer-actions svg { width: 13px; height: 13px; }
+
+  /* ====== Weekly Reflection ====== */
+  .reflection-card {
+    background: linear-gradient(135deg, #fef3c7, var(--primary-soft));
+    border: 1px solid var(--warning); border-radius: 12px;
+    padding: 20px; margin-bottom: 24px;
+  }
+  .reflection-tag {
+    display: inline-block;
+    font-size: 10px; padding: 3px 8px; border-radius: 10px;
+    background: var(--warning); color: white;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .reflection-card h3 { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .reflection-card p { font-size: 13px; color: var(--text); margin-bottom: 12px; }
+  .reflection-suggestion {
+    background: white; border-radius: 8px; padding: 12px;
+    margin-bottom: 8px; border-left: 3px solid var(--primary);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .reflection-suggestion-text { flex: 1; font-size: 13px; color: var(--ink); }
+  .reflection-suggestion-text strong { display: block; margin-bottom: 4px; }
+  .reflection-suggestion-meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+  .reflection-suggestion-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .reflection-suggestion-actions button {
+    padding: 5px 12px; font-size: 11px; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--line); background: white; color: var(--ink);
+    font-family: inherit;
+  }
+  .reflection-suggestion-actions button.primary {
+    background: var(--primary); color: white; border-color: var(--primary);
+  }
+  .reflection-suggestion-actions button.danger {
+    background: var(--danger); color: white; border-color: var(--danger);
+  }
+
+  /* ====== 反向校准层 ====== */
+  .calibration-card {
+    background: white; border: 2px solid var(--warning); border-radius: 12px;
+    overflow: hidden; margin-bottom: 24px;
+  }
+  .calibration-header {
+    background: linear-gradient(135deg, #fef3c7, #fff7ed);
+    padding: 16px 20px; border-bottom: 1px solid var(--line-soft);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .calibration-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--warning); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .calibration-title { flex: 1; }
+  .calibration-title h3 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0 0 2px; }
+  .calibration-title p { font-size: 11px; color: var(--text-3); margin: 0; }
+  .calibration-trigger {
+    font-size: 10px; padding: 4px 10px; border-radius: 10px;
+    background: var(--warning); color: white; font-weight: 600;
+  }
+  .calibration-body { padding: 20px; }
+  .calibration-finding {
+    padding: 12px 14px; background: var(--bg);
+    border-radius: 8px; margin-bottom: 10px;
+    border-left: 3px solid;
+    font-size: 13px;
+  }
+  .calibration-finding.warn { border-left-color: var(--warning); }
+  .calibration-finding.danger { border-left-color: var(--danger); }
+  .calibration-finding.ok { border-left-color: var(--accent); }
+  .calibration-finding-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .calibration-finding-emoji { font-size: 14px; }
+  .calibration-finding-quote {
+    font-size: 12px; color: var(--text-3); padding: 6px 10px;
+    background: white; border-radius: 4px; margin: 6px 0;
+    border-left: 2px solid var(--line-soft);
+  }
+  .calibration-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .calibration-actions button {
+    font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--line); background: white; color: var(--ink);
+    font-family: inherit;
+  }
+  .calibration-actions button.primary {
+    background: var(--primary); color: white; border-color: var(--primary);
+  }
+
+  /* ====== 数据流图 ====== */
+  .flow-diagram {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    padding: 32px;
+  }
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .flow-node {
+    background: white; border: 2px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; min-width: 130px; text-align: center;
+  }
+  .flow-node strong { display: block; color: var(--ink); font-weight: 600; margin-bottom: 3px; font-size: 13px; }
+  .flow-node small { color: var(--text-3); font-size: 11px; }
+  .flow-node.kernel { background: linear-gradient(135deg, var(--primary-soft), #fef3c7); border-color: var(--primary); }
+  .flow-node.llm { background: linear-gradient(135deg, #d1fae5, var(--primary-soft)); border-color: var(--accent); }
+  .flow-arrow { color: var(--text-3); font-size: 18px; }
+
+  /* ====== 风险点对比表 ====== */
+  .risk-table {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; margin-bottom: 24px;
+  }
+  .risk-table-header {
+    background: var(--bg); padding: 14px 20px;
+    border-bottom: 1px solid var(--line-soft);
+    display: grid; grid-template-columns: 1fr 2fr 2fr;
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .risk-row {
+    padding: 14px 20px; border-bottom: 1px solid var(--line-soft);
+    display: grid; grid-template-columns: 1fr 2fr 2fr;
+    font-size: 13px; align-items: center;
+  }
+  .risk-row:last-child { border-bottom: none; }
+  .risk-name { font-weight: 600; color: var(--ink); }
+  .risk-prob { color: var(--danger); }
+  .risk-sol { color: var(--accent); }
+
+  /* ====== 对比输出 ====== */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 768px) { .compare { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden;
+  }
+  .compare-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--line-soft);
+    background: var(--bg); display: flex; align-items: center; gap: 8px;
+  }
+  .compare-card-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .compare-card-label.off { color: var(--text-3); }
+  .compare-card-label.on { color: var(--primary); }
+  .compare-card-badge {
+    margin-left: auto; font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  }
+  .compare-card-badge.off { background: var(--line-soft); color: var(--text-3); }
+  .compare-card-badge.on { background: var(--primary-soft); color: var(--primary); }
+  .compare-card-body { padding: 16px; font-size: 13px; line-height: 1.75; color: var(--ink); white-space: pre-wrap; }
+  .compare-card-body em { font-style: normal; font-weight: 600; }
+  .compare-card-body em.good { color: var(--primary); background: var(--primary-soft); padding: 0 3px; border-radius: 3px; }
+
+  /* ====== 信息横幅 ====== */
+  .info-banner {
+    background: var(--primary-soft); border: 1px solid var(--primary);
+    border-radius: 12px; padding: 20px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .info-banner-emoji { font-size: 32px; flex-shrink: 0; }
+  .info-banner-text { flex: 1; }
+  .info-banner-text strong { color: var(--ink); font-weight: 600; font-size: 15px; }
+  .info-banner-text p { font-size: 13px; color: var(--text); margin-top: 4px; }
+
+  /* ====== 字段说明 ====== */
+  .field-table {
+    width: 100%; border-collapse: collapse; margin-bottom: 24px;
+    background: white; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .field-table th {
+    background: var(--bg); padding: 12px 16px; text-align: left;
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .field-table td {
+    padding: 12px 16px; border-bottom: 1px solid var(--line-soft);
+    font-size: 13px; vertical-align: top;
+  }
+  .field-table tr:last-child td { border-bottom: none; }
+  .field-table code {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 2px 6px; background: var(--bg); border-radius: 4px;
+    color: var(--primary);
+  }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="topnav-logo">
+    <div class="topnav-logo-dot">I</div>
+    <span>Insight OS</span>
+  </div>
+  <div class="topnav-tabs">
+    <div class="topnav-tab">仪表盘</div>
+    <div class="topnav-tab">资产库</div>
+    <div class="topnav-tab">输出历史</div>
+    <div class="topnav-tab active">⚙ 设置 › Insight Kernel</div>
+  </div>
+  <div class="topnav-spacer"></div>
+  <div class="topnav-actions">
+    <button class="btn">搜索资产 ⌘K</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="section">
+    <div class="section-eyebrow">Settings › Insight Kernel</div>
+    <h1>Insight Kernel</h1>
+    <p class="lead">
+      让 AI 带着你的判断方式工作 —— 不是"记住你是谁"，是"AI 每次生成前，先加载你的判断协议"。<br>
+      <strong>3 个机制避免教条化</strong>：反向校准（自我审视）+ 证据关联（不脱离实际）+ 每周反思（持续进化）。
+    </p>
+  </div>
+
+  <!-- === 风险对照表 === -->
+  <div class="section">
+    <h2>🛡️ 3 大风险 & 对应机制</h2>
+    <div class="risk-table">
+      <div class="risk-table-header">
+        <div>风险</div>
+        <div>问题</div>
+        <div>机制</div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-name">1. 自我强化回音室</div>
+        <div class="risk-prob">AI 每次都读内核，越来越会替你证明你已经相信的东西</div>
+        <div class="risk-sol">⚡ 反向校准层：每次生成后 LLM 自我审视"是否过度套用？哪些反例被忽略？"</div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-name">2. 把信念当事实</div>
+        <div class="risk-prob">判断不是永恒真理，被教条化使用</div>
+        <div class="risk-sol">🛡️ 4 元字段：<code>kind</code> 区分确定性 + <code>counterExample</code> 强制反例 + <code>confidence</code> 量化置信度</div>
+      </div>
+      <div class="risk-row">
+        <div class="risk-name">3. 风格稳定 ≠ 判断正确</div>
+        <div class="risk-prob">AI 输出越来越像你，但未必越来越准</div>
+        <div class="risk-sol">📚 证据关联：每条内核挂 <code>evidenceAssetIds</code>，LLM 引用时必须引证据 · 反思：每周审视</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === 字段说明 === -->
+  <div class="section">
+    <h2>📋 数据模型 · 4 新字段（避免教条）</h2>
+    <table class="field-table">
+      <thead>
+        <tr>
+          <th>新字段</th>
+          <th>类型</th>
+          <th>作用</th>
+          <th>示例</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>kind</code></td>
+          <td>enum</td>
+          <td>区分"确定性"，避免教条</td>
+          <td>信念 / 假设 / 经验判断 / 反常识观点</td>
+        </tr>
+        <tr>
+          <td><code>scope</code></td>
+          <td>string</td>
+          <td>适用场景（什么情况下用）</td>
+          <td>"客户沟通 / 公众号 / 演讲"</td>
+        </tr>
+        <tr>
+          <td><code>counterExample</code></td>
+          <td>string</td>
+          <td>反例（什么时候这个判断不成立）</td>
+          <td>"小公司 AI 项目 → 技术确实是瓶颈"</td>
+        </tr>
+        <tr>
+          <td><code>confidence</code></td>
+          <td>number 0-1</td>
+          <td>置信度</td>
+          <td>0.85（高度自信） / 0.5（保留态度）</td>
+        </tr>
+        <tr>
+          <td><code>lastVerifiedAt</code></td>
+          <td>timestamp</td>
+          <td>最后验证时间（防止"过期判断"）</td>
+          <td>2026-06-15（3 个月前没验证 → 触发再评估）</td>
+        </tr>
+        <tr>
+          <td><code>evidenceAssetIds</code></td>
+          <td>string[] JSON</td>
+          <td>关联证据资产（不是独立 evidence 表）</td>
+          <td>["asset_xxx", "asset_yyy"]</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- === 工具栏 === -->
+  <div class="section">
+    <div class="toolbar">
+      <button class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新增内核
+      </button>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        导出 beliefs.md
+      </button>
+      <button class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        触发反思
+      </button>
+      <div class="toolbar-spacer"></div>
+      <div class="toolbar-stat">
+        共 <strong>11</strong> 条 · 引用 <strong>247</strong> · 验证 <strong>68</strong> · 反思建议 <strong style="color:var(--warning);">2</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- === 类型 Tab === -->
+  <div class="section">
+    <div class="type-tabs">
+      <div class="type-tab active">
+        <div class="type-tab-icon" style="background:var(--belief);"></div>
+        底层信念 <span class="type-tab-count">4</span>
+      </div>
+      <div class="type-tab">
+        <div class="type-tab-icon" style="background:var(--contrarian);"></div>
+        反常识判断 <span class="type-tab-count">3</span>
+      </div>
+      <div class="type-tab">
+        <div class="type-tab-icon" style="background:var(--expertise);"></div>
+        擅长问题域 <span class="type-tab-count">2</span>
+      </div>
+      <div class="type-tab">
+        <div class="type-tab-icon" style="background:var(--challenge);"></div>
+        想挑战的常识 <span class="type-tab-count">2</span>
+      </div>
+    </div>
+
+    <!-- 内核卡片列表（含 4 元字段 + 证据关联 + 反例） -->
+    <div class="kernel-list">
+
+      <!-- 内核 1 -->
+      <div class="kernel-card">
+        <div class="kernel-card-main">
+          <div class="kernel-color-bar contrarian"></div>
+          <div class="kernel-content">
+            <div class="kernel-content-text">AI 不会让所有人变强，只让强者更强</div>
+            <div class="kernel-content-source">来源：反主流"AI 平权"叙事 · 客户项目 50+ 验证</div>
+
+            <!-- 4 元字段 -->
+            <div class="kernel-meta-grid">
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Kind 确定性</div>
+                <div class="kernel-meta-value kind-contrarian">反常识观点</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Scope 适用</div>
+                <div class="kernel-meta-value">客户咨询 · 公众号</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Confidence</div>
+                <div class="kernel-meta-value conf-high">0.85 · 高</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Last Verified</div>
+                <div class="kernel-meta-value">7 天前</div>
+              </div>
+            </div>
+
+            <!-- 反例 + 证据 -->
+            <div class="kernel-detail-row">
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  反例（什么时候不成立）
+                </div>
+                <div class="counter-example">
+                  <div class="counter-example-text">小公司 / 创业团队 → 所有人都是"强者"，AI 确实让所有人变强</div>
+                </div>
+              </div>
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                  证据（关联 3 个资产）
+                </div>
+                <div class="kernel-evidence-list">
+                  <span class="kernel-evidence-tag">asset_80d31b59</span>
+                  <span class="kernel-evidence-tag">asset_c5a5f6d8</span>
+                  <span class="kernel-evidence-tag">asset_280d1252</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kernel-footer">
+          <div class="kernel-footer-stats">
+            <span>📌 引用 <strong>31</strong> 次</span>
+            <span>✓ 验证 <strong>9</strong> 次</span>
+            <span>⚠ 质疑 <strong>2</strong> 次</span>
+          </div>
+          <div class="kernel-footer-spacer"></div>
+          <div class="kernel-footer-actions">
+            <button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button title="归档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            <button title="质疑/挑战"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 内核 2 -->
+      <div class="kernel-card">
+        <div class="kernel-card-main">
+          <div class="kernel-color-bar belief"></div>
+          <div class="kernel-content">
+            <div class="kernel-content-text">管理的本质是激发人的善意和潜能，而不是控制</div>
+            <div class="kernel-content-source">来源：德鲁克《管理》· 8 年咨询实践</div>
+
+            <div class="kernel-meta-grid">
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Kind 确定性</div>
+                <div class="kernel-meta-value kind-belief">信念</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Scope 适用</div>
+                <div class="kernel-meta-value">所有场景</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Confidence</div>
+                <div class="kernel-meta-value conf-high">0.95 · 高</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Last Verified</div>
+                <div class="kernel-meta-value">3 天前</div>
+              </div>
+            </div>
+
+            <div class="kernel-detail-row">
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><polygon points="12 2 15.09 8.26 22 9.27 27 6.86 31.82 4 32 2 12 2"/></svg>
+                  反例
+                </div>
+                <div class="counter-example">
+                  <div class="counter-example-text">紧急危机（如合规 / 安全事故）→ 控制是必要的 · 不能用"激发善意"</div>
+                </div>
+              </div>
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2v16 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                  证据（关联 5 个资产）
+                </div>
+                <div class="kernel-evidence-list">
+                  <span class="kernel-evidence-tag">asset_33658866</span>
+                  <span class="kernel-evidence-tag">asset_54a0d822</span>
+                  <span class="kernel-evidence-tag">asset_5e678b4d</span>
+                  <span class="kernel-evidence-tag">+2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kernel-footer">
+          <div class="kernel-footer-stats">
+            <span>📌 引用 <strong>23</strong> 次</span>
+            <span>✓ 验证 <strong>5</strong> 次</span>
+            <span>⚠ 质疑 <strong>0</strong> 次</span>
+          </div>
+          <div class="kernel-footer-spacer"></div>
+          <div class="kernel-footer-actions">
+            <button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button title="归档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            <button title="质疑/挑战"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 内核 3 (kind=假设 置信度低) -->
+      <div class="kernel-card">
+        <div class="kernel-card-main">
+          <div class="kernel-color-bar challenge"></div>
+          <div class="kernel-content">
+            <div class="kernel-content-text">"AI 让所有人变强" — 这是 AI 厂商营销叙事，不是事实</div>
+            <div class="kernel-content-source">来源：反主流 · 想改变行业乐观叙事</div>
+
+            <div class="kernel-meta-grid">
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Kind 确定性</div>
+                <div class="kernel-meta-value kind-hypothesis">假设</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Scope 适用</div>
+                <div class="kernel-meta-value">演讲 · 公众号</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Confidence</div>
+                <div class="kernel-meta-value conf-mid">0.55 · 中（保留）</div>
+              </div>
+              <div class="kernel-meta">
+                <div class="kernel-meta-label">Last Verified</div>
+                <div class="kernel-meta-value">2 个月前 ⚠</div>
+              </div>
+            </div>
+
+            <div class="kernel-detail-row">
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">
+                  ⚠ 反例
+                </div>
+                <div class="counter-example">
+                  <div class="counter-example-text">AI 教育工具（如可汗学院 GPT）确实让基础学习者明显进步 · 不是"分化"</div>
+                </div>
+              </div>
+              <div class="kernel-detail-col">
+                <div class="kernel-detail-label">📚 证据（关联 2 个）</div>
+                <div class="kernel-evidence-list">
+                  <span class="kernel-evidence-tag">asset_80d31b59</span>
+                  <span class="kernel-evidence-tag">asset_c5a5f6d8</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="kernel-footer">
+          <div class="kernel-footer-stats">
+            <span>📌 引用 <strong>19</strong> 次</span>
+            <span>✓ 验证 <strong>6</strong> 次</span>
+            <span style="color:var(--warning);">⚠ 待再验证（2 个月）</span>
+          </div>
+          <div class="kernel-footer-spacer"></div>
+          <div class="kernel-footer-actions">
+            <button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button title="归档"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            <button title="质疑/挑战"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- === 反向校准层（生成后自动跑） === -->
+  <div class="section">
+    <h2>⚡ 机制 1 · 反向校准层（每次生成后自动跑）</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:20px;">
+      每次 LLM 输出后，<strong>自动调一次 LLM 自我审视</strong>，检测"是否过度套用 Vincent 的固定判断"。
+    </p>
+
+    <div class="calibration-card">
+      <div class="calibration-header">
+        <div class="calibration-icon">⚡</div>
+        <div class="calibration-title">
+          <h3>反向校准报告 · 文章《AI 时代的 3 个真相》</h3>
+          <p>生成于 2026-06-21 14:23 · 关联内核 3 条 · 用时 4.2s</p>
+        </div>
+        <span class="calibration-trigger">自动触发</span>
+      </div>
+      <div class="calibration-body">
+
+        <div class="calibration-finding danger">
+          <div class="calibration-finding-head">
+            <span class="calibration-finding-emoji">⚠️</span>
+            <span>过度套用判断 #1（高风险）</span>
+          </div>
+          <div>你可能<strong>把"组织问题"当成了所有问题的唯一答案</strong>。</div>
+          <div class="calibration-finding-quote">
+            文章中 3 个观点都指向"组织吸收力"，但<strong>没考虑这客户可能是流程问题（CRM 烂）/ 数据问题（无埋点）/ 资源问题（人不够）</strong>。
+          </div>
+          <div class="calibration-actions">
+            <button>忽略</button>
+            <button class="primary">采纳 → 更新内核</button>
+          </div>
+        </div>
+
+        <div class="calibration-finding warn">
+          <div class="calibration-finding-head">
+            <span class="calibration-finding-emoji">💡</span>
+            <span>缺少反例（中等风险）</span>
+          </div>
+          <div>判断"AI 不让所有人变强" <strong>没举反例</strong>。</div>
+          <div class="calibration-finding-quote">
+            建议加反例：小公司 / 创业团队 → 所有人都是"强者"，AI 确实让所有人变强。
+          </div>
+          <div class="calibration-actions">
+            <button>忽略</button>
+            <button class="primary">采纳 → 添加反例</button>
+          </div>
+        </div>
+
+        <div class="calibration-finding ok">
+          <div class="calibration-finding-head">
+            <span class="calibration-finding-emoji">✓</span>
+            <span>证据充分（OK）</span>
+          </div>
+          <div>判断"管理是激发善意"引用了 5 个资产证据 · 充分</div>
+        </div>
+
+        <div class="calibration-finding danger">
+          <div class="calibration-finding-head">
+            <span class="calibration-finding-emoji">⚠️</span>
+            <span>可能脱离实际（高风险）</span>
+          </div>
+          <div><strong>客户的问题可能不是组织问题</strong>，而是：</div>
+          <div style="margin-top:6px; padding-left:14px; color:var(--text);">
+            · 流程问题（CRM 没打通）<br>
+            · 数据问题（埋点不全）<br>
+            · 资源问题（人不够 / 钱不够）<br>
+            · 技术问题（架构太老）
+          </div>
+          <div style="margin-top:8px;">你把这 4 种可能性都默认为"组织问题"，<strong>忽略了其他 3 种</strong>。</div>
+          <div class="calibration-actions">
+            <button>忽略</button>
+            <button class="primary">采纳 → 修改内核</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- === Weekly Reflection === -->
+  <div class="section">
+    <h2>🔄 机制 3 · Weekly Reflection（自动 + 人工）</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:20px;">
+      每周 LLM 分析最近 20 条 feedback + outputs，<strong>自动建议</strong>内核更新 / 质疑 / 归档 → 人工采纳。
+    </p>
+
+    <div class="reflection-card">
+      <span class="reflection-tag">💡 每周反思 · 本周建议</span>
+      <h3>根据最近 20 条反馈，LLM 建议你做 3 件事</h3>
+      <p>分析时间：今天 09:00 · 基于 20 条 feedback · 置信度 high</p>
+
+      <div class="reflection-suggestion">
+        <div style="width:4px; align-self:stretch; background:var(--accent); border-radius:2px; flex-shrink:0;"></div>
+        <div class="reflection-suggestion-text">
+          <strong style="color:var(--accent);">⬆ 强化</strong>
+          <span>内核「AI 让所有人变强」置信度 0.85 → 建议调到 <strong>0.95</strong>（9 次验证 + 31 次引用）</span>
+          <div class="reflection-suggestion-meta">来源：20 条 feedback 里 12 条支持 · LLM 置信度 high</div>
+        </div>
+        <div class="reflection-suggestion-actions">
+          <button>忽略</button>
+          <button class="primary">采纳</button>
+        </div>
+      </div>
+
+      <div class="reflection-suggestion">
+        <div style="width:4px; align-self:stretch; background:var(--warning); border-radius:2px; flex-shrink:0;"></div>
+        <div class="reflection-suggestion-text">
+          <strong style="color:var(--warning);">⚠ 加反例</strong>
+          <span>内核「管理是激发善意」缺反例 → 建议加：<em>"紧急危机（合规 / 安全）→ 控制是必要的"</em></span>
+          <div class="reflection-suggestion-meta">来源：客户项目 1 次反例 · 风险等级 low · 建议加</div>
+        </div>
+        <div class="reflection-suggestion-actions">
+          <button>忽略</button>
+          <button class="primary">采纳</button>
+        </div>
+      </div>
+
+      <div class="reflection-suggestion">
+        <div style="width:4px; align-self:stretch; background:var(--danger); border-radius:2px; flex-shrink:0;"></div>
+        <div class="reflection-suggestion-text">
+          <strong style="color:var(--danger);">📦 归档</strong>
+          <span>内核「Prompt engineering 是关键能力」<strong>2 个月没引用 + 被反向校准报告质疑 3 次</strong> → 建议归档</span>
+          <div class="reflection-suggestion-meta">Last verified 60 天前 · 引用 0 · 建议归档而非删除</div>
+        </div>
+        <div class="reflection-suggestion-actions">
+          <button>保留</button>
+          <button class="danger">归档</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- === 数据流图 === -->
+  <div class="section">
+    <h2>🔄 数据流图 · Insight Kernel 怎么影响 LLM</h2>
+    <div class="flow-diagram">
+
+      <div class="flow-row">
+        <div class="flow-node">
+          <strong>📚 资产库</strong>
+          <small>assets</small>
+        </div>
+        <div class="flow-node">
+          <strong>🎨 写作风格</strong>
+          <small>5 维度</small>
+        </div>
+        <div class="flow-node kernel">
+          <strong>⭐ Insight Kernel</strong>
+          <small>4 类 + 4 字段</small>
+        </div>
+      </div>
+
+      <div style="text-align:center; color:var(--text-3); font-size:13px; margin:8px 0;">↓ 合并 ↓</div>
+
+      <div class="flow-row">
+        <div class="flow-node llm">
+          <strong>🧠 LLM 调用</strong>
+          <small>system prompt 拼接</small>
+        </div>
+      </div>
+
+      <div style="text-align:center; color:var(--text-3); font-size:13px; margin:8px 0;">↓ 输出 ↓</div>
+
+      <div class="flow-row">
+        <div class="flow-node">
+          <strong>📝 公众号文章</strong>
+        </div>
+        <div class="flow-node">
+          <strong>🎤 演讲稿</strong>
+        </div>
+        <div class="flow-node">
+          <strong>📧 邮件</strong>
+        </div>
+      </div>
+
+      <div style="text-align:center; color:var(--text-3); font-size:13px; margin:16px 0 8px;">↓ 输出后自动跑 ↓</div>
+
+      <div class="flow-row">
+        <div class="flow-node kernel">
+          <strong>⚡ 反向校准层</strong>
+          <small>LLM 自我审视</small>
+        </div>
+        <div class="flow-node">
+          <strong>💬 feedback</strong>
+          <small>客户反应</small>
+        </div>
+      </div>
+
+      <div style="text-align:center; color:var(--text-3); font-size:13px; margin:8px 0;">↓ 周一早上 9:00 ↓</div>
+
+      <div class="flow-row">
+        <div class="flow-node kernel">
+          <strong>🔄 Weekly Reflection</strong>
+          <small>建议采纳 → 内核更新</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === 输出对比 === -->
+  <div class="section">
+    <h2>📊 实际效果对比 · 同一资产 vs 内核</h2>
+    <div class="info-banner">
+      <div class="info-banner-emoji">💡</div>
+      <div class="info-banner-text">
+        <strong>同一组 3 张资产 · 同一 LLM · 唯一区别"是否注入 Insight Kernel"</strong>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card">
+        <div class="compare-card-header">
+          <span class="compare-card-label off">❌ 没内核</span>
+          <span class="compare-card-badge off">通用 LLM</span>
+        </div>
+        <div class="compare-card-body">AI 时代的 3 个真相：
+1. 知识已经饱和，<em>判断力</em>才是稀缺
+2. <em>组织吸收力</em>是变革的关键瓶颈
+3. <em>AI 不是平权工具</em>，会加速分化
+
+（这是总结，没有立场。任何人都能写出来。读起来像 LLM 写的。）</div>
+      </div>
+
+      <div class="compare-card">
+        <div class="compare-card-header">
+          <span class="compare-card-label on">✅ 有内核</span>
+          <span class="compare-card-badge on">像 Vincent 写的</span>
+        </div>
+        <div class="compare-card-body">我反对"AI 让所有人变强"这个乐观叙事。
+
+原因有三：
+1. <em>知识没稀缺，判断力稀缺了。</em>这违反主流叙事，但这是我的判断。
+2. <em>组织变革的瓶颈从来不是技术，是组织吸收力。</em>大多数 AI 项目失败不是技术失败，是组织失败。
+3. <em>AI 不是平权工具，是分化加速器。</em>所以你的策略应该是"让强者更强"，不是"让所有人跟上"。
+
+（每段都带 Vincent 立场，<em>像 Vincent 写的</em>。这是 Insight OS 的护城河。）</div>
+      </div>
+    </div>
+
+    <div class="info-banner" style="background:#fef3c7; border-color:var(--warning);">
+      <div class="info-banner-emoji">⚡</div>
+      <div class="info-banner-text">
+        <strong>但"有内核"也有风险</strong>：可能过度套用 → 反向校准层会检测 + 建议"加反例" / "考虑其他可能"（不是组织问题）
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

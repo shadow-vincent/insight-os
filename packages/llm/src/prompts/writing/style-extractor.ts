@@ -14,6 +14,7 @@
  * 反推结果不是最终值，用户可以手动调整后再保存。
  */
 
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import { callLLM } from '../../client.js';
 
 // ============================================
@@ -213,6 +214,7 @@ export async function extractStyle(
 
   const userPrompt = `以下是 ${valid.length} 篇文章样本（每篇采样 ${maxChars} 字：首 40% + 中 30% + 尾 30%，保留立意/论据/收尾结构）：\n\n${sampled.map((t, i) => `===== 样本 ${i + 1} =====\n${t}`).join('\n\n')}\n\n请分析以上样本的写作风格，并按 JSON 格式输出结果。`;
 
+  const kernel = getActiveKernelsForInjection();
   const result = await callLLM<StyleExtractionLLMResult>(
     STYLE_EXTRACTION_SYSTEM,
     userPrompt,
@@ -221,6 +223,7 @@ export async function extractStyle(
       temperature: options.temperature ?? 0.3,  // 反推需要稳定，0.3 偏保守
       maxTokens: options.maxTokens ?? 1500,
       jsonMode: true,
+      kernel,
     }
   );
 

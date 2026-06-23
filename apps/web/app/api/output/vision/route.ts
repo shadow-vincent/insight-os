@@ -19,8 +19,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { callLLM, serializeDimensions } from '@insight-os/llm';
+import { callLLM, serializeDimensions, kernelToSystemPrompt } from '@insight-os/llm';
 import { isLLMConfigured, readPreset } from '@insight-os/core';
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 构造 vision message
-    const systemPrompt = outputType === 'analyze'
+    const baseSystemPrompt = outputType === 'analyze'
       ? `你是 Vincent 的图片分析助手。用户会给你图片和描述要求。**严格按 Vincent 写作哲学**：不追热点、不营销、不堆术语、说真话。`
       : `你是 Vincent 的资深研究助手。基于用户提供的图片 + 提示，生成指定场景的内容。
 
@@ -68,6 +69,11 @@ export async function POST(req: NextRequest) {
 **脱 AI 味 8 条**（必过）：不"先承认再反转" / 不"基本常识" / 不"从...可以看出" / 不用"首先其次最后" / 断句避免"的"连用 / 长短错落 / 不用"我们应该" / 结尾不道德总结
 
 ${dimensionsBlock ? `\n${dimensionsBlock}\n` : ''}`;
+    // v1.4 Insight Kernel：把用户的判断协议拼接到 system prompt 前面
+    const kernel = getActiveKernelsForInjection();
+    const systemPrompt = kernel.length > 0
+      ? `${kernelToSystemPrompt(kernel)}\n${baseSystemPrompt}`
+      : baseSystemPrompt;
 
     const userContent: any[] = [
       { type: 'text', text: prompt + (audience ? `\n\n使用对象：${audience}` : '') },

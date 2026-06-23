@@ -215,3 +215,50 @@ export const topicKernels = sqliteTable('topic_kernels', {
 });
 
 export const topicKernelsTopicIdx = index('topic_kernels_topic_idx').on(topicKernels.topicId);
+
+/**
+ * user_kernels 表 —— Insight Kernel 用户判断协议（v1.4）
+ *
+ * 跟 topic_kernels（主题级 LLM 总结）不同，这是**用户级**的"判断宪法"：
+ * - 每次 LLM 调用自动注入 system prompt
+ * - 用户自己写 / 改 / 删 / 归档
+ * - 6 条 ship-ready 默认 + onboarding 种子
+ *
+ * 4 类别（与 prototype insight-kernel-v2 一致）：
+ *   - belief:       底层信念（长期价值主张 / 哲学立场）
+ *   - contrarian:   反常识判断（反对主流叙事的判断）
+ *   - expertise:    擅长问题域（被验证过能力的领域）
+ *   - challenge:    想挑战的常识（想消灭 / 重塑的行业套话）
+ *
+ * 4 关键字段：
+ *   - content:         一句话判断（最核心）
+ *   - confidence:      置信度 0-100（避免教条）
+ *   - counterExample:  强制反例（什么时候不成立）
+ *   - scope:           适用场景（如"客户咨询 · 公众号"）
+ *
+ * 额外字段：
+ *   - kind: 信念类型（belief/hypothesis/experience/contrarian）—— 区分确定性
+ *   - evidenceAssetIdsJson: 关联证据资产（不建独立 evidence 表，复用现有 assets）
+ *   - referencedCount: 被 LLM 引用次数（统计用）
+ *   - lastVerifiedAt: 最后验证时间（防过期判断）
+ *   - status: active / archived
+ */
+export const userKernels = sqliteTable('user_kernels', {
+  id: text('id').primaryKey(),
+  category: text('category').notNull(),
+  kind: text('kind').notNull().default('belief'),
+  content: text('content').notNull(),
+  confidence: integer('confidence').notNull().default(70),
+  counterExample: text('counter_example'),
+  scope: text('scope'),
+  evidenceAssetIdsJson: text('evidence_asset_ids_json').notNull().default('[]'),
+  referencedCount: integer('referenced_count').notNull().default(0),
+  lastVerifiedAt: integer('last_verified_at'),
+  status: text('status').notNull().default('active'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const userKernelsCategoryIdx = index('user_kernels_category_idx').on(userKernels.category);
+export const userKernelsStatusIdx = index('user_kernels_status_idx').on(userKernels.status);

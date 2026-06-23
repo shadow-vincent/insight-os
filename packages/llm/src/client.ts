@@ -10,6 +10,7 @@
 
 import OpenAI from 'openai';
 import { readConfig } from '@insight-os/core';
+import { prependKernel, type KernelEntry } from './kernel-injector.ts';
 
 let _client: OpenAI | null = null;
 let _clientConfigHash: string | null = null;
@@ -20,6 +21,8 @@ export interface LLMOptions {
   topP?: number;
   maxTokens?: number;
   jsonMode?: boolean; // 强制 JSON 输出
+  /** v1.4 Insight Kernel：用户的判断协议，自动注入到 system prompt 前面 */
+  kernel?: KernelEntry[];
 }
 
 export interface LLMResult<T> {
@@ -84,6 +87,9 @@ export async function callLLM<T = unknown>(
   const maxTokens = options.maxTokens ?? 2000;
   const jsonMode = options.jsonMode ?? true;
 
+  // v1.4 Insight Kernel：把用户判断协议自动拼接到 system prompt 前面
+  const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
+
   try {
     const client = getClient();
     const response = await client.chat.completions.create({
@@ -93,7 +99,7 @@ export async function callLLM<T = unknown>(
       max_tokens: maxTokens,
       ...(jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: effectiveSystemPrompt },
         { role: 'user', content: userPrompt },
       ],
     });
@@ -181,6 +187,9 @@ export async function* streamLLM(
   const topP = options.topP;
   const maxTokens = options.maxTokens ?? 1500;
 
+  // v1.4 Insight Kernel：同样的拼接逻辑
+  const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
+
   try {
     const client = getClient();
     const stream = await client.chat.completions.create({
@@ -190,7 +199,7 @@ export async function* streamLLM(
       max_tokens: maxTokens,
       stream: true,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: effectiveSystemPrompt },
         { role: 'user', content: userPrompt },
       ],
     });

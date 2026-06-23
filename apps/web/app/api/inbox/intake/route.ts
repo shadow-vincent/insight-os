@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets } from '@insight-os/db';
+import { getDb, assets, getActiveKernelsForInjection } from '@insight-os/db';
 import {
   buildLightCardUserPrompt,
   LIGHT_CARD_SYSTEM,
@@ -189,10 +189,12 @@ export async function POST(req: NextRequest) {
           rawContent: segment.text.slice(0, 8000),
           sourceType: (srcType as LightCardInput['sourceType']) ?? 'manual',
         });
+        const kernel = getActiveKernelsForInjection();
         const result = await callLLM<LightCardOutput>(
           LIGHT_CARD_SYSTEM,
           userPrompt,
-          { temperature: 0.4, maxTokens: 1500 }
+          { temperature: 0.4, maxTokens: 1500 ,
+          kernel,}
         );
 
         if (!result.ok || !result.data) {

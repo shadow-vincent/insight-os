@@ -12,7 +12,7 @@
 import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { getDb, getRawSqlite, topics, assets, assetTopics, topicKernels } from '@insight-os/db';
+import { getDb, getRawSqlite, topics, assets, assetTopics, topicKernels, getActiveKernelsForInjection } from '@insight-os/db';
 import { isLLMConfigured } from '@insight-os/core';
 import { callLLM } from '@insight-os/llm';
 import {
@@ -107,6 +107,7 @@ export async function POST(req: NextRequest, ctx: PathContext) {
         jsonMode: true,
         temperature: 0.4,
         maxTokens: 1500,
+        kernel: getActiveKernelsForInjection(),
       });
       if (res.ok && res.data) {
         kernelData = res.data;

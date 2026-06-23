@@ -23,7 +23,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getDb, getRawSqlite, assets } from '@insight-os/db';
+import { getDb, getRawSqlite, assets, getActiveKernelsForInjection } from '@insight-os/db';
 import { inArray } from 'drizzle-orm';
 import { isLLMConfigured } from '@insight-os/core';
 import { callLLM, streamLLM } from '@insight-os/llm';
@@ -115,8 +115,10 @@ async function llmRoute(message: string, history: ChatMessage[]): Promise<Router
       role: h.role, content: h.content, intent: h.intent, cards: h.cards,
     })),
   });
+  const kernel = getActiveKernelsForInjection();
   const res = await callLLM<RouterOutput>(ASSISTANT_ROUTER_SYSTEM, userPrompt, {
     jsonMode: true, temperature: 0.1,
+    kernel,
   });
   if (!res.ok || !res.data) throw new Error(`路由 LLM 失败: ${res.error}`);
   if (!['search', 'multi_output', 'meta_query', 'multi_step', 'help'].includes(res.data.intent)) {

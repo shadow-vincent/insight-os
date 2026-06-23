@@ -189,6 +189,23 @@ A: macOS 11+ Gatekeeper 拦未签名 Electron .app。修复 3 行命令：
 xattr -cr '/Applications/Insight OS.app' && codesign --force --deep --sign - '/Applications/Insight OS.app' && open '/Applications/Insight OS.app'
 ```
 
+**Q: dev 模式启动报 `NODE_MODULE_VERSION 128 vs 131` 怎么办？**
+
+A: 这是因为刚跑过 `npm run build:desktop` —— `rebuild:native` 把 better-sqlite3 编成了 Electron 用的 ABI 128，但 dev 模式用的是系统 Node 23 (ABI 131)。两边 ABI 不可兼得。
+
+修法（一行）：
+```bash
+npm rebuild better-sqlite3
+```
+
+下次再跑 `npm run build:desktop` 又会被切回 ABI 128，再跑 dev 又会挂。V1.x 期间的临时方案。
+
+**Q: 怎么打包新的 .dmg？**
+```bash
+npm run build:desktop
+# 产物在 apps/desktop/dist/Insight OS-<version>-arm64.dmg
+```
+
 ## 贡献
 
 欢迎 PR、Issue、Feature Request。**先开 Issue 讨论**，再发 PR。

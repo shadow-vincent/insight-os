@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets } from '@insight-os/db';
+import { getDb, assets, getActiveKernelsForInjection } from '@insight-os/db';
 import { eq } from 'drizzle-orm';
 import {
   buildCalibrateUserPrompt,
@@ -47,10 +47,12 @@ export async function POST(req: NextRequest) {
       sourceContext: asset.source ?? undefined,
     });
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<CalibrateOutput>(
       CALIBRATE_SYSTEM,
       userPrompt,
-      { temperature: 0.5, maxTokens: 2000 }
+      { temperature: 0.5, maxTokens: 2000 ,
+      kernel,}
     );
 
     if (!result.ok || !result.data) {

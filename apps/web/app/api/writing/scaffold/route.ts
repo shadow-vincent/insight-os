@@ -19,7 +19,7 @@
 import { NextRequest } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
-import { getDb, topics, assets, topicKernels, outputs } from '@insight-os/db';
+import { getDb, topics, assets, topicKernels, outputs, getActiveKernelsForInjection } from '@insight-os/db';
 import { isLLMConfigured } from '@insight-os/core';
 import { callLLM } from '@insight-os/llm';
 import {
@@ -93,10 +93,12 @@ export async function POST(req: NextRequest) {
         coreBelief,
         cards: cardInputs,
       });
+      const kernel = getActiveKernelsForInjection();
       const res = await callLLM<ScaffoldOutput>(WRITING_SCAFFOLD_SYSTEM, userPrompt, {
         jsonMode: true,
         temperature: 0.5,
         maxTokens: 1800,
+      kernel,
       });
       if (!res.ok || !res.data) {
         return Response.json({

@@ -95,6 +95,7 @@ export interface AITasteCheckResult {
   summary: string;
 }
 
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import { callLLM } from '../../client.js';
 
 export interface AITasteCheckInput {
@@ -130,6 +131,7 @@ ${outputTypeBlock}
 
 请按评分维度评估并输出 JSON。`;
 
+  const kernel = getActiveKernelsForInjection();
   const result = await callLLM<AITasteCheckResult>(
     AI_TASTE_CHECK_SYSTEM,
     userPrompt,
@@ -137,6 +139,7 @@ ${outputTypeBlock}
       temperature: 0.2,  // 评估要稳定
       maxTokens: input.maxTokens ?? 1500,
       jsonMode: true,
+      kernel,
     }
   );
 

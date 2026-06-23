@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets, topics, assetTopics } from '@insight-os/db';
+import { getDb, assets, topics, assetTopics, getActiveKernelsForInjection } from '@insight-os/db';
 import { eq, inArray } from 'drizzle-orm';
 import { callLLM } from '@insight-os/llm';
 import { isLLMConfigured } from '@insight-os/core';
@@ -77,10 +77,12 @@ ${topicList}
 
 只输出 JSON 数组，不要其他文字。`;
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<Array<{ topic_id: string; confidence: number }>>(
       systemPrompt,
       userPrompt,
-      { temperature: 0.2, maxTokens: 500 }
+      { temperature: 0.2, maxTokens: 500 ,
+      kernel,}
     );
 
     if (!result.ok || !result.data) {

@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, assets, outputs } from '@insight-os/db';
+import { getDb, assets, outputs, getActiveKernelsForInjection } from '@insight-os/db';
 import { inArray } from 'drizzle-orm';
 import { callLLM, WRITING_SCAFFOLD_SYSTEM, buildWritingScaffoldUserPrompt } from '@insight-os/llm';
 import { isLLMConfigured, readPreset } from '@insight-os/core';
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     const userPrompt = buildWritingScaffoldUserPrompt(promptInput);
 
     // 调 LLM
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<{
       title: string;
       openingHook: string;
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
         temperature: 0.5,
         maxTokens: 2500,
         jsonMode: true,
+      kernel,
       }
     );
 

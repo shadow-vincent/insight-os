@@ -25,6 +25,7 @@
  * }
  */
 
+import { getActiveKernelsForInjection } from '@insight-os/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { scanNumbers } from '@insight-os/llm';
 import { callLLM, summarizeNumberChecks } from '@insight-os/llm';
@@ -98,6 +99,7 @@ ${content.slice(0, 3000)}${content.length > 3000 ? '...[截断]' : ''}
 
 请按 JSON 格式输出 recommendations。`;
 
+    const kernel = getActiveKernelsForInjection();
     const result = await callLLM<{
       recommendations: Array<{
         position: number;
@@ -110,6 +112,7 @@ ${content.slice(0, 3000)}${content.length > 3000 ? '...[截断]' : ''}
       temperature: 0.3,
       maxTokens: 1500,
       jsonMode: true,
+      kernel,
     });
 
     if (!result.ok || !result.data) {

@@ -56,3 +56,4 @@ yarn-error.log*
 *.dmg
 *.msi
 *.AppImage
+packages/db/.tsconfig.build.json

@@ -10,9 +10,9 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const packages = [
-  { name: 'db', entries: ['src/index.ts', 'src/schema.ts', 'src/client.ts'] },
+  { name: 'db', entries: ['src/index.ts', 'src/schema.ts', 'src/client.ts', 'src/kernels.ts'] },
   { name: 'core', entries: ['src/index.ts'] },
-  { name: 'llm', entries: ['src/index.ts'] },
+  { name: 'llm', entries: ['src/index.ts', 'src/kernel-injector.ts'] },
   { name: 'indexer', entries: ['src/index.ts'] },
 ];
 

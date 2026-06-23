@@ -173,6 +173,30 @@ CREATE TABLE IF NOT EXISTS topic_kernels (
 
 CREATE INDEX IF NOT EXISTS topic_kernels_topic_idx ON topic_kernels(topic_id);
 
+-- ===== v1.4 Insight Kernel 用户判断协议 =====
+-- 用户级的「判断宪法」：每次 LLM 调用自动注入 system prompt
+-- 4 类别（belief/contrarian/expertise/challenge）+ 4 字段（content/confidence/counterExample/scope）
+-- 6 条 ship-ready 默认由 /api/kernel/seed-default 种子
+CREATE TABLE IF NOT EXISTS user_kernels (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL CHECK(category IN ('belief','contrarian','expertise','challenge')),
+  kind TEXT NOT NULL DEFAULT 'belief' CHECK(kind IN ('belief','hypothesis','experience','contrarian')),
+  content TEXT NOT NULL,
+  confidence INTEGER NOT NULL DEFAULT 70,
+  counter_example TEXT,
+  scope TEXT,
+  evidence_asset_ids_json TEXT NOT NULL DEFAULT '[]',
+  referenced_count INTEGER NOT NULL DEFAULT 0,
+  last_verified_at INTEGER,
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived')),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS user_kernels_category_idx ON user_kernels(category);
+CREATE INDEX IF NOT EXISTS user_kernels_status_idx ON user_kernels(status);
+
 -- ===== 全文搜索（FTS5）v0.3 =====
 -- 同步 assets 的 title / insight / anti / tags
 -- 客户端写时不需要手动调 FTS，trigger 自动同步

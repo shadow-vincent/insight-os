@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Insight OS · 核心内核层原型</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --ink: #14171e;
+    --text: #3a4256;
+    --text-3: #7c7a72;
+    --line: #e4e2dc;
+    --line-soft: #eceae3;
+    --primary: #6366f1;
+    --primary-soft: #eef2ff;
+    --accent: #10b981;
+    --warning: #f59e0b;
+    --danger: #f43f5e;
+    --belief: #6366f1;      /* 紫 = 信念 */
+    --contrarian: #f43f5e;   /* 红 = 反常识 */
+    --expertise: #10b981;    /* 绿 = 擅长 */
+    --challenge: #f59e0b;    /* 黄 = 想挑战 */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ====== Top Nav ====== */
+  .topnav {
+    background: white;
+    border-bottom: 1px solid var(--line);
+    padding: 12px 32px;
+    display: flex; align-items: center; gap: 24px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topnav-logo { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); }
+  .topnav-logo-dot {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .topnav-tabs { display: flex; gap: 4px; }
+  .topnav-tab { padding: 6px 14px; font-size: 13px; color: var(--text-3); border-radius: 6px; cursor: pointer; }
+  .topnav-tab.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
+  .topnav-spacer { flex: 1; }
+  .topnav-actions { display: flex; gap: 8px; }
+
+  /* ====== Container ====== */
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 32px 80px; }
+
+  /* ====== Section ====== */
+  .section { margin-bottom: 56px; }
+  .section-eyebrow {
+    font-size: 11px; color: var(--primary); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px; color: var(--ink);
+    font-weight: 400; line-height: 1.2; letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+  .lead { font-size: 15px; color: var(--text-3); max-width: 720px; margin-bottom: 24px; }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; color: var(--ink); font-weight: 400;
+    margin-bottom: 12px; letter-spacing: -0.005em;
+  }
+
+  /* ====== 工具栏 ====== */
+  .toolbar {
+    display: flex; gap: 8px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    padding: 8px 14px; border: 1px solid var(--line);
+    background: white; border-radius: 7px; font-family: inherit;
+    font-size: 13px; color: var(--ink); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--bg); border-color: var(--primary); color: var(--primary); }
+  .btn-primary {
+    background: var(--primary); color: white; border-color: var(--primary);
+  }
+  .btn-primary:hover { background: #4f46e5; border-color: #4f46e5; color: white; }
+  .btn-icon { width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .btn svg { width: 14px; height: 14px; }
+  .toolbar-spacer { flex: 1; }
+  .toolbar-stat {
+    font-size: 12px; color: var(--text-3);
+    padding: 6px 12px; background: var(--bg); border-radius: 6px;
+    display: flex; gap: 12px;
+  }
+  .toolbar-stat strong { color: var(--ink); font-weight: 600; }
+
+  /* ====== 4 类内核卡片网格 ====== */
+  .beliefs-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 768px) { .beliefs-grid { grid-template-columns: 1fr; } }
+  .belief-card {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; transition: all .2s;
+  }
+  .belief-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.04); transform: translateY(-1px); }
+  .belief-card-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  }
+  .belief-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 14px;
+  }
+  .belief-icon.belief { background: var(--belief); }
+  .belief-icon.contrarian { background: var(--contrarian); }
+  .belief-icon.expertise { background: var(--expertise); }
+  .belief-icon.challenge { background: var(--challenge); }
+  .belief-card-title {
+    font-size: 12px; font-weight: 600; color: var(--ink); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .belief-card-count { margin-left: auto; font-size: 11px; color: var(--text-3); }
+
+  .belief-entry {
+    padding: 12px; background: var(--bg);
+    border-radius: 8px; margin-bottom: 8px;
+    border-left: 3px solid var(--line-soft);
+    transition: all .15s;
+    cursor: pointer;
+  }
+  .belief-entry:hover { border-left-color: currentColor; }
+  .belief-entry.belief { border-left-color: var(--belief); }
+  .belief-entry.contrarian { border-left-color: var(--contrarian); }
+  .belief-entry.expertise { border-left-color: var(--expertise); }
+  .belief-entry.challenge { border-left-color: var(--challenge); }
+  .belief-content { font-size: 13px; color: var(--ink); font-weight: 500; margin-bottom: 6px; line-height: 1.5; }
+  .belief-context { font-size: 11px; color: var(--text-3); margin-bottom: 8px; font-style: italic; }
+  .belief-meta {
+    display: flex; align-items: center; gap: 12px; font-size: 10px;
+    color: var(--text-3);
+  }
+  .belief-meta-item { display: flex; align-items: center; gap: 3px; }
+  .belief-meta-item strong { color: var(--ink); font-weight: 600; }
+  .belief-actions { margin-left: auto; display: flex; gap: 4px; }
+  .belief-actions button {
+    width: 22px; height: 22px; border: none; background: transparent;
+    color: var(--text-3); cursor: pointer; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .belief-actions button:hover { background: var(--line-soft); color: var(--ink); }
+  .belief-actions svg { width: 12px; height: 12px; }
+
+  /* ====== Markdown 预览 ====== */
+  .md-preview {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+    position: relative;
+  }
+  .md-preview-tag {
+    position: absolute; top: 12px; right: 12px;
+    font-size: 10px; padding: 3px 8px; border-radius: 10px;
+    background: var(--bg); color: var(--text-3); font-family: 'JetBrains Mono', monospace;
+  }
+  .md-preview pre {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7;
+    color: var(--text); white-space: pre-wrap;
+  }
+  .md-preview pre .md-h { color: var(--ink); font-weight: 600; }
+  .md-preview pre .md-comment { color: var(--text-3); }
+  .md-preview pre .md-emoji { font-style: normal; }
+
+  /* ====== 影响场景网格 ====== */
+  .impact-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 1100px) { .impact-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 768px) { .impact-grid { grid-template-columns: repeat(2, 1fr); } }
+  .impact-tile {
+    background: white; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; text-align: center; cursor: pointer;
+    transition: all .15s;
+  }
+  .impact-tile:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99,102,241,0.08);
+  }
+  .impact-tile-emoji { font-size: 22px; margin-bottom: 4px; }
+  .impact-tile-name { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .impact-tile-desc { font-size: 10px; color: var(--text-3); line-height: 1.4; }
+
+  /* ====== 对比 demo ====== */
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;
+  }
+  @media (max-width: 768px) { .compare { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden;
+  }
+  .compare-card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--line-soft);
+    background: var(--bg);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .compare-card-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .compare-card-label.off { color: var(--text-3); }
+  .compare-card-label.on { color: var(--primary); }
+  .compare-card-badge {
+    margin-left: auto; font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  }
+  .compare-card-badge.off { background: var(--line-soft); color: var(--text-3); }
+  .compare-card-badge.on { background: var(--primary-soft); color: var(--primary); }
+  .compare-card-body {
+    padding: 16px; font-size: 13px; line-height: 1.75;
+    color: var(--ink); white-space: pre-wrap;
+  }
+  .compare-card-body em { font-style: normal; font-weight: 600; }
+  .compare-card-body em.good { color: var(--primary); background: var(--primary-soft); padding: 0 3px; border-radius: 3px; }
+  .compare-card-body em.bad { color: var(--danger); background: rgba(244,63,94,0.08); padding: 0 3px; border-radius: 3px; }
+
+  /* ====== 数据流图 ====== */
+  .flow-diagram {
+    background: white; border: 1px solid var(--line); border-radius: 12px;
+    padding: 32px; overflow-x: auto;
+  }
+  .flow-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 16px; margin-bottom: 20px;
+  }
+  .flow-node {
+    background: white; border: 2px solid var(--line); border-radius: 10px;
+    padding: 14px 18px; min-width: 140px;
+    text-align: center; font-size: 12px;
+    position: relative;
+  }
+  .flow-node strong { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+  .flow-node small { color: var(--text-3); font-size: 11px; }
+  .flow-node.core {
+    background: linear-gradient(135deg, var(--primary-soft), #fef3c7);
+    border-color: var(--primary);
+  }
+  .flow-node.llm {
+    background: linear-gradient(135deg, #d1fae5, var(--primary-soft));
+    border-color: var(--accent);
+  }
+  .flow-arrow {
+    width: 32px; height: 2px; background: var(--line-soft);
+    position: relative;
+  }
+  .flow-arrow::after {
+    content: ''; position: absolute; right: -2px; top: -4px;
+    width: 0; height: 0; border-left: 8px solid var(--text-3);
+    border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  }
+  .flow-outputs {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    margin-top: 16px;
+  }
+  @media (max-width: 1100px) { .flow-outputs { grid-template-columns: repeat(3, 1fr); } }
+  .flow-output {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px; font-size: 11px; text-align: center; color: var(--text);
+  }
+
+  /* ====== Weekly Reflection Modal ====== */
+  .reflection-card {
+    background: linear-gradient(135deg, #fef3c7, var(--primary-soft));
+    border: 1px solid var(--warning); border-radius: 12px;
+    padding: 20px; margin-bottom: 24px;
+  }
+  .reflection-tag {
+    display: inline-block;
+    font-size: 10px; padding: 3px 8px; border-radius: 10px;
+    background: var(--warning); color: white;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .reflection-card h3 { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .reflection-card p { font-size: 13px; color: var(--text); margin-bottom: 12px; }
+  .reflection-suggestion {
+    background: white; border-radius: 8px; padding: 12px;
+    margin-bottom: 8px; border-left: 3px solid var(--primary);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .reflection-suggestion-text { flex: 1; font-size: 13px; color: var(--ink); }
+  .reflection-suggestion-meta { font-size: 11px; color: var(--text-3); }
+  .reflection-suggestion-actions { display: flex; gap: 6px; }
+  .reflection-suggestion-actions button {
+    padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--line); background: white; color: var(--ink);
+    font-family: inherit;
+  }
+  .reflection-suggestion-actions button.primary {
+    background: var(--primary); color: white; border-color: var(--primary);
+  }
+
+  /* ====== Bottom info ====== */
+  .info-banner {
+    background: var(--primary-soft); border: 1px solid var(--primary);
+    border-radius: 12px; padding: 20px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .info-banner-emoji { font-size: 32px; }
+  .info-banner-text { flex: 1; }
+  .info-banner-text strong { color: var(--ink); font-weight: 600; }
+  .info-banner-text p { font-size: 13px; color: var(--text); margin-top: 4px; }
+
+  /* ====== Toggle (on/off 演示用) ====== */
+  .toggle {
+    width: 40px; height: 22px; border-radius: 11px; background: var(--line);
+    position: relative; cursor: pointer; transition: all .2s;
+  }
+  .toggle.on { background: var(--primary); }
+  .toggle::after {
+    content: ''; position: absolute; left: 2px; top: 2px;
+    width: 18px; height: 18px; border-radius: 50%; background: white;
+    transition: all .2s;
+  }
+  .toggle.on::after { left: 20px; }
+  .toggle-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; background: var(--bg); border-radius: 8px;
+    margin-bottom: 8px; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航（模拟真实 Insight OS） -->
+<div class="topnav">
+  <div class="topnav-logo">
+    <div class="topnav-logo-dot">I</div>
+    <span>Insight OS</span>
+  </div>
+  <div class="topnav-tabs">
+    <div class="topnav-tab">仪表盘</div>
+    <div class="topnav-tab">资产库</div>
+    <div class="topnav-tab">输出历史</div>
+    <div class="topnav-tab active">⚙ 设置</div>
+  </div>
+  <div class="topnav-spacer"></div>
+  <div class="topnav-actions">
+    <button class="btn">搜索资产 ⌘K</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Hero -->
+  <div class="section">
+    <div class="section-eyebrow">Settings › 核心内核</div>
+    <h1>核心内核层</h1>
+    <p class="lead">
+      这是你的"宪法"——管理信念、反常识判断、擅长的问题域、想挑战的行业常识。<br>
+      <strong style="color:var(--ink);">所有 LLM 输出都会自动读这份内核</strong>，让你的文章 / 演讲 / 对话都带你的立场，而不是通用 AI 调调。
+    </p>
+  </div>
+
+  <!-- Weekly Reflection 推荐 -->
+  <div class="reflection-card">
+    <span class="reflection-tag">💡 每周反思 · 自动建议</span>
+    <h3>根据最近 10 条客户反馈，LLM 建议你更新 2 条内核</h3>
+    <p>分析时间：今天 09:00 · 基于 10 条 feedback · 置信度 high</p>
+
+    <div class="reflection-suggestion">
+      <div style="width:4px; height:36px; background:var(--contrarian); border-radius:2px; flex-shrink:0;"></div>
+      <div class="reflection-suggestion-text">
+        <strong>反常识：</strong>"AI 工具用得多 ≠ ROI 高，真正决定 ROI 的是<strong>判断力</strong>"
+        <div class="reflection-suggestion-meta">来源：客户追问 7 次（占比 70%）· LLM 推荐强度：high</div>
+      </div>
+      <div class="reflection-suggestion-actions">
+        <button>忽略</button>
+        <button class="primary">采纳</button>
+      </div>
+    </div>
+
+    <div class="reflection-suggestion">
+      <div style="width:4px; height:36px; background:var(--belief); border-radius:2px; flex-shrink:0;"></div>
+      <div class="reflection-suggestion-text">
+        <strong>信念：</strong>"管理咨询的价值不是给答案，是<strong>帮客户看见自己的问题</strong>"
+        <div class="reflection-suggestion-meta">来源：feedback.mostTouchedPoint 高频 · LLM 推荐强度：medium</div>
+      </div>
+      <div class="reflection-suggestion-actions">
+        <button>忽略</button>
+        <button class="primary">采纳</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="toolbar">
+    <button class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      新增内核
+    </button>
+    <button class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      导出为 beliefs.md
+    </button>
+    <button class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      从样本反推
+    </button>
+    <button class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      重新反思
+    </button>
+    <div class="toolbar-spacer"></div>
+    <div class="toolbar-stat">
+      共 <strong>11</strong> 条内核 ·
+      <span style="color:var(--belief);">4 信念</span> ·
+      <span style="color:var(--contrarian);">3 反常识</span> ·
+      <span style="color:var(--expertise);">2 擅长</span> ·
+      <span style="color:var(--challenge);">2 挑战</span>
+    </div>
+  </div>
+
+  <!-- 4 类内核 -->
+  <div class="beliefs-grid">
+
+    <!-- 底层信念 -->
+    <div class="belief-card">
+      <div class="belief-card-header">
+        <div class="belief-icon belief">信</div>
+        <div class="belief-card-title">底层信念</div>
+        <div class="belief-card-count">4 条</div>
+      </div>
+
+      <div class="belief-entry belief">
+        <div class="belief-content">管理的本质是激发人的善意和潜能，而不是控制</div>
+        <div class="belief-context">德鲁克《管理》· 我的咨询实践 8 年</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>23</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>5</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry belief">
+        <div class="belief-content">工作的意义在于创造，不是消耗</div>
+        <div class="belief-context">个人反思 · 2024 年起每周反思</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>11</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>3</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry belief">
+        <div class="belief-content">判断力比知识稀缺，AI 时代尤其如此</div>
+        <div class="belief-context">客户项目观察 · 2025 起</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>18</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>7</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry belief">
+        <div class="belief-content">管理咨询的价值不是给答案，是帮客户看见自己的问题</div>
+        <div class="belief-context">feedback 高频 · 客户触动点</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>8</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>2</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 反常识判断 -->
+    <div class="belief-card">
+      <div class="belief-card-header">
+        <div class="belief-icon contrarian">逆</div>
+        <div class="belief-card-title">反常识判断</div>
+        <div class="belief-card-count">3 条</div>
+      </div>
+
+      <div class="belief-entry contrarian">
+        <div class="belief-content">AI 不会让所有人变强，只让强者更强</div>
+        <div class="belief-context">反主流"AI 平权"叙事 · 客户项目验证</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>31</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>9</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry contrarian">
+        <div class="belief-content">组织变革的瓶颈从来不是技术，是组织吸收力</div>
+        <div class="belief-context">50+ 企业咨询观察 · 2023-2026</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>27</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>8</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry contrarian">
+        <div class="belief-content">Prompt engineering 不是 AI 时代的关键能力，是判断力训练</div>
+        <div class="belief-context">反主流"prompt 教程"叙事 · 公众号 8 千阅读验证</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>15</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>4</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 擅长问题域 -->
+    <div class="belief-card">
+      <div class="belief-card-header">
+        <div class="belief-icon expertise">强</div>
+        <div class="belief-card-title">擅长问题域</div>
+        <div class="belief-card-count">2 条</div>
+      </div>
+
+      <div class="belief-entry expertise">
+        <div class="belief-content">组织变革（特别是大企业从 0 到 1 推动新业务）</div>
+        <div class="belief-context">8 年咨询 · 客户 E0→E5 升级证据 15 次</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>42</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>15</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry expertise">
+        <div class="belief-content">战略定位（特别是 AI 时代差异化战略）</div>
+        <div class="belief-context">战略咨询项目 · 5 年</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>28</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>9</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 想挑战的行业常识 -->
+    <div class="belief-card">
+      <div class="belief-card-header">
+        <div class="belief-icon challenge">战</div>
+        <div class="belief-card-title">想挑战的常识</div>
+        <div class="belief-card-count">2 条</div>
+      </div>
+
+      <div class="belief-entry challenge">
+        <div class="belief-content">"AI 让所有人变强" — 这是 AI 厂商营销叙事，不是事实</div>
+        <div class="belief-context">反主流 · 想改变行业乐观叙事</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>19</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>6</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="belief-entry challenge">
+        <div class="belief-content">"赋能" / "抓手" / "闭环" — 这些词是空话，不是洞察</div>
+        <div class="belief-context">咨询实践 · 想消灭行业套话</div>
+        <div class="belief-meta">
+          <span class="belief-meta-item">📌 引用 <strong>33</strong> 次</span>
+          <span class="belief-meta-item">✓ 验证 <strong>12</strong></span>
+          <div class="belief-actions">
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Markdown 导出预览 -->
+  <div class="section">
+    <h2>📄 导出为 beliefs.md（借鉴 Claude.md 思路）</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:16px;">
+      导出为 markdown 文件，可用任何编辑器改，可 git 版本控制，可分享给同事 fork。
+    </p>
+
+    <div class="md-preview">
+      <span class="md-preview-tag">~/Library/Application Support/InsightOS/beliefs.md</span>
+<pre><span class="md-comment"># Vincent 的核心内核 · 最后更新 2026-06-21</span>
+
+<span class="md-h">## 底层信念</span>
+- 管理的本质是激发人的善意和潜能，而不是控制
+- 工作的意义在于创造，不是消耗
+- 判断力比知识稀缺，AI 时代尤其如此
+- 管理咨询的价值不是给答案，是帮客户看见自己的问题
+
+<span class="md-h">## 反常识判断</span>
+- AI 不会让所有人变强，只让强者更强
+- 组织变革的瓶颈从来不是技术，是组织吸收力
+- Prompt engineering 不是 AI 时代的关键能力，是判断力训练
+
+<span class="md-h">## 擅长问题域</span>
+- 组织变革（特别是大企业从 0 到 1 推动新业务）
+- 战略定位（特别是 AI 时代差异化战略）
+
+<span class="md-h">## 想挑战的行业常识</span>
+- "AI 让所有人变强" — 这是 AI 厂商营销叙事，不是事实
+- "赋能" / "抓手" / "闭环" — 这些词是空话，不是洞察</pre>
+    </div>
+  </div>
+
+  <!-- 影响什么 -->
+  <div class="section">
+    <h2>⚡ 内核影响什么 · 10 个场景</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:16px;">
+      所有 LLM 输出都自动读这份内核。点任一场景看输出对比。
+    </p>
+
+    <div class="impact-grid">
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">🎯</div>
+        <div class="impact-tile-name">calibrate 校准</div>
+        <div class="impact-tile-desc">提取洞察时优先匹配反常识</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">📝</div>
+        <div class="impact-tile-name">联合输出 multi</div>
+        <div class="impact-tile-desc">公众号文章带立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">✍️</div>
+        <div class="impact-tile-name">试写屏</div>
+        <div class="impact-tile-desc">真生成带立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">🎤</div>
+        <div class="impact-tile-name">演讲稿</div>
+        <div class="impact-tile-desc">口语化立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">📖</div>
+        <div class="impact-tile-name">读书笔记</div>
+        <div class="impact-tile-desc">延展带立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">🖼️</div>
+        <div class="impact-tile-name">vision 多模态</div>
+        <div class="impact-tile-desc">图片分析带立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">🤝</div>
+        <div class="impact-tile-name">AI partner 改稿</div>
+        <div class="impact-tile-desc">改稿保持立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">💬</div>
+        <div class="impact-tile-name">assistant chat</div>
+        <div class="impact-tile-desc">对话回答带立场</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">📑</div>
+        <div class="impact-tile-name">topic 选题</div>
+        <div class="impact-tile-desc">推荐匹配内核</div>
+      </div>
+      <div class="impact-tile">
+        <div class="impact-tile-emoji">⬆️</div>
+        <div class="impact-tile-name">asset E0→E5</div>
+        <div class="impact-tile-desc">升级判断带立场</div>
+      </div>
+    </div>
+
+    <!-- 对比 demo：联合输出 -->
+    <div class="info-banner">
+      <div class="info-banner-emoji">💡</div>
+      <div class="info-banner-text">
+        <strong>看具体影响 · 同一组资产 → 同一 LLM → 唯一区别是"是否注入内核"</strong>
+        <p>输入：3 张资产卡（AI 时代判断力 / 组织吸收力 / AI 分化加速器）</p>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="compare-card">
+        <div class="compare-card-header">
+          <span class="compare-card-label off">❌ 没内核</span>
+          <span class="compare-card-badge off">通用 LLM</span>
+        </div>
+        <div class="compare-card-body">AI 时代的 3 个真相：
+1. 知识已经饱和，<em>判断力</em>才是稀缺
+2. <em>组织吸收力</em>是变革的关键瓶颈
+3. <em>AI 不是平权工具</em>，会加速分化
+
+（这是总结，没有立场。任何人都能写出来。读起来像 LLM 写的。）</div>
+      </div>
+
+      <div class="compare-card">
+        <div class="compare-card-header">
+          <span class="compare-card-label on">✅ 有内核</span>
+          <span class="compare-card-badge on">像 Vincent 写的</span>
+        </div>
+        <div class="compare-card-body">我反对"AI 让所有人变强"这个乐观叙事。
+
+原因有三：
+1. <em>知识没稀缺，判断力稀缺了。</em>这违反主流叙事，但这是我的判断。
+2. <em>组织变革的瓶颈从来不是技术，是组织吸收力。</em>大多数 AI 项目失败不是技术失败，是组织失败。
+3. <em>AI 不是平权工具，是分化加速器。</em>所以你的策略应该是"让强者更强"，不是"让所有人跟上"。
+
+（每段都带 Vincent 立场，<em>像 Vincent 写的</em>。这是 Insight OS 的护城河。）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据流图 -->
+  <div class="section">
+    <h2>🔄 数据流图</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:20px;">
+      内核层不是孤岛。它会被自动注入到所有 LLM 调用的 system prompt。
+    </p>
+
+    <div class="flow-diagram">
+      <div class="flow-row">
+        <div class="flow-node">
+          <strong>📚 资产库</strong>
+          <small>assets (N 张卡)</small>
+        </div>
+        <div class="flow-node">
+          <strong>🎨 写作风格</strong>
+          <small>5 维度</small>
+        </div>
+        <div class="flow-node core">
+          <strong>⭐ 核心内核</strong>
+          <small>4 类信念</small>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-3); font-size:14px; margin:8px 0;">↓ 合并 ↓</div>
+      <div class="flow-row">
+        <div class="flow-node llm">
+          <strong>🧠 LLM 调用</strong>
+          <small>system prompt 拼接</small>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-3); font-size:14px; margin:8px 0;">↓ 影响 ↓</div>
+      <div class="flow-outputs">
+        <div class="flow-output">📝 公众号文章</div>
+        <div class="flow-output">🎤 演讲稿</div>
+        <div class="flow-output">📧 邮件</div>
+        <div class="flow-output">🤝 AI 改稿</div>
+        <div class="flow-output">💬 chat 对话</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- weekly reflection 说明 -->
+  <div class="section">
+    <h2>🔄 Weekly Reflection · 自动进化</h2>
+    <p class="lead" style="font-size:13px; margin-bottom:20px;">
+      内核层不是死的。每周 LLM 分析你的 feedback + outputs，自动建议更新 → 你采纳/忽略。
+    </p>
+
+    <div class="toggle-row">
+      <div class="toggle on"></div>
+      <span style="flex:1;">每周一早上 9:00 自动分析最近 10 条反馈</span>
+      <span style="font-size:11px; color:var(--text-3);">上次：今天 09:00</span>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle on"></div>
+      <span style="flex:1;">反常识判断被引用 5+ 次时建议强化</span>
+      <span style="font-size:11px; color:var(--text-3);">触发过 3 次</span>
+    </div>
+    <div class="toggle-row">
+      <div class="toggle"></div>
+      <span style="flex:1;">低引用率内核自动归档（半年没引用）</span>
+      <span style="font-size:11px; color:var(--text-3);">关闭</span>
+    </div>
+  </div>
+
+  <!-- 关键设计点 -->
+  <div class="section">
+    <h2>🎯 关键设计点</h2>
+
+    <div class="grid-2" style="display:grid; grid-template-columns:repeat(2,1fr); gap:16px;">
+      <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:18px;">
+        <h3 style="font-size:14px; font-weight:600; color:var(--ink); margin-bottom:8px;">✅ 借鉴 Claude.md</h3>
+        <ul style="font-size:13px; color:var(--text); line-height:1.7; padding-left:20px;">
+          <li>极简 — 一个文件 + 一份结构化数据</li>
+          <li>自动加载 — 每次 LLM 调用注入</li>
+          <li>用户掌控 — UI + 可手动编辑 .md</li>
+          <li>git 版本控制 — 可分享可 fork</li>
+        </ul>
+      </div>
+
+      <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:18px;">
+        <h3 style="font-size:14px; font-weight:600; color:var(--ink); margin-bottom:8px;">⭐ 比 Claude.md 强</h3>
+        <ul style="font-size:13px; color:var(--text); line-height:1.7; padding-left:20px;">
+          <li>结构化 4 类 — 比纯 markdown 精确</li>
+          <li>每条带 metadata — 量化引用次数</li>
+          <li>weekly reflection — 自动建议</li>
+          <li>per-user 隔离 — 不共享</li>
+          <li>跨 10 个场景 — 不只是 chat</li>
+        </ul>
+      </div>
+
+      <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:18px;">
+        <h3 style="font-size:14px; font-weight:600; color:var(--ink); margin-bottom:8px;">🔐 数据隔离</h3>
+        <ul style="font-size:13px; color:var(--text); line-height:1.7; padding-left:20px;">
+          <li>每个用户独立 core_beliefs 表</li>
+          <li>登录后只加载自己的内核</li>
+          <li>不共享、不上传云端（自用为主）</li>
+        </ul>
+      </div>
+
+      <div style="background:white; border:1px solid var(--line); border-radius:12px; padding:18px;">
+        <h3 style="font-size:14px; font-weight:600; color:var(--ink); margin-bottom:8px;">🔄 闭环</h3>
+        <ul style="font-size:13px; color:var(--text); line-height:1.7; padding-left:20px;">
+          <li>LLM 输出 → feedback 表</li>
+          <li>weekly reflection → 自动建议</li>
+          <li>人工采纳 → 内核更新</li>
+          <li>下次 LLM 调用 → 新立场</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
