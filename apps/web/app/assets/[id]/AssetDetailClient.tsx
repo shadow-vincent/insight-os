@@ -47,38 +47,9 @@ interface AssetDetailClientProps {
   };
 }
 
-interface GenerateResult {
-  title: string;
-  primary_version?: string;
-  structured?: {
-    title: string;
-    hook: string;
-    core_points: string[];
-    counter_intuitive: string;
-    closing: string;
-  };
-  variants: Array<{ label: string; content: string }>;
-  key_quotes: string[];
-  usage_suggestion: string;
-}
-
 export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeline }: AssetDetailClientProps) {
   const router = useRouter();
   const toast = useToast();
-  const [gen, setGen] = useState<{
-    loading: boolean;
-    outputType: 'talk_script' | 'article_outline' | null;
-    error: string | null;
-    result: GenerateResult | null;
-  }>({
-    loading: false,
-    outputType: null,
-    error: null,
-    result: null,
-  });
-
-  const [audience, setAudience] = useState('CIO');
-  const [showOutput, setShowOutput] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [classifying, setClassifying] = useState(false);
   const [assetTopics, setAssetTopics] = useState<Array<{ id: string; topicId: string; topicName: string; topicSlug: string; confidence: number; assignedBy: string }>>([]);
@@ -92,53 +63,15 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
       .catch(() => {});
   }, [asset.id]);
 
-  const handleGenerate = async (outputType: 'talk_script' | 'article_outline') => {
-    if (!llmEnabled) {
-      setGen({ ...gen, error: '请先在 /settings 配置 LLM' });
-      return;
-    }
-    setGen({ loading: true, outputType, error: null, result: null });
-    setShowOutput(true);
-
-    try {
-      const res = await fetch('/api/output/generate', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          assetId: asset.id,
-          outputType,
-          audience: buildAudienceText(outputType, audience),
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setGen({ loading: false, outputType, error: null, result: data.data });
-        router.refresh();
-      } else {
-        setGen({ loading: false, outputType, error: data.error || '生成失败', result: null });
-      }
-    } catch (e: any) {
-      setGen({ loading: false, outputType, error: e.message, result: null });
-    }
-  };
-
-  const handleCopy = (text?: string) => {
-    const content = text ?? resultToText(gen.result) ?? '';
-    navigator.clipboard.writeText(content);
-  };
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowOutput(false);
         setShowFeedback(false);
       }
     };
-    if (showOutput || showFeedback) window.addEventListener('keydown', onKey);
+    if (showFeedback) window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showOutput, showFeedback]);
-
-  const normalizedResult = gen.result ? normalizeResult(gen.result) : null;
+  }, [showFeedback]);
 
   return (
     <>
@@ -205,68 +138,26 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
           {/* 右 sticky 操作面板（宽屏） / 窄屏时移动到下方 */}
           <div className="detail-side">
             <div className="card detail-side-card" style={{ padding: 0, overflow: 'hidden' }}>
-              {/* 生成输出区 */}
+              {/* 单一输出口子：跳到 /writing/new 并预填 assetId + audience */}
               <div style={{ padding: '24px 24px', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
-                    🎯 生成输出
-                  </h3>
-                  {!llmEnabled && (
-                    <Link href="/settings" className="btn btn-sm btn-accent">
+                <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>
+                  ✍️ 基于此卡创作
+                </h3>
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                  统一从「开始写作」走，会自动带入主题与 Kernel（你的判断协议）。
+                </p>
+                <Link
+                  href={`/writing/new?assetId=${asset.id}`}
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  → 在「开始写作」中打开
+                </Link>
+                {!llmEnabled && (
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/settings" className="btn btn-sm btn-accent" style={{ width: '100%', justifyContent: 'center' }}>
                       ⚠️ LLM 未配置
                     </Link>
-                  )}
-                </div>
-
-                {/* audience 紧凑选择器 */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8, fontWeight: 600 }}>面向</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {['CIO', 'CEO', 'CFO', '业务负责人', '同行'].map(a => (
-                      <button
-                        key={a}
-                        onClick={() => setAudience(a)}
-                        style={{
-                          fontSize: 12,
-                          padding: '5px 12px',
-                          borderRadius: 5,
-                          border: '1px solid var(--line)',
-                          background: audience === a ? 'var(--primary)' : 'var(--bg-panel)',
-                          color: audience === a ? 'white' : 'var(--text-2)',
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          fontWeight: audience === a ? 600 : 500,
-                        }}
-                      >
-                        {a}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 两个生成按钮 */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => handleGenerate('talk_script')}
-                    disabled={gen.loading}
-                    style={{ flex: 1, justifyContent: 'center' }}
-                  >
-                    {gen.loading && gen.outputType === 'talk_script' ? '⏳ 生成中…' : '💬 话术'}
-                  </button>
-                  <button
-                    className="btn btn-accent"
-                    onClick={() => handleGenerate('article_outline')}
-                    disabled={gen.loading}
-                    style={{ flex: 1, justifyContent: 'center' }}
-                  >
-                    {gen.loading && gen.outputType === 'article_outline' ? '⏳ 生成中…' : '📝 大纲'}
-                  </button>
-                </div>
-
-                {gen.error && (
-                  <div className="callout callout-danger" style={{ marginTop: 12, fontSize: 12 }}>
-                    ✗ {gen.error}
                   </div>
                 )}
               </div>
@@ -325,11 +216,6 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
           </div>
         </div>
       </div>
-
-      {/* 全屏输出 modal */}
-      {showOutput && normalizedResult && (
-        <OutputFullModal result={normalizedResult} onClose={() => setShowOutput(false)} onCopy={handleCopy} />
-      )}
 
       {/* 反馈 modal */}
       {showFeedback && (
@@ -654,125 +540,6 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
 }
 
 /**
- * 全屏输出 Modal
- */
-function OutputFullModal({ result, onClose, onCopy }: {
-  result: GenerateResult;
-  onClose: () => void;
-  onCopy: (text?: string) => void;
-}) {
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)',
-        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32,
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: 'var(--bg-panel)', borderRadius: 10, maxWidth: 880, width: '100%', maxHeight: '90vh',
-          display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(15, 23, 42, 0.25)',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-              ✓ 完整结果
-            </div>
-            <div style={{ fontSize: 19, fontWeight: 600, color: 'var(--ink)' }}>{result.title}</div>
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={() => onCopy()}>📋 复制全部</button>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 24, color: 'var(--text-3)', cursor: 'pointer', padding: 4, lineHeight: 1 }}>×</button>
-        </div>
-
-        <div style={{ padding: 28, overflow: 'auto', flex: 1 }}>
-          {result.structured ? (
-            <StructuredContent s={result.structured} />
-          ) : (
-            <div style={{ fontSize: 16, color: 'var(--text)', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
-              {result.primary_version}
-            </div>
-          )}
-
-          {result.key_quotes && result.key_quotes.length > 0 && (
-            <div style={{ marginTop: 28, paddingTop: 18, borderTop: '1px solid var(--line-soft)' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, marginBottom: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                💎 金句
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 20, fontSize: 15, color: 'var(--text)', lineHeight: 1.85 }}>
-                {result.key_quotes.map((q, i) => <li key={i} style={{ marginBottom: 6 }}>{q}</li>)}
-              </ul>
-            </div>
-          )}
-
-          {result.variants && result.variants.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', fontWeight: 600, marginBottom: 14, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                3 种变体
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {result.variants.map((v, i) => (
-                  <div key={i} style={{ padding: 14, background: 'var(--bg-subtle)', borderRadius: 6, borderLeft: '3px solid var(--primary)' }}>
-                    <strong style={{ fontSize: 13, color: 'var(--primary)' }}>{v.label}</strong>
-                    <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.75, whiteSpace: 'pre-wrap', marginTop: 8 }}>{v.content}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StructuredContent({ s }: { s: NonNullable<GenerateResult['structured']> }) {
-  return (
-    <div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--ink)', margin: '0 0 18px', lineHeight: 1.3 }}>{s.title}</h2>
-      {s.hook && <Section label="🪝 钩子段" content={s.hook} />}
-      {s.core_points && s.core_points.length > 0 && (
-        <Section label={`📌 核心观点 (${s.core_points.length})`}>
-          <ol style={{ margin: 0, paddingLeft: 24, fontSize: 15, color: 'var(--text)', lineHeight: 1.85 }}>
-            {s.core_points.map((p, i) => <li key={i} style={{ marginBottom: 8 }}>{p}</li>)}
-          </ol>
-        </Section>
-      )}
-      {s.counter_intuitive && <Section label="⚡ 反常识判断" content={s.counter_intuitive} highlight />}
-      {s.closing && <Section label="🎯 收尾" content={s.closing} />}
-    </div>
-  );
-}
-
-function Section({ label, content, highlight, children }: {
-  label: string;
-  content?: string;
-  highlight?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{label}</div>
-      <div style={{
-        fontSize: 14,
-        color: 'var(--text)',
-        lineHeight: 1.7,
-        padding: 12,
-        background: highlight ? 'var(--accent-soft)' : 'var(--bg-subtle)',
-        borderLeft: highlight ? '3px solid var(--accent)' : '3px solid var(--primary)',
-        borderRadius: '0 6px 6px 0',
-        whiteSpace: content ? 'pre-wrap' : undefined,
-      }}>
-        {content ?? children}
-      </div>
-    </div>
-  );
-}
-
-/**
  * 反馈 Modal
  */
 function FeedbackModal({ assetId, currentLevel, onClose, onSaved }: {
@@ -915,91 +682,7 @@ function FormField({ label, hint, children }: { label: string; hint?: string; ch
   );
 }
 
-/* ===== 归一化 + 工具函数 ===== */
-function buildAudienceText(outputType: string, audience: string): string {
-  if (outputType === 'article_outline') {
-    return `公众号读者（文章会被${audience}圈子转发）`;
-  }
-  return `企业 ${audience} / 决策层`;
-}
-
-function pickField(obj: any, names: string[]): any {
-  if (!obj) return undefined;
-  for (const n of names) {
-    if (obj[n] !== undefined) return obj[n];
-  }
-  return undefined;
-}
-
-function normalizeResult(raw: any): GenerateResult {
-  let structuredRaw: any = pickField(raw, ['structured', 'article_outline', 'outline']);
-  let primaryVersionRaw: any = pickField(raw, ['primary_version', 'primaryVersion', 'content', 'main_content', '主版本', '正文']);
-
-  const isPrimaryObj = primaryVersionRaw && typeof primaryVersionRaw === 'object' && !Array.isArray(primaryVersionRaw) && (
-    'hook' in primaryVersionRaw || 'hooks' in primaryVersionRaw || 'core_points' in primaryVersionRaw ||
-    'core_viewpoints' in primaryVersionRaw || 'counter_intuitive' in primaryVersionRaw ||
-    'anti_intuition' in primaryVersionRaw || 'closing' in primaryVersionRaw || 'ending' in primaryVersionRaw
-  );
-
-  const rootLooksStructured = raw && (
-    'hook' in raw || 'hooks' in raw || 'core_points' in raw || 'core_viewpoints' in raw ||
-    'counter_intuitive' in raw || 'anti_intuition' in raw || 'closing' in raw || 'ending' in raw
-  );
-
-  const articleRoot = structuredRaw ?? (isPrimaryObj ? primaryVersionRaw : (rootLooksStructured ? raw : null));
-  let structured: GenerateResult['structured'] | undefined;
-
-  if (articleRoot) {
-    const title = pickField(articleRoot, ['title', '主标题', '标题']) ?? raw.title ?? '公众号大纲';
-    const hook = pickField(articleRoot, ['hook', 'hooks', '钩子段', '钩子', 'opening']) ?? '';
-    const corePointsRaw = pickField(articleRoot, ['core_points', 'corePoints', 'core_viewpoints', 'coreViewpoints', '核心观点', '核心段落']);
-    let core_points: string[] = [];
-    if (Array.isArray(corePointsRaw)) {
-      core_points = corePointsRaw.map((p: any) => {
-        if (typeof p === 'string') return p;
-        if (typeof p === 'object' && p) return p.summary ?? p.content ?? p.description ?? p.text ?? p.point ?? JSON.stringify(p);
-        return String(p);
-      });
-    } else if (typeof corePointsRaw === 'string') {
-      core_points = corePointsRaw.split('\n').filter(Boolean);
-    }
-    const counter_intuitive = pickField(articleRoot, ['counter_intuitive', 'counterIntuitive', 'anti_intuition', 'antiIntuition', '反常识判断', '反常识']) ?? '';
-    const closing = pickField(articleRoot, ['closing', '结尾', '收尾', 'ending']) ?? '';
-    structured = { title, hook, core_points, counter_intuitive, closing };
-  }
-
-  const variantsRaw = pickField(raw, ['variants', '变体', '开场变体']);
-  const variants = Array.isArray(variantsRaw) ? variantsRaw : [];
-  const quotesRaw = pickField(raw, ['key_quotes', 'keyQuotes', 'quotes', '金句']);
-  const key_quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
-  const primary_version = typeof primaryVersionRaw === 'string' ? primaryVersionRaw : undefined;
-
-  return {
-    title: raw.title ?? '生成结果',
-    ...(primary_version ? { primary_version } : {}),
-    ...(structured ? { structured } : {}),
-    variants,
-    key_quotes,
-    usage_suggestion: pickField(raw, ['usage_suggestion', 'usageSuggestion', 'usage', '使用建议', '使用方式']) ?? '',
-  };
-}
-
-function resultToText(result: GenerateResult | null): string {
-  if (!result) return '';
-  if (result.structured) {
-    const s = result.structured;
-    return [
-      `# ${s.title}`, '',
-      '## 钩子', s.hook, '',
-      '## 核心观点',
-      ...s.core_points.map((p, i) => `${i + 1}. ${p}`),
-      '', '## 反常识', s.counter_intuitive, '',
-      '## 收尾', s.closing,
-    ].join('\n');
-  }
-  return result.primary_version ?? '';
-}
-
+/* ===== Markdown 渲染工具（仅资产正文用） ===== */
 function simpleMd(md: string): string {
   let html = md;
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, _l, c) => `<pre><code>${escapeHtml(c.trim())}</code></pre>`);

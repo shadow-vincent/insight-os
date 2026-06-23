@@ -45,7 +45,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
     if (tags.length > 0) {
       sections.push(`## 标签\n\n${tags.map(t => `\`${t}\``).join(' · ')}`);
     }
-    sections.push(`\n> 💡 这是一条轻量卡（仅 LLM 整理结果，未校准）。点"生成输出"或去详情校准后即可升级为正式资产卡。`);
+    sections.push(`\n> 💡 这是一条轻量卡（仅 LLM 整理结果，未校准）。到「开始写作」基于此卡创作，或去详情校准后即可升级为正式资产卡。`);
     body = sections.join('\n\n');
   }
 

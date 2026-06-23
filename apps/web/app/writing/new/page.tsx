@@ -52,6 +52,7 @@ function NewWritingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetTopicId = searchParams.get('topicId') ?? '';
+  const presetAssetId = searchParams.get('assetId') ?? '';
   const toast = useToast();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -63,6 +64,33 @@ function NewWritingInner() {
   const [templateType, setTemplateType] = useState<TemplateType>('wechat_article');
   const [generating, setGenerating] = useState(false);
   const [availableCards, setAvailableCards] = useState<Array<{ id: string; title: string; oneSentenceInsight: string | null; evidenceLevel: string }>>([]);
+
+  // "基于此卡创作" 模式：fetch 该资产 + 它所属的主题
+  const [presetAsset, setPresetAsset] = useState<{ id: string; title: string; topicIds: string[] } | null>(null);
+  useEffect(() => {
+    if (!presetAssetId) return;
+    (async () => {
+      try {
+        const [aRes, tRes] = await Promise.all([
+          fetch(`/api/assets/${presetAssetId}`),
+          fetch(`/api/assets/${presetAssetId}/topics`),
+        ]);
+        const a = await aRes.json();
+        const t = await tRes.json();
+        if (a.ok && a.asset) {
+          setPresetAsset({
+            id: a.asset.id,
+            title: a.asset.title ?? '（无标题）',
+            topicIds: t.ok ? (t.topics as Array<{ topicId: string }>).map(x => x.topicId) : [],
+          });
+          toast.info(`已带入资产：${a.asset.title ?? '（无标题）'}`);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetAssetId]);
 
   // 加载主题
   useEffect(() => {
@@ -79,28 +107,44 @@ function NewWritingInner() {
       });
   }, [presetTopicId]);
 
-  // 选了主题后，加载主题 kernel 提到的卡
+  // presetAsset 模式：选好主题后自动跳 step 2，并把 presetAsset id 加到 selectedCards
+  useEffect(() => {
+    if (!presetAsset || topics.length === 0) return;
+    // 优先选该资产所属的主题（且该主题必须有 kernel），否则选第一个含 kernel 的主题
+    const tid =
+      topics.find(t => presetAsset.topicIds.includes(t.id) && t.kernel)?.id ??
+      topics.find(t => t.kernel)?.id ??
+      '';
+    if (!tid) return;
+    setTopicId(tid);
+    setSelectedCards(prev => prev.includes(presetAsset.id) ? prev : [presetAsset.id, ...prev]);
+    setStep(2);
+    // 只在 presetAsset/topicId 就绪时跑一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetAsset, topics]);
+
+  // 选了主题后，加载主题 kernel 提到的卡（presetAsset 模式下不覆盖 selectedCards）
   useEffect(() => {
     if (!topicId) return;
+    if (presetAsset) return; // presetAsset 模式：selectedCards 已手动设置（仅含此卡）
     const t = topics.find(x => x.id === topicId);
     if (!t?.kernel) return;
     // 收集所有 belief 引用过的卡（去重）
     const ids = Array.from(new Set(t.kernel.coreBeliefs.flatMap(b => b.sourceCardIds)));
     setSelectedCards(ids);
     setSelectedBeliefIdx(null);
-  }, [topicId, topics]);
+  }, [topicId, topics, presetAsset]);
 
   // 加载主题下的所有卡（备选列表用）
   useEffect(() => {
     if (!topicId) return;
     fetch(`/api/topics/${topicId}/kernel`).catch(() => null);
-    // 拿主题卡片走搜索接口（title LIKE）
-    // 简单起见：从 /api/assets?topic=xxx 拿
+    // 拿主题卡片走 /api/assets?topic=xxx（后端走 assetTopics join）
     fetch(`/api/assets?topic=${topicId}&limit=30`)
       .then(r => r.json())
       .then(d => {
         if (d.ok) {
-          setAvailableCards(d.assets.map((a: any) => ({
+          setAvailableCards((d.items ?? []).map((a: any) => ({
             id: a.id, title: a.title, oneSentenceInsight: a.oneSentenceInsight, evidenceLevel: a.evidenceLevel,
           })));
         }
@@ -214,6 +258,32 @@ function NewWritingInner() {
       {/* Step 2: 选核心判断 */}
       {step === 2 && selectedTopic?.kernel && (
         <div>
+          {presetAsset && (
+            <div
+              style={{
+                marginBottom: 16, padding: '10px 14px',
+                background: 'var(--primary-soft, #eef2ff)',
+                borderLeft: '3px solid var(--primary)',
+                borderRadius: '0 6px 6px 0',
+                display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>📌</span>
+              <span style={{ flex: 1, color: 'var(--text-2)' }}>
+                基于此卡创作：<strong style={{ color: 'var(--ink)' }}>{presetAsset.title}</strong>
+              </span>
+              <button
+                onClick={() => { setPresetAsset(null); setSelectedCards([]); setStep(1); }}
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: 'var(--primary)', fontSize: 12, cursor: 'pointer',
+                  fontFamily: 'inherit', fontWeight: 600,
+                }}
+              >
+                ← 换主题
+              </button>
+            </div>
+          )}
           <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-3)' }}>
             {selectedTopic.name} · kernel: <strong style={{ color: 'var(--ink)' }}>{selectedTopic.kernel.headline}</strong>
           </div>
