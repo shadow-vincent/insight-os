@@ -35,6 +35,16 @@ const DOCS = [
     badge: '推荐',
   },
   {
+    href: '/docs/architecture',
+    icon: '🏗️',
+    title: '架构与业务流',
+    subtitle: 'Architecture',
+    desc: '3 步业务循环 + 数据流转 + 4 层架构 + 19 个 Insight Kernel 注入点。一张图看清产品。',
+    time: '3 分钟',
+    color: '#c97b3f',
+    bg: 'linear-gradient(135deg, rgba(201,123,63,0.06), rgba(47,111,94,0.04))',
+  },
+  {
     href: '/docs/faq',
     icon: '❓',
     title: 'FAQ + 故障排查',
@@ -100,7 +110,7 @@ export default function DocsHomePage() {
 
       {/* 4 入口卡片 */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14,
         marginBottom: 32,
       }}>
         {DOCS.map(d => (
@@ -172,6 +182,7 @@ export default function DocsHomePage() {
         </div>
         <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.8 }}>
           <li><strong style={{ color: 'var(--ink)' }}>第一次用？</strong> → <Link href="/docs/quickstart" style={{ color: 'var(--primary)' }}>5 分钟上手</Link></li>
+          <li><strong style={{ color: 'var(--ink)' }}>想 3 分钟看清产品长什么样？</strong> → <Link href="/docs/architecture" style={{ color: 'var(--primary)' }}>架构与业务流</Link></li>
           <li><strong style={{ color: 'var(--ink)' }}>想了解产品结构？</strong> → <Link href="/docs/concepts" style={{ color: 'var(--primary)' }}>核心概念</Link></li>
           <li><strong style={{ color: 'var(--ink)' }}>看到 V1.4 新功能不知道怎么用？</strong> → <Link href="/docs/insight-kernel" style={{ color: 'var(--primary)' }}>Insight Kernel 详解</Link></li>
           <li><strong style={{ color: 'var(--ink)' }}>出问题？</strong> → <Link href="/docs/faq" style={{ color: 'var(--primary)' }}>FAQ + 故障排查</Link></li>

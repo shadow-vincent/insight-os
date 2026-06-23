@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insight Asset OS · 架构与业务流</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --panel: #ffffff;
+    --ink: #14171e;
+    --text: #3a4256;
+    --muted: #7c7a72;
+    --line: #e9e3d6;
+    --line-soft: #f0eadc;
+    --primary: #2f6f5e;
+    --primary-soft: rgba(47, 111, 94, 0.08);
+    --accent: #c97b3f;
+    --accent-soft: rgba(201, 123, 63, 0.10);
+    --kernel: #6366f1;
+    --kernel-soft: rgba(99, 102, 241, 0.10);
+    --llm: #b06367;
+    --llm-soft: rgba(176, 99, 103, 0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at top right, rgba(47, 111, 94, 0.05), transparent 50%),
+      radial-gradient(ellipse at bottom left, rgba(99, 102, 241, 0.04), transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .wrap {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 64px 32px 72px;
+  }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--primary);
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 38px; line-height: 1.15;
+    color: var(--ink);
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--text);
+    margin: 0 0 48px;
+    line-height: 1.55;
+    max-width: 680px;
+  }
+  .lede strong { color: var(--primary); font-weight: 600; }
+
+  /* ===== Section title ===== */
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px; font-weight: 400;
+    color: var(--ink);
+    margin: 0 0 4px;
+    letter-spacing: -0.005em;
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .sec-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 20px;
+  }
+  section { margin-bottom: 48px; }
+
+  /* ===== Business Loop ===== */
+  .loop {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .steps {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 8px;
+  }
+  .step {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    position: relative;
+  }
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .step-name {
+    font-size: 16px; font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .step-en {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .step-flow {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+  .step-flow strong { color: var(--ink); font-weight: 600; }
+  .step-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .step.kernel-step .step-num { background: var(--kernel); }
+  .step.kernel-step .step-tag { background: var(--kernel-soft); color: var(--kernel); }
+
+  /* Arrow between steps */
+  .step-arrow-wrap {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; flex-shrink: 0;
+  }
+  .step-arrow-wrap svg { color: var(--muted); }
+
+  .loop-feedback {
+    margin-top: 18px;
+    padding: 12px 16px;
+    background: var(--accent-soft);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--accent);
+    text-align: center;
+    font-weight: 500;
+  }
+  .loop-feedback strong { font-weight: 700; }
+
+  /* ===== Data flow ===== */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 1fr 110px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line-soft);
+    font-size: 13px;
+  }
+  .flow-row:last-child { border-bottom: none; }
+  .flow-row.header {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+  .flow-row .stage {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .flow-row .input,
+  .flow-row .output {
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .flow-row .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .flow-row.highlight {
+    background: var(--kernel-soft);
+    border-radius: 6px;
+    padding: 12px 10px;
+    margin: 4px -10px;
+  }
+  .flow-row.highlight .stage { color: var(--kernel); }
+  .flow-row.highlight .tag { color: var(--kernel); font-weight: 700; }
+
+  /* ===== Architecture ===== */
+  .arch {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .arch-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .arch-layer {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    position: relative;
+    text-align: left;
+  }
+  .arch-layer + .arch-layer { margin-left: 28px; }
+  .arch-layer-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .arch-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .arch-icon svg { width: 16px; height: 16px; }
+  .arch-icon.ui { background: var(--primary-soft); color: var(--primary); }
+  .arch-icon.biz { background: var(--accent-soft); color: var(--accent); }
+  .arch-icon.data { background: rgba(176, 99, 103, 0.10); color: var(--llm); }
+  .arch-icon.llm { background: var(--kernel-soft); color: var(--kernel); }
+  .arch-layer-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .arch-layer-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .arch-layer-desc strong { color: var(--text); font-weight: 600; }
+  .arch-arrow {
+    align-self: center;
+    padding: 0 4px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .arch-arrow svg { display: block; }
+
+  /* ===== Map ===== */
+  .map {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  }
+  .map-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 16px;
+    padding: 10px 0;
+    align-items: center;
+    border-bottom: 1px dashed var(--line-soft);
+    font-size: 13px;
+  }
+  .map-row:last-child { border-bottom: none; }
+  .map-stage {
+    font-weight: 600;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .map-stage .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .map-stage .dot.s1 { background: var(--primary); }
+  .map-stage .dot.s2 { background: var(--accent); }
+  .map-stage .dot.s3 { background: var(--kernel); }
+  .map-desc {
+    color: var(--text);
+  }
+  .map-desc code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 768px) {
+    h1 { font-size: 28px; }
+    .lede { font-size: 15px; }
+    .steps { grid-template-columns: 1fr; }
+    .step-arrow { display: none; }
+    .flow-row { grid-template-columns: 1fr; }
+    .arch-flow { flex-direction: column; }
+    .arch-layer + .arch-layer { margin-left: 0; margin-top: 12px; }
+    .arch-arrow svg { transform: rotate(90deg); }
+    .wrap { padding: 40px 20px 56px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ Hero ============ -->
+  <div class="eyebrow">Insight Asset OS · 架构与业务流</div>
+  <h1>把零散经验变成可调用的判断力</h1>
+  <p class="lede">
+    一个<strong>本地优先的个人思想资产工作台</strong>。
+    3 步业务循环（采集 → 整理 → 输出）+ Insight Kernel 让 LLM 输出自动带你的判断立场。
+  </p>
+
+  <!-- ============ 1. Business Loop ============ -->
+  <section>
+    <h2><span class="num">1</span>业务循环</h2>
+    <p class="sec-sub">用户每天用产品做的事 —— 3 步循环，闭环。</p>
+
+    <div class="loop">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-name">采集</div>
+          <div class="step-en">Inbox · Collect</div>
+          <p class="step-flow">
+            笔记 / 公众号 / 书摘 / 录音<br/>
+            <strong>→ LLM 整理</strong><br/>
+            → 轻量卡（Light Card）
+          </p>
+          <span class="step-tag">v0.x 起</span>
+        </div>
+
+        <div class="step-arrow-wrap">
+          <svg width="36" height="14" viewBox="0 0 36 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="7" x2="30" y2="7"/><polyline points="26 3 30 7 26 11"/></svg>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-name">整理</div>
+          <div class="step-en">Curate · Upgrade</div>
+          <p class="step-flow">
+            轻量卡<br/>
+            <strong>→ 人工校准 / LLM 升级</strong><br/>
+            → 资产卡 + 主题分类 + E0-E5<br/>
+            → 可关联 Insight Kernel
+          </p>
+          <span class="step-tag">v0.x 起</span>
+        </div>
+
+        <div class="step-arrow-wrap">
+          <svg width="36" height="14" viewBox="0 0 36 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="0" y1="7" x2="30" y2="7"/><polyline points="26 3 30 7 26 11"/></svg>
+        </div>
+
+        <div class="step kernel-step">
+          <div class="step-num">3</div>
+          <div class="step-name">输出</div>
+          <div class="step-en">Write · Publish</div>
+          <p class="step-flow">
+            主题 + 核心 + 3-5 张卡<br/>
+            <strong>+ Insight Kernel 自动注入</strong><br/>
+            → 写作骨架 → 改稿 → 发布<br/>
+            → 输出历史 + 反馈 → 升级资产
+          </p>
+          <span class="step-tag">v1.4 增强</span>
+        </div>
+      </div>
+
+      <div class="loop-feedback">
+        闭环：<strong>反馈 → 升级证据等级</strong> · 资产被多次引用 → 主题思想内核自动重生成 · Insight Kernel 越用越准
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. Data Flow ============ -->
+  <section>
+    <h2><span class="num">2</span>数据流转</h2>
+    <p class="sec-sub">从用户操作到 LLM 输出，每一步数据长什么样、存在哪。</p>
+
+    <div class="flow">
+      <div class="flow-row header">
+        <div>阶段</div>
+        <div>输入</div>
+        <div>输出</div>
+        <div>存储</div>
+      </div>
+      <div class="flow-row">
+        <div class="stage">① 采集</div>
+        <div class="input">原文 / URL / 语音转写</div>
+        <div class="output">轻量卡（title + insight + tags）</div>
+        <div class="tag">assets (type=light)</div>
+      </div>
+      <div class="flow-row">
+        <div class="stage">② 整理</div>
+        <div class="input">轻量卡</div>
+        <div class="output">资产卡（反常识 + E0-E5）+ 主题</div>
+        <div class="tag">assets + topics</div>
+      </div>
+      <div class="flow-row highlight">
+        <div class="stage">③ 输出</div>
+        <div class="input">主题 + 卡 + 5 维度</div>
+        <div class="output">写作骨架（5 sections）</div>
+        <div class="tag">outputs · ←Kernel</div>
+      </div>
+      <div class="flow-row">
+        <div class="stage">改稿</div>
+        <div class="input">选中段落 + 改稿指令</div>
+        <div class="output">改写建议 + reasoning</div>
+        <div class="tag">流式输出</div>
+      </div>
+      <div class="flow-row">
+        <div class="stage">反馈</div>
+        <div class="input">客户反应 / 触动点 / 追问</div>
+        <div class="output">feedback 记录</div>
+        <div class="tag">feedback</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. Architecture ============ -->
+  <section>
+    <h2><span class="num">3</span>技术架构</h2>
+    <p class="sec-sub">4 层支撑业务循环 —— 简单到可独立替换。</p>
+
+    <div class="arch">
+      <div class="arch-flow">
+        <div class="arch-layer">
+          <div class="arch-layer-head">
+            <div class="arch-icon ui">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+            </div>
+            <div class="arch-layer-title">UI 层</div>
+          </div>
+          <p class="arch-layer-desc">
+            <strong>Next.js 15</strong> + <strong>Electron 32</strong><br/>
+            仪表盘 · 写作 · 资产库 · 图谱 · /settings/kernel
+          </p>
+        </div>
+
+        <div class="arch-arrow">
+          <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="0" y1="7" x2="14" y2="7"/><polyline points="10 3 14 7 10 11"/></svg>
+        </div>
+
+        <div class="arch-layer">
+          <div class="arch-layer-head">
+            <div class="arch-icon biz">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </div>
+            <div class="arch-layer-title">业务层</div>
+          </div>
+          <p class="arch-layer-desc">
+            <strong>22 API routes</strong> + 4 packages<br/>
+            core · db · llm · indexer
+          </p>
+        </div>
+
+        <div class="arch-arrow">
+          <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="0" y1="7" x2="14" y2="7"/><polyline points="10 3 14 7 10 11"/></svg>
+        </div>
+
+        <div class="arch-layer">
+          <div class="arch-layer-head">
+            <div class="arch-icon data">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </div>
+            <div class="arch-layer-title">数据层</div>
+          </div>
+          <p class="arch-layer-desc">
+            <strong>SQLite</strong> + <code>vault/*.md</code><br/>
+            9 表 · FTS5 · WAL · 不上云
+          </p>
+        </div>
+
+        <div class="arch-arrow">
+          <svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="0" y1="7" x2="14" y2="7"/><polyline points="10 3 14 7 10 11"/></svg>
+        </div>
+
+        <div class="arch-layer">
+          <div class="arch-layer-head">
+            <div class="arch-icon llm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="arch-layer-title">LLM</div>
+          </div>
+          <p class="arch-layer-desc">
+            <strong>任何 OpenAI 兼容服务</strong><br/>
+            DeepSeek / Ollama / Qwen / GLM
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4. Insight Kernel 注入点 ============ -->
+  <section>
+    <h2><span class="num">4</span>Insight Kernel 注入点</h2>
+    <p class="sec-sub">v1.4 核心 —— Kernel 在业务层进入，跨 19 个 LLM 调用自动拼接到 system prompt。</p>
+
+    <div class="map">
+      <div class="map-row">
+        <div class="map-stage"><span class="dot s3"></span>采集</div>
+        <div class="map-desc">
+          <code>intake</code>（公众号 / 笔记整理）<code>·</code> <code>calibrate</code>（轻量卡校准）<code>·</code> <code>upgrade</code>（升级资产卡）<code>·</code> <code>classify</code>（主题分类）
+        </div>
+      </div>
+      <div class="map-row">
+        <div class="map-stage"><span class="dot s3"></span>整理</div>
+        <div class="map-desc">
+          <code>promote</code>（候选升级）<code>·</code> <code>promote-batch</code>（批量升级）<code>·</code> <code>merge</code>（资产合并）<code>·</code> <code>style-extractor</code>（反推风格）
+        </div>
+      </div>
+      <div class="map-row">
+        <div class="map-stage"><span class="dot s3"></span>输出</div>
+        <div class="map-desc">
+          <code>writing/scaffold</code>（骨架）<code>·</code> <code>writing/companion</code>（陪练）<code>·</code> <code>output/multi</code>（多场景）<code>·</code> <code>output/review</code>（改稿）<code>·</code> <code>output/vision</code>（多模态）<code>·</code> <code>output/try-write</code>（试写）<code>·</code> <code>output/verify-data</code>（数据校验）<code>·</code> <code>ai-taste-check</code>（AI 味自检）<code>·</code> <code>topic/[id]/kernel</code>（主题内核生成）
+        </div>
+      </div>
+      <div class="map-row">
+        <div class="map-stage"><span class="dot s3"></span>对话</div>
+        <div class="map-desc">
+          <code>assistant/chat</code>（洞察助手 · 路由 + 总结）<code>·</code> <code>assistant/chat</code>（流式输出）
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Insight Asset OS · v1.4.0 · 2026-06-23
+  </footer>
+
+</div>
+</body>
+</html>

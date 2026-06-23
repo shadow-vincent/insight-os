@@ -79,6 +79,7 @@ export default function QuickstartPage() {
         🎯 接下来做什么
       </h2>
       <ul style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text)' }}>
+        <li>先看产品长什么样？ → <Link href="/docs/architecture">架构与业务流</Link></li>
         <li>想了解产品结构？ → <Link href="/docs/concepts">核心概念</Link></li>
         <li>想深度使用 Insight Kernel？ → <Link href="/docs/insight-kernel">Insight Kernel 详解</Link></li>
         <li>遇到问题？ → <Link href="/docs/faq">FAQ + 故障排查</Link></li>
