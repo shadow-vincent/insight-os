@@ -25,7 +25,7 @@ const LLM_PRESETS = [
 export default function OnboardingPage() {
   const router = useRouter();
   const toast = useToast();
-  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
   const [status, setStatus] = useState<SystemStatus | null>(null);
 
   // Step 1: LLM
@@ -39,9 +39,14 @@ export default function OnboardingPage() {
   const [vaultPath, setVaultPath] = useState('~/Documents/knowledge_base');
   const [savingVault, setSavingVault] = useState(false);
 
-  // Step 3: Seed
+  // Step 3: Seed sample
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ sampleAssetsCount: number; sampleTopicsCount: number } | null>(null);
+
+  // Step 4: Insight Kernel
+  const [kernelSeeding, setKernelSeeding] = useState(false);
+  const [kernelResult, setKernelResult] = useState<{ seeded: number } | null>(null);
+  const [kernelsPreview, setKernelsPreview] = useState<Array<{ id: string; category: string; content: string; confidence: number }>>([]);
 
   const loadStatus = useCallback(async () => {
     const res = await fetch('/api/system/status');
@@ -152,6 +157,47 @@ export default function OnboardingPage() {
     }
   };
 
+  const seedKernels = async () => {
+    setKernelSeeding(true);
+    try {
+      const res = await fetch('/api/kernel/seed-default', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        setKernelResult({ seeded: data.seeded });
+        toast.success(`已装入 ${data.seeded} 条 Insight Kernel 默认内核`);
+        // 拉取预览
+        const kRes = await fetch('/api/kernel');
+        const kData = await kRes.json();
+        if (kData.ok) setKernelsPreview(kData.kernels.map((k: any) => ({
+          id: k.id, category: k.category, content: k.content, confidence: k.confidence,
+        })));
+      } else {
+        // 409 已有内核 → 直接拉取
+        if (data.existingCount) {
+          toast.info(`已有 ${data.existingCount} 条内核，直接预览`);
+          const kRes = await fetch('/api/kernel');
+          const kData = await kRes.json();
+          if (kData.ok) {
+            setKernelsPreview(kData.kernels.map((k: any) => ({
+              id: k.id, category: k.category, content: k.content, confidence: k.confidence,
+            })));
+            setKernelResult({ seeded: data.existingCount });
+          }
+        } else {
+          toast.error(data.error ?? '种子失败');
+        }
+      }
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setKernelSeeding(false);
+    }
+  };
+
+  const skipKernels = () => {
+    setStep(5);
+  };
+
   const finish = () => {
     router.push('/');
   };
@@ -180,7 +226,7 @@ export default function OnboardingPage() {
           <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)' }}>Insight Asset OS</div>
           <span style={{ flex: 1 }} />
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            {step === 0 ? '' : `步骤 ${step} / 3`}
+            {step === 0 ? '' : `步骤 ${step} / 4`}
           </div>
         </div>
 
@@ -380,8 +426,112 @@ export default function OnboardingPage() {
           </>
         )}
 
-        {/* Step 4: 完成 */}
+        {/* Step 4: Insight Kernel */}
         {step === 4 && (
+          <>
+            <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
+              🧠 装入 Insight Kernel
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 8, lineHeight: 1.5 }}>
+              你的"判断宪法"——<strong>每次 LLM 调用都会自动注入</strong>，让所有输出带你的立场。<br />
+              先装入 6 条 ship-ready 默认，之后随时改。
+            </p>
+
+            <div style={{ marginTop: 20, padding: 16, background: 'var(--bg-subtle)', borderRadius: 8, fontSize: 13, lineHeight: 1.7 }}>
+              <div style={{ marginBottom: 6, fontWeight: 600, color: 'var(--ink)' }}>6 条默认内核</div>
+              <div style={{ color: 'var(--text-2)', fontSize: 12 }}>
+                ◆ 底层信念 2 条 · ◇ 反常识 2 条 · ◈ 擅长 1 条 · ◉ 挑战 1 条
+              </div>
+            </div>
+
+            {!kernelResult ? (
+              <>
+                <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+                  <button onClick={() => setStep(3)} className="btn btn-ghost">
+                    ← 上一步
+                  </button>
+                  <button
+                    onClick={seedKernels}
+                    disabled={kernelSeeding}
+                    className="btn"
+                    style={{
+                      flex: 1, padding: '11px 18px',
+                      background: 'var(--primary)', color: 'white', borderColor: 'var(--primary)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {kernelSeeding ? '装入中…' : '✨ 装入 6 条默认内核'}
+                  </button>
+                </div>
+                <button
+                  onClick={skipKernels}
+                  style={{
+                    marginTop: 8, width: '100%',
+                    background: 'transparent', border: 'none',
+                    color: 'var(--text-3)', cursor: 'pointer',
+                    fontSize: 12, padding: 8,
+                  }}
+                >
+                  跳过 · 之后在 ⚙ 设置里手动装入
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--success, #16a34a)', marginTop: 16, lineHeight: 1.5 }}>
+                  ✓ 已装入 {kernelResult.seeded} 条内核
+                </p>
+                <div style={{
+                  marginTop: 12, maxHeight: 220, overflowY: 'auto',
+                  border: '1px solid var(--line-soft)', borderRadius: 8,
+                  padding: 8,
+                }}>
+                  {kernelsPreview.map((k, i) => (
+                    <div key={k.id} style={{
+                      padding: '8px 10px',
+                      borderBottom: i < kernelsPreview.length - 1 ? '1px solid var(--line-soft)' : 'none',
+                      fontSize: 13, lineHeight: 1.5,
+                    }}>
+                      <span style={{
+                        fontSize: 10,
+                        color: k.category === 'belief' ? '#6366f1' :
+                               k.category === 'contrarian' ? '#f43f5e' :
+                               k.category === 'expertise' ? '#10b981' : '#f59e0b',
+                        marginRight: 6, fontWeight: 600,
+                      }}>
+                        {k.category === 'belief' ? '◆' :
+                         k.category === 'contrarian' ? '◇' :
+                         k.category === 'expertise' ? '◈' : '◉'}
+                      </span>
+                      {k.content}
+                      <span style={{
+                        marginLeft: 6, fontSize: 11, color: 'var(--text-3)',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}>
+                        ({k.confidence}/100)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 8 }}>
+                  想改？去 <code>⚙ 设置 › 判断协议</code>，每条都能改、加、归档。
+                </p>
+                <button
+                  onClick={() => setStep(5)}
+                  className="btn btn-primary"
+                  style={{
+                    marginTop: 16, width: '100%', padding: '11px 18px',
+                    fontSize: 15, fontWeight: 600,
+                  }}
+                >
+                  下一步 →
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Step 5: 完成 */}
+        {step === 5 && (
           <>
             <div style={{ textAlign: 'center', fontSize: 48, marginBottom: 12 }}>🎉</div>
             <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--ink)', margin: 0, textAlign: 'center' }}>
@@ -389,6 +539,7 @@ export default function OnboardingPage() {
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 12, textAlign: 'center', lineHeight: 1.7 }}>
               {seedResult && `已装入 ${seedResult.sampleAssetsCount} 张示例卡 + ${seedResult.sampleTopicsCount} 个主题。`}
+              {kernelResult && <><br />已装入 {kernelResult.seeded} 条 Insight Kernel。</>}
               <br />去仪表盘看看你的判断力库存。
             </p>
             <button

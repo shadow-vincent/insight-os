@@ -139,6 +139,20 @@ export default function SettingsPage() {
         </div>
       </Link>
 
+      {/* 判断协议入口（v1.4 Insight Kernel） */}
+      <Link href="/settings/kernel" className="card card-hover" style={{ display: 'block', marginBottom: 16, padding: 18, textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>🧠</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>判断协议 · Insight Kernel</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              你的"判断宪法" · 4 类 × 4 字段 · 每次 LLM 调用自动注入
+            </div>
+          </div>
+          <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+        </div>
+      </Link>
+
       {/* 主题切换 */}
       <div className="card" style={{ padding: 28, marginBottom: 16 }}>
         <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>🎨 主题外观</h2>
