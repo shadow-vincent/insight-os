@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useTheme } from '@/components/ThemeProvider';
+import { useTheme } from '@/components/useTheme';
 
 interface SanitizedConfig {
   llm: {

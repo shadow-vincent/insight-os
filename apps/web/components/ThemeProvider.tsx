@@ -1,106 +1,23 @@
-'use client';
+// V1.5.0 修：ThemeProvider server component（不 'use client'）
+// 之前 ThemeProvider 是 'use client' + useState/useSyncExternalStore，
+// next 15.5.19 + React 19 SSR 跨 client/server boundary 时 hooks dispatcher null
+// → 'Cannot read properties of null (reading useState)' → / 500
+//
+// 修法：
+// - ThemeProvider 是 server component，不存任何 React state
+// - 只 pass-through render children
+// - 主题状态从 <html data-theme> DOM attribute 读（DOM 是 single source of truth）
+// - setTheme 改 DOM + localStorage + 派发事件
+// - useTheme 在 'use client' 文件里 + client mount 时 useState/useEffect 都有完整 React context
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 
 export type Theme = 'blue' | 'green';
 
-const STORAGE_KEY = 'insight-os:theme';
-const DEFAULT_THEME: Theme = 'blue';
+export const STORAGE_KEY = 'insight-os:theme';
+export const DEFAULT_THEME: Theme = 'blue';
+export const THEME_CHANGE_EVENT = 'insight-os:theme-changed';
 
-interface ThemeContextValue {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-/**
- * ThemeProvider · 在 <html data-theme="..."> 上切主题
- *
- * 防 FOUC：在 hydration 前从 localStorage 读主题写到 <html>
- * 切换时：setState + 改 <html data-theme> + 写 localStorage
- */
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
-  const [hydrated, setHydrated] = useState(false);
-
-  // 初始化：从 localStorage 读，写到 <html>
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (stored === 'blue' || stored === 'green') {
-        setThemeState(stored);
-        document.documentElement.setAttribute('data-theme', stored);
-      } else {
-        document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
-      }
-    } catch {
-      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
-    }
-    setHydrated(true);
-  }, []);
-
-  // 监听系统主题（仅在用户没手动选过时跟随）
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    // 不接 dark mode（两套都是浅色），但保留 hook 占位
-    return () => {};
-  }, []);
-
-  const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    document.documentElement.setAttribute('data-theme', t);
-    try {
-      localStorage.setItem(STORAGE_KEY, t);
-    } catch {
-      /* localStorage 不可用就静默 */
-    }
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === 'blue' ? 'green' : 'blue');
-  }, [theme, setTheme]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    // 没用 Provider 时给 fallback（避免 SSR/edge case 崩溃）
-    return {
-      theme: DEFAULT_THEME,
-      setTheme: () => {},
-      toggleTheme: () => {},
-    };
-  }
-  return ctx;
-}
-
-/**
- * 在 <head> 注入的 inline script · 防 FOUC
- * 在 hydration 之前先把主题写到 <html>，避免白闪
- */
-export const ThemeScript = () => {
-  const code = `
-    (function() {
-      try {
-        var t = localStorage.getItem('${STORAGE_KEY}');
-        if (t === 'blue' || t === 'green') {
-          document.documentElement.setAttribute('data-theme', t);
-        } else {
-          document.documentElement.setAttribute('data-theme', '${DEFAULT_THEME}');
-        }
-      } catch (e) {
-        document.documentElement.setAttribute('data-theme', '${DEFAULT_THEME}');
-      }
-    })();
-  `;
-  return <script dangerouslySetInnerHTML={{ __html: code }} />;
-};
