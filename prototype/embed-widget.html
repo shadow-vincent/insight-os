@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vincent 的博客 · 嵌入图谱 widget 原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-page: #fafaf7;
+    --bg-blog: #ffffff;
+    --bg-card: #ffffff;
+    --ink: #0f172a;
+    --text: #334155;
+    --text-2: #64748b;
+    --text-3: #94a3b8;
+    --line: #e2e8f0;
+    --line-soft: #f1f5f9;
+    --primary: #4f46e5;
+    --primary-soft: #eef2ff;
+    --accent: #dc2626;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg-page);
+    padding: 40px 20px;
+  }
+
+  .blog {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--bg-blog);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.03);
+    padding: 60px 72px;
+  }
+
+  .blog-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 24px;
+  }
+  .blog-meta .dot { width: 4px; height: 4px; background: var(--text-3); border-radius: 50%; }
+
+  .blog h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    margin-bottom: 28px;
+  }
+
+  .blog p {
+    margin-bottom: 20px;
+    color: var(--text);
+  }
+
+  .blog p.lead {
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  .blog blockquote {
+    border-left: 3px solid var(--primary);
+    background: var(--primary-soft);
+    padding: 16px 20px;
+    margin: 24px 0;
+    font-style: italic;
+    color: var(--ink);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .blog h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 36px 0 16px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ============== Widget ============== */
+  .widget-mount {
+    margin: 48px 0 0;
+    padding: 0;
+  }
+
+  .widget {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-card);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fafaf7 0%, #ffffff 100%);
+  }
+
+  .widget-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .widget-title .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .widget-title .badge::before {
+    content: '🧠';
+    font-size: 11px;
+  }
+
+  .widget-title-text {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .widget-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .widget-meta a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 12px;
+  }
+
+  .widget-meta a:hover { color: var(--primary); }
+
+  /* 图谱主体 */
+  .widget-graph {
+    position: relative;
+    height: 460px;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(79, 70, 229, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(220, 38, 38, 0.02) 0%, transparent 50%),
+      #fdfdfb;
+  }
+
+  #graph-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* tooltip */
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(15, 23, 42, 0.96);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 280px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+  }
+  .tooltip.visible { opacity: 1; }
+
+  .tooltip .tt-title {
+    font-weight: 600;
+    color: white;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .tooltip .tt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .tooltip .tt-row strong {
+    color: white;
+    font-weight: 600;
+  }
+
+  /* 节点样式（用 d3 注入） */
+  .node {
+    cursor: pointer;
+  }
+  .node-circle {
+    transition: stroke-width 0.15s, opacity 0.15s;
+  }
+  .node:hover .node-circle {
+    stroke-width: 2.5;
+  }
+  .node-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 9.5px;
+    fill: var(--ink);
+    pointer-events: none;
+    text-anchor: middle;
+    font-weight: 500;
+    paint-order: stroke;
+    stroke: #fdfdfb;
+    stroke-width: 3;
+    stroke-linejoin: round;
+  }
+  .link {
+    stroke: #cbd5e1;
+    stroke-opacity: 0.4;
+    stroke-width: 0.8;
+  }
+
+  /* Legend */
+  .widget-legend {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--line-soft);
+    background: #fafaf7;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* 详情卡片（点击节点后从下方滑出）*/
+  .widget-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    border-top: 1px solid var(--line);
+  }
+  .widget-detail.open {
+    max-height: 320px;
+  }
+  .widget-detail-inner {
+    padding: 20px 24px 24px;
+  }
+  .detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .detail-head .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .detail-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.35;
+    flex: 1;
+  }
+  .detail-meta {
+    display: flex;
+    gap: 18px;
+    font-size: 11px;
+    color: var(--text-3);
+    margin-bottom: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .detail-meta strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .detail-body {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .detail-body em {
+    color: var(--accent);
+    font-style: normal;
+    font-weight: 600;
+  }
+  .detail-close {
+    position: absolute;
+    right: 16px;
+    top: 14px;
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    color: var(--text-3);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .detail-close:hover { background: var(--line-soft); color: var(--text); }
+
+  /* Footer CTA */
+  .widget-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #ffffff 0%, #fafaf7 100%);
+  }
+  .widget-footer .stat {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .widget-footer .stat strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .widget-footer .cta {
+    font-size: 12px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .widget-footer .cta:hover { text-decoration: underline; }
+
+  /* attribution */
+  .attribution {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .attribution a {
+    color: var(--text-2);
+    text-decoration: none;
+  }
+  .attribution a:hover { color: var(--primary); }
+
+  /* 标签 */
+  .topic-治理 { background: #dbeafe; color: #1e40af; }
+  .topic-数字化 { background: #cffafe; color: #155e75; }
+  .topic-AI { background: #ede9fe; color: #6d28d9; }
+  .topic-战略 { background: #fee2e2; color: #b91c1c; }
+</style>
+</head>
+<body>
+
+<!-- ============ 假博客（mock） ============ -->
+<article class="blog">
+  <div class="blog-meta">
+    <span>2026 · 06 · 24</span>
+    <span class="dot"></span>
+    <span>原创 · 咨询随笔</span>
+    <span class="dot"></span>
+    <span>12 min read</span>
+  </div>
+
+  <h1>独立咨询顾问的方法论沉淀：第一年</h1>
+
+  <p class="lead">
+    做了 8 年企业咨询之后，我意识到一个残酷的事实：客户的每个项目都是一次性的，咨询师的成长也常被淹没在无穷的项目交付里。
+    真正能让客户复购的、能让同行记住的，是**自己脑子里那些"看法"**。
+  </p>
+
+  <p>
+    但这些"看法"如果不结构化、不链接化、不沉淀下来，下一次咨询又得从零开始想。
+    所以过去一年我做了一个工具 —— Insight OS —— 用来沉淀自己的判断、立场、方法论。
+    下面这张图就是我现在脑子里"组织治理" + "AI 时代" 两个领域积累的全部判断（按主题分色，节点大小 = 影响力）。
+  </p>
+
+  <blockquote>
+    "咨询师最贵的资产不是客户列表，是脑子里那些**可被结构化的判断**。"
+  </blockquote>
+
+  <h2>为什么要公开这张图</h2>
+
+  <p>
+    之前我一直觉得方法论是私密的，得藏着。但后来发现，<strong>公开反而带来更多机会</strong>：
+    客户在签约前就想知道"我花钱能买到什么"，同行也在看"这个咨询师懂什么"。
+    把方法论亮出来 = 把信任成本降到最低。
+  </p>
+
+  <p>
+    下面这张图是嵌入在我博客底部的（用一行 &lt;script&gt; 就能嵌进来），你 hover 每个节点能看到
+    这条判断被引用了多少次、置信度多少、证据等级。点开能看完整内容。
+    这就是 Insight OS 的"嵌入图谱"功能 —— Consultant 版才有的能力。
+  </p>
+
+  <!-- ============ 嵌入 widget（这是核心） ============ -->
+  <div class="widget-mount">
+    <div class="widget">
+      <div class="widget-header">
+        <div class="widget-title">
+          <span class="badge">Insight OS</span>
+          <span class="widget-title-text">Vincent 的判断力图谱</span>
+        </div>
+        <div class="widget-meta">
+          <span>2026.06 更新</span>
+          <a href="https://insight-os.app/p/kernel/kernel_abc123" target="_blank">↗ 公开主页</a>
+        </div>
+      </div>
+
+      <div class="widget-graph">
+        <svg id="graph-svg"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+
+      <div class="widget-legend">
+        <div class="legend-item">
+          <span class="legend-dot" style="background: #1e40af;"></span>
+          <span>组织治理（5）</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background: #155e75;"></span>
+          <span>数字化转型（6）</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background: #6d28d9;"></span>
+          <span>AI 时代（7）</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background: #b91c1c;"></span>
+          <span>战略与定位（4）</span>
+        </div>
+        <div style="margin-left: auto; font-size: 10px; color: var(--text-3);">
+          节点大小 = 引用次数 · 颜色 = 主题
+        </div>
+      </div>
+
+      <div class="widget-detail" id="widget-detail">
+        <div class="widget-detail-inner" style="position: relative;">
+          <button class="detail-close" onclick="closeDetail()">×</button>
+          <div class="detail-head">
+            <span class="pill" id="d-pill">组织治理</span>
+            <div class="detail-title" id="d-title">—</div>
+          </div>
+          <div class="detail-meta">
+            <span>引用 <strong id="d-cited">0</strong> 次</span>
+            <span>置信度 <strong id="d-conf">0</strong></span>
+            <span>证据 <strong id="d-evi">E0</strong></span>
+          </div>
+          <div class="detail-body" id="d-body">—</div>
+        </div>
+      </div>
+
+      <div class="widget-footer">
+        <div class="stat">
+          <strong>22</strong> 张资产卡 · <strong>5</strong> 个 Kernel · <strong>34</strong> 条引用
+        </div>
+        <a href="https://insight-os.app/p/kernel/kernel_abc123" class="cta" target="_blank">
+          查看完整方法论 →
+        </a>
+      </div>
+    </div>
+
+    <div class="attribution">
+      由 <a href="https://insight-os.app" target="_blank">Insight OS</a> 嵌入生成 · Consultant 版
+    </div>
+  </div>
+
+  <h2>使用感受</h2>
+  <p>
+    嵌到博客上 2 个月后，咨询询价转化率提升了 35% ——
+    客户在联系之前就已经知道我会什么、我用什么框架，沟通成本大幅降低。
+  </p>
+  <p>
+    如果你也是独立咨询师，欢迎试试 Insight OS ——<a href="https://insight-os.app" style="color: var(--primary);">https://insight-os.app</a>
+  </p>
+</article>
+
+<!-- D3 -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  // ========== Mock 数据：22 个资产卡节点 + 34 条引用边 ==========
+  const COLORS = {
+    '治理': '#1e40af',
+    '数字化': '#155e75',
+    'AI': '#6d28d9',
+    '战略': '#b91c1c',
+  };
+
+  const nodes = [
+    // 组织治理（5）
+    { id: 'n1', title: '管理的本质是激发善意', topic: '治理', confidence: 95, evidence: 'E3', cited: 18, body: '德鲁克观点。组织管理的核心不是"控制人"而是"激发人的善意和潜能"，制度设计应服务于此。' },
+    { id: 'n2', title: '数字化变革是政治工程', topic: '治理', confidence: 88, evidence: 'E2', cited: 14, body: '信息即权力，<em>透明不等于分权</em>。数字化项目 60% 失败源于政治阻力。' },
+    { id: 'n3', title: '激励错位是系统性机制', topic: '治理', confidence: 90, evidence: 'E3', cited: 16, body: '好人在正确逻辑下做出错误行为 —— 方向比强度重要。' },
+    { id: 'n4', title: '组织设计永恒悖论', topic: '治理', confidence: 75, evidence: 'E2', cited: 8, body: '流程清晰与人的工具化不可兼得，需要动态平衡。' },
+    { id: 'n5', title: '变革瓶颈是组织吸收力', topic: '治理', confidence: 85, evidence: 'E2', cited: 12, body: '<em>不是缺愿景，是缺吸收力</em>。大部分变革失败是因为组织消化不了。' },
+
+    // 数字化转型（6）
+    { id: 'n6', title: '转型的本质是组织升级', topic: '数字化', confidence: 92, evidence: 'E3', cited: 22, body: '不是技术升级而是<em>组织能力升级</em>。技术只是触发器。' },
+    { id: 'n7', title: '数据治理先于数据应用', topic: '数字化', confidence: 80, evidence: 'E2', cited: 10, body: '先建数据底座再谈 AI，否则就是垃圾进垃圾出。' },
+    { id: 'n8', title: '中台失败率高 80%', topic: '数字化', confidence: 70, evidence: 'E1', cited: 6, body: '中台不是技术问题，<em>是组织问题</em>。盲目中台化是 IT 部门的话语权扩张。' },
+    { id: 'n9', title: '流程数字化 ≠ 数字化转型', topic: '数字化', confidence: 88, evidence: 'E2', cited: 13, body: '把纸质流程搬到系统里是 1.0，2.0 是<em>重塑业务逻辑</em>。' },
+    { id: 'n10', title: '数据团队要贴近业务', topic: '数字化', confidence: 85, evidence: 'E2', cited: 11, body: '独立的数据部门是失败的开始。<em>数据科学家要懂业务，业务负责人要懂数据</em>。' },
+    { id: 'n11', title: '低代码不是银弹', topic: '数字化', confidence: 65, evidence: 'E1', cited: 5, body: '低代码适合场景有限，<em>长期技术债可能比省下的开发成本还高</em>。' },
+
+    // AI 时代（7）
+    { id: 'n12', title: 'AI 是分化加速器不是平权', topic: 'AI', confidence: 90, evidence: 'E2', cited: 25, body: '<em>AI 不会让所有人变强，只让强者更强</em>。人才体系正被系统性重塑。' },
+    { id: 'n13', title: '判断力是 AI 时代最稀缺能力', topic: 'AI', confidence: 92, evidence: 'E3', cited: 20, body: '知识可被 AI 复制，<em>判断力无法被复制</em>。这是未来 10 年最大的能力分化。' },
+    { id: 'n14', title: '超级个体崛起', topic: 'AI', confidence: 80, evidence: 'E2', cited: 9, body: 'AI 让个人产出 5-10x，组织规模不再等于竞争力。' },
+    { id: 'n15', title: 'AI 替代的是任务不是职业', topic: 'AI', confidence: 85, evidence: 'E2', cited: 14, body: '替代的是<em>具体任务</em>（写报告 / 做表 / 整理），不是<em>职业</em>。重新设计岗位。' },
+    { id: 'n16', title: 'AI 让咨询师从「卖时间」变「卖判断」', topic: 'AI', confidence: 88, evidence: 'E2', cited: 16, body: 'AI 处理 60% 资料整理 + 框架搭建，<em>咨询师聚焦 40% 的判断环节</em>，客单价反升。' },
+    { id: 'n17', title: '提示词能力是元技能', topic: 'AI', confidence: 75, evidence: 'E1', cited: 7, body: '未来 5 年最值钱的元技能。' },
+    { id: 'n18', title: 'AI 不会让组织变聪明', topic: 'AI', confidence: 82, evidence: 'E2', cited: 11, body: '<em>AI 是放大器，组织原本什么样 AI 后就什么样</em>。' },
+
+    // 战略与定位（4）
+    { id: 'n19', title: '战略是找到非买不可的理由', topic: '战略', confidence: 92, evidence: 'E3', cited: 19, body: '<em>战略定位的本质是"用户为什么非你不可"</em>，不是"你比对手好在哪"。' },
+    { id: 'n20', title: '差异化是结果不是策略', topic: '战略', confidence: 80, evidence: 'E2', cited: 10, body: '差异化是聚焦的副产品，<em>先聚焦再谈差异化</em>。' },
+    { id: 'n21', title: '客户要的不是更好而是不同', topic: '战略', confidence: 75, evidence: 'E2', cited: 8, body: '在"更好"上竞争是死路一条。' },
+    { id: 'n22', title: '增长来自心智份额', topic: '战略', confidence: 78, evidence: 'E1', cited: 9, body: '市场份额第二波动大，<em>心智份额第一稳</em>。' },
+  ];
+
+  const links = [
+    // 组织治理内部
+    { source: 'n1', target: 'n2' },
+    { source: 'n1', target: 'n3' },
+    { source: 'n2', target: 'n3' },
+    { source: 'n3', target: 'n4' },
+    { source: 'n5', target: 'n1' },
+    { source: 'n5', target: 'n3' },
+    // 数字化 ↔ 治理
+    { source: 'n6', target: 'n1' },
+    { source: 'n6', target: 'n2' },
+    { source: 'n6', target: 'n5' },
+    { source: 'n7', target: 'n10' },
+    { source: 'n8', target: 'n2' },
+    { source: 'n9', target: 'n6' },
+    { source: 'n9', target: 'n10' },
+    { source: 'n10', target: 'n5' },
+    { source: 'n11', target: 'n8' },
+    // AI ↔ 治理
+    { source: 'n12', target: 'n1' },
+    { source: 'n12', target: 'n5' },
+    { source: 'n13', target: 'n12' },
+    { source: 'n14', target: 'n13' },
+    { source: 'n15', target: 'n14' },
+    { source: 'n16', target: 'n13' },
+    { source: 'n16', target: 'n6' },
+    { source: 'n17', target: 'n13' },
+    { source: 'n18', target: 'n1' },
+    { source: 'n18', target: 'n5' },
+    // 战略 ↔ 其他
+    { source: 'n19', target: 'n6' },
+    { source: 'n19', target: 'n16' },
+    { source: 'n20', target: 'n19' },
+    { source: 'n21', target: 'n20' },
+    { source: 'n21', target: 'n19' },
+    { source: 'n22', target: 'n21' },
+    { source: 'n22', target: 'n19' },
+    { source: 'n22', target: 'n20' },
+    { source: 'n19', target: 'n1' },
+  ];
+
+  // 节点大小 = 影响力（引用次数）
+  const sizeScale = d => Math.sqrt(d.cited) * 2.4 + 7;
+
+  // ========== D3 Force Simulation ==========
+  const svg = d3.select('#graph-svg');
+  const container = document.querySelector('.widget-graph');
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(90).strength(0.4))
+    .force('charge', d3.forceManyBody().strength(-380))
+    .force('center', d3.forceCenter(width / 2, height / 2))
+    .force('collision', d3.forceCollide().radius(d => sizeScale(d) + 10))
+    .force('x', d3.forceX(width / 2).strength(0.025))
+    .force('y', d3.forceY(height / 2).strength(0.03));
+
+  // 主题聚类：让相同主题的节点相互吸引
+  const topicCenters = {
+    '治理': { x: width * 0.25, y: height * 0.45 },
+    '数字化': { x: width * 0.5, y: height * 0.75 },
+    'AI': { x: width * 0.7, y: height * 0.35 },
+    '战略': { x: width * 0.85, y: height * 0.65 },
+  };
+  sim.force('topicCluster', () => {
+    for (const n of nodes) {
+      const c = topicCenters[n.topic];
+      if (!c) continue;
+      n.vx += (c.x - n.x) * 0.012;
+      n.vy += (c.y - n.y) * 0.012;
+    }
+  });
+
+  // 边
+  const link = svg.append('g')
+    .selectAll('line')
+    .data(links)
+    .join('line')
+    .attr('class', 'link');
+
+  // 节点组（圆 + 文字）
+  const nodeG = svg.append('g')
+    .selectAll('g')
+    .data(nodes)
+    .join('g')
+    .attr('class', 'node');
+
+  nodeG.append('circle')
+    .attr('class', 'node-circle')
+    .attr('r', sizeScale)
+    .attr('fill', d => COLORS[d.topic])
+    .attr('fill-opacity', 0.85)
+    .attr('stroke', '#ffffff')
+    .attr('stroke-width', 1.5);
+
+  // 节点文字
+  nodeG.append('text')
+    .attr('class', 'node-label')
+    .attr('dy', d => sizeScale(d) + 12)
+    .text(d => d.title.length > 8 ? d.title.slice(0, 7) + '…' : d.title);
+
+  // ========== 交互：hover tooltip ==========
+  const tooltip = document.getElementById('tooltip');
+
+  nodeG.on('mouseenter', (event, d) => {
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    tooltip.innerHTML = `
+      <div class="tt-title">${d.title}</div>
+      <div class="tt-row">引用 <strong>${d.cited}</strong> 次</div>
+      <div class="tt-row">置信度 <strong>${d.confidence}</strong></div>
+      <div class="tt-row">证据 <strong>${d.evidence}</strong></div>
+      <div class="tt-row" style="margin-top: 4px; color: rgba(255,255,255,0.5);">点击查看完整方法论</div>
+    `;
+    tooltip.style.left = (x + 12) + 'px';
+    tooltip.style.top = (y - 8) + 'px';
+    tooltip.classList.add('visible');
+  })
+  .on('mousemove', (event) => {
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    tooltip.style.left = (x + 12) + 'px';
+    tooltip.style.top = (y - 8) + 'px';
+  })
+  .on('mouseleave', () => {
+    tooltip.classList.remove('visible');
+  });
+
+  // ========== 交互：click 详情 ==========
+  nodeG.on('click', (event, d) => {
+    const detail = document.getElementById('widget-detail');
+    document.getElementById('d-pill').textContent = ({
+      '治理': '组织治理', '数字化': '数字化转型', 'AI': 'AI 时代', '战略': '战略与定位'
+    })[d.topic];
+    document.getElementById('d-pill').className = 'pill topic-' + d.topic;
+    document.getElementById('d-title').textContent = d.title;
+    document.getElementById('d-cited').textContent = d.cited;
+    document.getElementById('d-conf').textContent = d.confidence + '%';
+    document.getElementById('d-evi').textContent = d.evidence;
+    document.getElementById('d-body').innerHTML = d.body;
+    detail.classList.add('open');
+    // 平滑滚到详情
+    setTimeout(() => {
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+  });
+
+  // tick
+  sim.on('tick', () => {
+    link
+      .attr('x1', d => d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x)
+      .attr('y2', d => d.target.y);
+
+    nodeG.attr('transform', d => `translate(${d.x}, ${d.y})`);
+  });
+
+  function closeDetail() {
+    document.getElementById('widget-detail').classList.remove('open');
+  }
+</script>
+</body>
+</html>

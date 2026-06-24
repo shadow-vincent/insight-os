@@ -197,6 +197,27 @@ CREATE TABLE IF NOT EXISTS user_kernels (
 CREATE INDEX IF NOT EXISTS user_kernels_category_idx ON user_kernels(category);
 CREATE INDEX IF NOT EXISTS user_kernels_status_idx ON user_kernels(status);
 
+-- ===== writing_drafts + writing_versions v1.5 写作草稿自动恢复 + 版本历史 =====
+CREATE TABLE IF NOT EXISTS writing_drafts (
+  id TEXT PRIMARY KEY,
+  writing_id TEXT NOT NULL UNIQUE,
+  content TEXT NOT NULL,
+  title TEXT,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS writing_drafts_writing_idx ON writing_drafts(writing_id);
+
+CREATE TABLE IF NOT EXISTS writing_versions (
+  id TEXT PRIMARY KEY,
+  writing_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  title TEXT,
+  note TEXT,
+  created_by TEXT NOT NULL DEFAULT 'manual',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS writing_versions_writing_idx ON writing_versions(writing_id, created_at);
+
 -- ===== 全文搜索（FTS5）v0.3 =====
 -- 同步 assets 的 title / insight / anti / tags
 -- 客户端写时不需要手动调 FTS，trigger 自动同步

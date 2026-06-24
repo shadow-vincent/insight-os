@@ -262,3 +262,41 @@ export const userKernels = sqliteTable('user_kernels', {
 
 export const userKernelsCategoryIdx = index('user_kernels_category_idx').on(userKernels.category);
 export const userKernelsStatusIdx = index('user_kernels_status_idx').on(userKernels.status);
+
+/**
+ * writing_drafts 表 —— 写作草稿自动保存（v1.5）
+ *
+ * 每个 writing 最多 1 行 draft（覆盖式保存），区别于 writing_versions（历史版本，多行）
+ * - debounce 3 秒自动保存
+ * - 页面打开时优先加载 draft（比 outputs.content 新）
+ * - published 状态时停止保存
+ */
+export const writingDrafts = sqliteTable('writing_drafts', {
+  id: text('id').primaryKey(),
+  writingId: text('writing_id').notNull().unique(),
+  content: text('content').notNull(),
+  title: text('title'),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const writingDraftsWritingIdx = index('writing_drafts_writing_idx').on(writingDrafts.writingId);
+
+/**
+ * writing_versions 表 —— 写作历史版本（v1.5）
+ *
+ * 每次"手动保存版本"或"重大改动前自动快照"创建一行
+ * - 保留最近 20 个版本（超出自动清旧）
+ * - 恢复版本 = 写入 outputs.content + writing_drafts.content
+ */
+export const writingVersions = sqliteTable('writing_versions', {
+  id: text('id').primaryKey(),
+  writingId: text('writing_id').notNull(),
+  content: text('content').notNull(),
+  title: text('title'),
+  note: text('note'),  // "草稿自动保存" / "手动保存：完成第一稿" / "改写润色前快照"
+  createdBy: text('created_by').notNull().default('manual'),  // 'auto' | 'manual' | 'system'
+  createdAt: integer('created_at').notNull(),
+});
+
+export const writingVersionsWritingIdx = index('writing_versions_writing_idx').on(writingVersions.writingId, writingVersions.createdAt);
+
