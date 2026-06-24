@@ -190,72 +190,286 @@ export default function EmbedSettingsPage() {
     }
     setExporting(true);
     try {
-      // 等 d3 force 收敛（延迟一点）
+      // 等 d3 force 收敛
       await new Promise(r => setTimeout(r, 1500));
 
-      // 构造离屏 canvas（更大尺寸：宽 1600px 用于打印清晰度）
+      // 离屏 canvas：1600 × 1900（容纳标题 + 说明 + 图 + 主题分布 + 读图说明 + 作者说 + 底部）
       const exportWidth = 1600;
-      const exportHeight = 1100;
-      const dpr = 2;  // retina
+      const exportHeight = 1900;
+      const dpr = 2;
       const canvas = document.createElement('canvas');
       canvas.width = exportWidth * dpr;
       canvas.height = exportHeight * dpr;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas 2d 不可用');
-
-      // 背景
       ctx.scale(dpr, dpr);
+
+      const padding = 60;
+      let cursorY = padding;
+
+      // ====== 1. 背景 ======
       ctx.fillStyle = '#fdfdfb';
       ctx.fillRect(0, 0, exportWidth, exportHeight);
 
-      // 标题
+      // 顶部装饰条
+      ctx.fillStyle = '#4f46e5';
+      ctx.fillRect(0, 0, exportWidth, 4);
+
+      // ====== 2. 头部 · 品牌 + 标题 + 副标题 ======
+      ctx.fillStyle = '#4f46e5';
+      ctx.font = '600 14px "Inter", sans-serif';
+      ctx.fillText('🧠  INSIGHT  OS', padding, cursorY + 18);
+      cursorY += 36;
+
       ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 32px "Playfair Display", Georgia, serif';
-      ctx.fillText(`${userName} 的判断力图谱`, 40, 60);
+      ctx.font = 'bold 42px "Playfair Display", Georgia, serif';
+      ctx.fillText(`${userName} 的判断力图谱`, padding, cursorY + 36);
+      cursorY += 56;
+
       ctx.fillStyle = '#64748b';
-      ctx.font = '14px Inter, sans-serif';
-      ctx.fillText(`Insight OS · ${filteredNodes.current.length} 张资产 · ${new Date().toLocaleDateString('zh-CN')}`, 40, 90);
+      ctx.font = '15px "Inter", sans-serif';
+      const today = new Date();
+      const dateStr = `${today.getFullYear()} 年 ${today.getMonth() + 1} 月 ${today.getDate()} 日`;
+      ctx.fillText(`沉淀 ${filteredNodes.current.length} 张判断卡 · 跨 ${Array.from(new Set(filteredNodes.current.map(n => topicFor(n.tags)))).filter(t => t !== 'default').length} 个主题 · ${dateStr}`, padding, cursorY);
+      cursorY += 36;
 
-      // 拷贝 SVG 内容
-      const svgEl = svgRef.current;
-      const svgData = new XMLSerializer().serializeToString(svgEl);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      const img = new Image();
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('SVG 加载失败'));
-        img.src = url;
+      // 分隔线
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, cursorY);
+      ctx.lineTo(exportWidth - padding, cursorY);
+      ctx.stroke();
+      cursorY += 28;
+
+      // ====== 3. 图谱说明 ======
+      ctx.fillStyle = '#334155';
+      ctx.font = '16px "Inter", sans-serif';
+      const descLine1 = '这张图把我沉淀的判断卡按主题聚类 —— 同色节点 = 同一主题，';
+      const descLine2 = '节点大小 = 优先级，节点位置 = 自动聚类（不代表距离或重要程度）。';
+      ctx.fillText(descLine1, padding, cursorY);
+      cursorY += 24;
+      ctx.fillText(descLine2, padding, cursorY);
+      cursorY += 40;
+
+      // ====== 4. 图谱本体（直接用 canvas 画节点，不依赖 SVG → Image） ======
+      const graphH = 720;
+      const graphW = exportWidth - padding * 2;
+      // 图谱外框（背景）
+      ctx.fillStyle = '#fafaf7';
+      ctx.fillRect(padding, cursorY, graphW, graphH);
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(padding, cursorY, graphW, graphH);
+
+      // 重新算一次 d3-force 收敛坐标（专门为 canvas 比例，不依赖 svg）
+      const nodesForCanvas = filteredNodes.current.map(n => ({
+        ...n,
+        x: graphW / 2 + (Math.random() - 0.5) * graphW * 0.7,
+        y: graphH / 2 + (Math.random() - 0.5) * graphH * 0.7,
+      }));
+      const topicSetInCanvas = Array.from(new Set(nodesForCanvas.map(n => topicFor(n.tags))));
+      const colsC = Math.ceil(Math.sqrt(topicSetInCanvas.length));
+      const rowsC = Math.ceil(topicSetInCanvas.length / colsC);
+      const cellWC = graphW * 0.7 / Math.max(colsC, 1);
+      const cellHC = graphH * 0.7 / Math.max(rowsC, 1);
+      const topicCentersC: Record<string, { x: number; y: number }> = {};
+      topicSetInCanvas.forEach((topic, i) => {
+        const col = i % colsC;
+        const row = Math.floor(i / colsC);
+        topicCentersC[topic] = {
+          x: graphW * 0.15 + cellWC * (col + 0.5),
+          y: graphH * 0.15 + cellHC * (row + 0.5),
+        };
       });
-
-      // 画 SVG 到 canvas
-      ctx.drawImage(img, 40, 120, exportWidth - 80, exportHeight - 200);
-
-      // 图例
-      const topicSet = Array.from(new Set(filteredNodes.current.map(n => topicFor(n.tags))));
-      let lx = 40;
-      const ly = exportHeight - 50;
-      ctx.font = '13px Inter, sans-serif';
-      ctx.fillStyle = '#475569';
-      ctx.fillText('主题：', lx, ly);
-      lx += 50;
-      for (const topic of topicSet) {
-        if (topic === 'default') continue;
-        ctx.fillStyle = TOPIC_COLORS[topic];
-        ctx.beginPath();
-        ctx.arc(lx + 5, ly - 4, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#475569';
-        ctx.fillText(topic, lx + 18, ly);
-        lx += ctx.measureText(topic).width + 40;
+      // 简单迭代 d3-force-style 力布局（同步）
+      const simNodes = nodesForCanvas.map(n => ({
+        ...n,
+        x: n.x,
+        y: n.y,
+        vx: 0,
+        vy: 0,
+      }));
+      for (let tick = 0; tick < 200; tick++) {
+        // charge repulsion
+        for (let i = 0; i < simNodes.length; i++) {
+          for (let j = i + 1; j < simNodes.length; j++) {
+            const dx = simNodes[i].x - simNodes[j].x;
+            const dy = simNodes[i].y - simNodes[j].y;
+            const d2 = dx * dx + dy * dy + 0.01;
+            const d = Math.sqrt(d2);
+            const force = -180 * 30 / d2;  // strength * sizeFactor
+            const fx = (dx / d) * force;
+            const fy = (dy / d) * force;
+            simNodes[i].vx += fx;
+            simNodes[i].vy += fy;
+            simNodes[j].vx -= fx;
+            simNodes[j].vy -= fy;
+          }
+          // topic pull
+          const center = topicCentersC[topicFor(simNodes[i].tags)] ?? { x: graphW / 2, y: graphH / 2 };
+          simNodes[i].vx += (center.x - simNodes[i].x) * 0.04;
+          simNodes[i].vy += (center.y - simNodes[i].y) * 0.04;
+          // center pull
+          simNodes[i].vx += (graphW / 2 - simNodes[i].x) * 0.01;
+          simNodes[i].vy += (graphH / 2 - simNodes[i].y) * 0.01;
+        }
+        // 碰撞 + 速度衰减 + 更新位置
+        for (const n of simNodes) {
+          // collision
+          for (const m of simNodes) {
+            if (m === n) continue;
+            const dx = m.x - n.x;
+            const dy = m.y - n.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            const minDist = 28 + 28;
+            if (d < minDist) {
+              const push = (minDist - d) / 2;
+              n.x -= (dx / d) * push;
+              n.y -= (dy / d) * push;
+              m.x += (dx / d) * push;
+              m.y += (dy / d) * push;
+            }
+          }
+          n.vx *= 0.6;
+          n.vy *= 0.6;
+          n.x += n.vx * 0.05;
+          n.y += n.vy * 0.05;
+          n.x = Math.max(20, Math.min(graphW - 20, n.x));
+          n.y = Math.max(20, Math.min(graphH - 20, n.y));
+        }
       }
 
-      // 底部 attribution
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('🧠 由 Insight OS 生成 · 沉淀你的判断力', exportWidth - 280, exportHeight - 20);
+      // 画节点
+      const gx = padding;
+      const gy = cursorY;
+      for (const n of simNodes) {
+        // 圆点
+        ctx.fillStyle = colorFor(n.tags);
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(gx + n.x, gy + n.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // 白边
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
 
-      URL.revokeObjectURL(url);
+        // label 白底
+        const labelText = n.title.length > 8 ? n.title.slice(0, 7) + '…' : n.title;
+        ctx.font = '600 10px sans-serif';
+        const labelW = ctx.measureText(labelText).width + 6;
+        const labelH = 13;
+        const lx = gx + n.x - labelW / 2;
+        const ly = gy + n.y + 14;
+        ctx.fillStyle = '#fdfdfb';
+        ctx.globalAlpha = 0.92;
+        ctx.fillRect(lx, ly, labelW, labelH);
+        ctx.globalAlpha = 1;
+
+        // label 文字
+        ctx.fillStyle = '#0f172a';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, gx + n.x, ly + labelH / 2 + 1);
+        ctx.textAlign = 'start';
+        ctx.textBaseline = 'alphabetic';
+      }
+      cursorY += graphH + 36;
+
+      // ====== 5. 主题分布（柱状图） ======
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 18px "Inter", sans-serif';
+      ctx.fillText('📊 主题分布', padding, cursorY);
+      cursorY += 32;
+
+      const topicCounts: Record<string, number> = {};
+      for (const n of filteredNodes.current) {
+        const t = topicFor(n.tags);
+        if (t === 'default') continue;
+        topicCounts[t] = (topicCounts[t] ?? 0) + 1;
+      }
+      const sortedTopics = Object.entries(topicCounts).sort((a, b) => b[1] - a[1]);
+      const maxCount = Math.max(...Object.values(topicCounts));
+
+      const barMaxW = 600;
+      const barRowH = 26;
+      const labelW = 160;
+      for (const [topic, count] of sortedTopics) {
+        ctx.fillStyle = '#475569';
+        ctx.font = '14px "Inter", sans-serif';
+        ctx.fillText(topic, padding, cursorY);
+
+        const w = (count / maxCount) * barMaxW;
+        ctx.fillStyle = TOPIC_COLORS[topic] ?? TOPIC_COLORS.default;
+        ctx.fillRect(padding + labelW, cursorY - 12, w, 14);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '600 14px "Inter", sans-serif';
+        ctx.fillText(`${count} 张`, padding + labelW + barMaxW + 20, cursorY);
+        cursorY += barRowH;
+      }
+      cursorY += 20;
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.moveTo(padding, cursorY);
+      ctx.lineTo(exportWidth - padding, cursorY);
+      ctx.stroke();
+      cursorY += 28;
+
+      // ====== 6. 如何读这张图 ======
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 18px "Inter", sans-serif';
+      ctx.fillText('📖 如何读这张图', padding, cursorY);
+      cursorY += 32;
+
+      const tips = [
+        { icon: '🎨', text: '颜色 = 主题（看下面图例）' },
+        { icon: '📍', text: '同色节点自动聚成一簇 —— 表示同一类判断' },
+        { icon: '⭕', text: '节点大小 = 优先级（E1 = 核心判断，E2/E3 = 补充）' },
+        { icon: '🧭', text: '位置是算法聚类结果，不代表距离或重要程度' },
+        { icon: '💡', text: '每张卡背后都有一个具体场景 + 我的判断 + 证据' },
+      ];
+      ctx.font = '14px "Inter", sans-serif';
+      for (const tip of tips) {
+        ctx.fillStyle = '#475569';
+        ctx.fillText(`${tip.icon}  ${tip.text}`, padding, cursorY);
+        cursorY += 26;
+      }
+      cursorY += 16;
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.moveTo(padding, cursorY);
+      ctx.lineTo(exportWidth - padding, cursorY);
+      ctx.stroke();
+      cursorY += 24;
+
+      // ====== 7. 作者说 ======
+      ctx.fillStyle = '#4f46e5';
+      ctx.font = 'italic 15px "Playfair Display", Georgia, serif';
+      const quote = '"判断力不是想出来的，是一次次具体选择磨出来的。';
+      const quote2 = '我把这张图整理出来，是为了让自己不重复犯同样的错。"';
+      ctx.fillText(quote, padding, cursorY);
+      cursorY += 22;
+      ctx.fillText(quote2, padding, cursorY);
+      cursorY += 26;
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px "Inter", sans-serif';
+      ctx.fillText(`— ${userName}`, padding + 40, cursorY);
+      cursorY += 32;
+
+      // ====== 8. 底部 attribution ======
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px "Inter", sans-serif';
+      ctx.fillText(`🧠 由 Insight OS 生成 · 沉淀你的判断力 · 导出于 ${dateStr}`, padding, exportHeight - padding + 30);
+
+      // 外边框
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(2, 2, exportWidth - 4, exportHeight - 4);
 
       // 下载
       canvas.toBlob((blob) => {
@@ -267,7 +481,7 @@ export default function EmbedSettingsPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
-        toast.success('PNG 已下载');
+        toast.success('PNG 已下载（带说明 + 主题分布 + 读图指南）');
       }, 'image/png');
     } catch (e: any) {
       toast.error(`导出失败：${e.message}`);
@@ -371,7 +585,7 @@ export default function EmbedSettingsPage() {
               disabled={exporting || loading}
               style={{ padding: '14px 16px', justifyContent: 'center' }}
             >
-              {exporting ? '导出中…' : '📷 导出 PNG（1600×1100）'}
+              {exporting ? '导出中…' : '📷 导出 PNG（1600×1900 带说明）'}
             </button>
             <button
               className="btn btn-accent"
@@ -382,10 +596,24 @@ export default function EmbedSettingsPage() {
               {exporting ? '导出中…' : '📄 导出 PDF（浏览器打印）'}
             </button>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '12px 0 0', lineHeight: 1.6 }}>
-            💡 <strong>PNG：</strong>拖到公众号文章 / 朋友圈 / 飞书文档 / Notion 当配图<br />
-            💡 <strong>PDF：</strong>打印给客户 / 留档 / 邮件附件
-          </p>
+          <details style={{ marginTop: 14, fontSize: 12, color: 'var(--text-3)', lineHeight: 1.7 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-2)' }}>
+              📋 导出图会包含什么？
+            </summary>
+            <ol style={{ margin: '8px 0 0 20px', padding: 0 }}>
+              <li>🧠 顶部品牌条 + 大标题（你的名字 + "的判断力图谱"）</li>
+              <li>📅 副标题（沉淀 N 张 · 跨 M 个主题 · 日期）</li>
+              <li>📝 图谱说明 2 行（这张图在表达什么）</li>
+              <li>🎨 图谱本体（按主题聚类，节点 + 标签）</li>
+              <li>📊 主题分布柱状图（按数量从多到少）</li>
+              <li>📖 如何读这张图（5 条带 icon 解释）</li>
+              <li>💬 作者说引用（"判断力不是想出来的..."）</li>
+              <li>🧠 底部 attribution + 外边框</li>
+            </ol>
+            <p style={{ margin: '8px 0 0', fontStyle: 'italic' }}>
+              PNG 1600×1900 retina 2x，印刷级清晰度；PDF 走浏览器原生打印对话框
+            </p>
+          </details>
         </div>
 
         {/* 图谱预览（被导出） */}
