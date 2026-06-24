@@ -48,6 +48,17 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .all();
 
+    // 一次性拿所有 assetTopics 关联（按 assetId 索引）
+    const allAssetTopics = db.select().from(assetTopics).all();
+    const allTopicsList = db.select().from(topics).all();
+    const topicNameById = new Map(allTopicsList.map(t => [t.id, t.name]));
+    const topicsByAsset = new Map<string, string[]>();
+    for (const at of allAssetTopics) {
+      if (!topicsByAsset.has(at.assetId)) topicsByAsset.set(at.assetId, []);
+      const name = topicNameById.get(at.topicId);
+      if (name) topicsByAsset.get(at.assetId)!.push(name);
+    }
+
     // 简化节点数据（只保留 embed 需要的字段）
     const nodes = list.map(a => ({
       id: a.id,
@@ -56,6 +67,7 @@ export async function GET(req: NextRequest) {
       evidenceLevel: a.evidenceLevel,
       priority: a.priority,
       tags: (() => { try { return JSON.parse(a.tagsJson); } catch { return []; } })(),
+      topicNames: topicsByAsset.get(a.id) ?? [],
     }));
 
     // 简化边（asset 之间的引用关系 — V1.5 简化版：先返回空，后续可从 refAssetIds 提取）
