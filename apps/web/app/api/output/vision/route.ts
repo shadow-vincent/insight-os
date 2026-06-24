@@ -84,7 +84,7 @@ ${dimensionsBlock ? `\n${dimensionsBlock}\n` : ''}`;
     ];
 
     // 直接调 OpenAI client（因为要传 vision message）
-    const cfg = (await import('@insight-os/core')).readCurrentConfig();
+    const cfg = (await import('@insight-os/core')).readConfig();
     const client = new OpenAI({
       baseURL: cfg.llm?.baseUrl ?? process.env.LLM_BASE_URL ?? 'https://api.deepseek.com/v1',
       apiKey: cfg.llm?.apiKey ?? process.env.LLM_API_KEY ?? '',

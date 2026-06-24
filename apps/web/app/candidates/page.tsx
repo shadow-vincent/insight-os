@@ -41,6 +41,28 @@ export default function CandidatesPage() {
   const [batchBusy, setBatchBusy] = useState(false);
   const toast = useToast();
 
+  const handleDeleted = (id: string) => {
+    setList(list.filter(c2 => c2.id !== id));
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const handlePromoteClick = async (c: Candidate) => {
+    if (!confirm(`确认将「${c.title}」入库为正式资产？`)) return;
+    const res = await fetch(`/api/candidates/${c.id}/promote`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      const next = list.map(c2 => c2.id === c.id ? { ...c2, status: 'in_use' } : c2);
+      setList(next);
+      toast.success(`「${c.title}」已入库`);
+    } else {
+      toast.error('入库失败: ' + (data.error || '未知错误'));
+    }
+  };
+
   useEffect(() => {
     fetch('/api/candidates')
       .then(r => r.json())
@@ -214,14 +236,8 @@ export default function CandidatesPage() {
               onToggle={() => setExpandedId(expandedId === c.id ? null : c.id)}
               onSelect={(e) => toggleSelect(c.id, e)}
               toast={toast}
-              onDeleted={(id) => {
-                setList(prev => prev.filter(x => x.id !== id));
-                setSelected(prev => {
-                  const next = new Set(prev);
-                  next.delete(id);
-                  return next;
-                });
-              }}
+              onDeleted={handleDeleted}
+              onPromote={handlePromoteClick}
             />
           ))}
         </div>
@@ -230,7 +246,7 @@ export default function CandidatesPage() {
   );
 }
 
-function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect, toast, onDeleted }: {
+function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect, toast, onDeleted, onPromote }: {
   c: Candidate;
   expanded: boolean;
   isSelected?: boolean;
@@ -239,6 +255,7 @@ function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect,
   onSelect?: (e: React.MouseEvent) => void;
   toast: { error: (m: string) => void; success: (m: string) => void; info: (m: string) => void };
   onDeleted: (id: string) => void;
+  onPromote: (c: Candidate) => void;
 }) {
   const date = new Date(c.createdAt * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   const statusLabel = STATUS_LABEL[c.status] || c.status;
@@ -352,19 +369,7 @@ function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect,
               <Link href="/inbox" className="btn">继续完善</Link>
               <button
                 className="btn btn-primary"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!confirm(`确认将「${c.title}」入库为正式资产？`)) return;
-                  const res = await fetch(`/api/candidates/${c.id}/promote`, { method: 'POST' });
-                  const data = await res.json();
-                  if (data.ok) {
-                    // 不 reload：fetch + setList 更新（保留滚动位置 + 更快）
-                    setList(prev => prev.map(x => x.id === c.id ? { ...x, status: 'in_use' } : x));
-                    toast.success(`「${c.title}」已入库`);
-                  } else {
-                    toast.error('入库失败: ' + (data.error || '未知错误'));
-                  }
-                }}
+                onClick={() => onPromote(c)}
               >
                 确认入库 →
               </button>

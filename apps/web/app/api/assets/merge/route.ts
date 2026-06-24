@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
     const now = Math.floor(Date.now() / 1000);
     const newId = `merge_${randomUUID().slice(0, 8)}`;
 
-    db.insert(assets).values({
+    db.insert(assets).values([{
       id: newId,
       type: 'asset',
       status: 'in_use',
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       feedbackCount: 0,
       createdAt: now,
       updatedAt: now,
-    }).run();
+    }] as any).run();
 
     // 旧资产 archived + tag 标注
     const mergedMarker = `merged:${newId}`;

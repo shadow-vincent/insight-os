@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         // 如果 baseUrl 和 apiKey 都配了，自动 enabled
         const current = readConfig();
         const merged = { ...current.llm, ...partial.llm };
-        partial.llm.enabled = !!merged.apiKey && merged.apiKey !== 'sk-placeholder';
+        partial.llm.enabled = !!merged.apiKey && !isPlaceholderApiKey(merged.apiKey);
       }
     }
 

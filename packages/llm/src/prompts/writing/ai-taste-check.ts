@@ -96,7 +96,7 @@ export interface AITasteCheckResult {
 }
 
 import { getActiveKernelsForInjection } from '@insight-os/db';
-import { callLLM } from '../../client.js';
+import { callLLM } from '../../client.ts';
 
 export interface AITasteCheckInput {
   content: string;             // 待评估文章

@@ -93,12 +93,12 @@ export async function POST(req: NextRequest) {
         coreBelief,
         cards: cardInputs,
       });
-      const kernel = getActiveKernelsForInjection();
+      const activeKernels = getActiveKernelsForInjection();
       const res = await callLLM<ScaffoldOutput>(WRITING_SCAFFOLD_SYSTEM, userPrompt, {
         jsonMode: true,
         temperature: 0.5,
         maxTokens: 1800,
-      kernel,
+        kernel: activeKernels.slice(0, 3),
       });
       if (!res.ok || !res.data) {
         return Response.json({

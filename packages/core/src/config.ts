@@ -179,6 +179,15 @@ export interface SanitizedConfig {
   lastUpdated: number;
 }
 
+/**
+ * 判断 apiKey 是否是占位符（demo 用途，不可调通 LLM）
+ */
+export function isPlaceholderApiKey(key: string | undefined | null): boolean {
+  if (!key) return true;
+  const PLACEHOLDERS = ['sk-placeholder', 'sk-test-demo', 'sk-demo', 'sk-xxx'];
+  return PLACEHOLDERS.includes(key) || key.startsWith('sk-xxx');
+}
+
 export function maskApiKey(key: string): string {
   if (!key) return '';
   if (key.length <= 8) return '****';
@@ -186,11 +195,12 @@ export function maskApiKey(key: string): string {
 }
 
 export function sanitize(config: AppConfig): SanitizedConfig {
+  const isConfigured = !!config.llm.apiKey && !isPlaceholderApiKey(config.llm.apiKey);
   return {
     llm: {
       baseUrl: config.llm.baseUrl,
       apiKeyMasked: maskApiKey(config.llm.apiKey),
-      apiKeyConfigured: !!config.llm.apiKey,
+      apiKeyConfigured: isConfigured,
       model: config.llm.model,
       enabled: config.llm.enabled,
     },

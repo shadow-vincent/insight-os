@@ -93,8 +93,8 @@ export function extractOneSentenceInsight(content: string): string | undefined {
   const tableMatch = content.match(/\|\s*\*\*一句话洞察\*\*\s*\|\s*([^|]+?)\s*\|/);
   if (tableMatch) return cleanText(tableMatch[1]);
 
-  // 模式 2: 标题后跟文本
-  const headingMatch = content.match(/(?:#{1,4}\s*)?\*\*?一句话洞察\*\*?[：:]\s*(.+?)(?:\n|$)/);
+  // 模式 2: 标题后跟文本（兼容 "## 一句话洞察\n内容" 和 "**一句话洞察**：内容" 两种形式）
+  const headingMatch = content.match(/(?:#{1,4}\s*)?(?:\*\*)?一句话洞察(?:\*\*)?[：:]?\s*\n?\s*(.+?)(?:\n|$)/);
   if (headingMatch) return cleanText(headingMatch[1]);
 
   return undefined;
@@ -107,7 +107,7 @@ export function extractAntiCommonSense(content: string): string | undefined {
   const tableMatch = content.match(/\|\s*\*\*反常识判断\*\*\s*\|\s*([^|]+?)\s*\|/);
   if (tableMatch) return cleanText(tableMatch[1]);
 
-  const headingMatch = content.match(/(?:#{1,4}\s*)?\*\*?反常识判断\*\*?[：:]\s*(.+?)(?:\n|$)/);
+  const headingMatch = content.match(/(?:#{1,4}\s*)?(?:\*\*)?反常识判断(?:\*\*)?[：:]?\s*\n?\s*(.+?)(?:\n|$)/);
   if (headingMatch) return cleanText(headingMatch[1]);
 
   return undefined;

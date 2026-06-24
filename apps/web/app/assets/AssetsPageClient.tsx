@@ -556,7 +556,7 @@ function MultiOutputModal({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const [outputType, setOutputType] = useState<'talk_script' | 'article_outline' | 'article_full'>('article_outline');
+  const [outputType, setOutputType] = useState<string>('article_outline');
   const [audience, setAudience] = useState('');
   const [context, setContext] = useState('');
   const [busy, setBusy] = useState(false);

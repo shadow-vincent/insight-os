@@ -197,7 +197,7 @@ export default function WeeklyReflectionPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: 'var(--ink)' }}>{k.content}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                    {k.category} · 置信度 {k.confidence}% · 引用 {k.referencedCount} 次
+                    {k.category} · 置信度 {k.confidence}%
                   </div>
                 </div>
                 <Link href="/settings/kernel" className="btn btn-sm">✓ 复盘</Link>

@@ -12,17 +12,22 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lightCard, calibrate, assetUpgrade, outputGenerate } from '../packages/llm/src/index.ts';
+import {
+  LIGHT_CARD_SYSTEM, buildLightCardUserPrompt,
+  CALIBRATE_SYSTEM, buildCalibrateUserPrompt,
+  ASSET_UPGRADE_SYSTEM, buildAssetUpgradeUserPrompt,
+  OUTPUT_GENERATE_SYSTEM, buildOutputGenerateUserPrompt,
+} from '../packages/llm/src/index.ts';
 
 test('Prompt ① 轻量卡: system 包含业务角色 + 输出格式约束', () => {
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.length > 200);
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.includes('Vincent'));
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.includes('JSON'));
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.includes('不夸大') || lightCard.LIGHT_CARD_SYSTEM.includes('不空话'));
+  assert.ok(LIGHT_CARD_SYSTEM.length > 200);
+  assert.ok(LIGHT_CARD_SYSTEM.includes('Vincent'));
+  assert.ok(LIGHT_CARD_SYSTEM.includes('JSON'));
+  assert.ok(LIGHT_CARD_SYSTEM.includes('不夸大') || LIGHT_CARD_SYSTEM.includes('不空话'));
 });
 
 test('Prompt ①: user prompt 包含原始内容和来源类型', () => {
-  const prompt = lightCard.buildLightCardUserPrompt({
+  const prompt = buildLightCardUserPrompt({
     rawContent: '测试内容',
     sourceType: 'manual',
   });
@@ -54,15 +59,15 @@ test('Prompt ①: 输出字段定义完整', () => {
 });
 
 test('Prompt ② 苏格拉底三问: system 明确三问 + 校准原则', () => {
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('反面观点'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('边界'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('讲给不懂的人听'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('should_promote'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('JSON'));
+  assert.ok(CALIBRATE_SYSTEM.includes('反面观点'));
+  assert.ok(CALIBRATE_SYSTEM.includes('边界'));
+  assert.ok(CALIBRATE_SYSTEM.includes('讲给不懂的人听'));
+  assert.ok(CALIBRATE_SYSTEM.includes('should_promote'));
+  assert.ok(CALIBRATE_SYSTEM.includes('JSON'));
 });
 
 test('Prompt ②: user prompt 包含三问问题 + 字段说明', () => {
-  const prompt = calibrate.buildCalibrateUserPrompt({
+  const prompt = buildCalibrateUserPrompt({
     initialInsight: '判断力是稀缺资源',
     antiCommonSense: '所有人都在学 PE',
     sourceContext: '与某 CIO 沟通',
@@ -76,15 +81,15 @@ test('Prompt ②: user prompt 包含三问问题 + 字段说明', () => {
 });
 
 test('Prompt ③ 资产卡升级: system 包含 12 章节 + 输出原则', () => {
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('可调用'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('可输出'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('可验证'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('分层诊断'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('JSON'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('可调用'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('可输出'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('可验证'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('分层诊断'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('JSON'));
 });
 
 test('Prompt ③: user prompt 包含 13 个章节字段名', () => {
-  const prompt = assetUpgrade.buildAssetUpgradeUserPrompt({
+  const prompt = buildAssetUpgradeUserPrompt({
     title: 'AI 时代最稀缺的是判断力',
     calibratedInsight: '判断力稀缺',
     antiCommonSense: '该学判断力工程',
@@ -113,7 +118,7 @@ test('Prompt ③: user prompt 包含 13 个章节字段名', () => {
 
 test('Prompt ③: 输出字段包含分层诊断的 3 个层级', () => {
   // 编译时检查
-  const sample: assetUpgrade.AssetUpgradeOutput = {
+  const sample = {
     one_sentence_insight: 'x',
     raw_observation: { what_observed: 'x', industry_view: 'x', my_view: 'x', basis: 'x' },
     scene_outputs: [{ scene: 'client_talk', expression: 'x' }],
@@ -136,15 +141,15 @@ test('Prompt ③: 输出字段包含分层诊断的 3 个层级', () => {
 });
 
 test('Prompt ④ 场景输出: system 区分 talk_script 和 article_outline', () => {
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('talk_script'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('article_outline'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('客户沟通话术'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('公众号文章大纲'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('JSON'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('talk_script'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('article_outline'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('客户沟通话术'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('公众号文章大纲'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('JSON'));
 });
 
 test('Prompt ④: talk_script user prompt 包含 4 段结构', () => {
-  const prompt = outputGenerate.buildOutputGenerateUserPrompt({
+  const prompt = buildOutputGenerateUserPrompt({
     assetSummaries: [{
       title: '判断力',
       oneSentenceInsight: '判断力稀缺',
@@ -162,7 +167,7 @@ test('Prompt ④: talk_script user prompt 包含 4 段结构', () => {
 });
 
 test('Prompt ④: article_outline user prompt 包含 5 段结构', () => {
-  const prompt = outputGenerate.buildOutputGenerateUserPrompt({
+  const prompt = buildOutputGenerateUserPrompt({
     assetSummaries: [{
       title: '判断力',
       oneSentenceInsight: '判断力稀缺',
@@ -179,7 +184,7 @@ test('Prompt ④: article_outline user prompt 包含 5 段结构', () => {
 });
 
 test('Prompt ④: 多张资产卡联合生成', () => {
-  const prompt = outputGenerate.buildOutputGenerateUserPrompt({
+  const prompt = buildOutputGenerateUserPrompt({
     assetSummaries: [
       { title: 'A', oneSentenceInsight: 'ia', antiCommonSense: 'aa' },
       { title: 'B', oneSentenceInsight: 'ib', antiCommonSense: 'ab' },
@@ -193,17 +198,17 @@ test('Prompt ④: 多张资产卡联合生成', () => {
 });
 
 test('全部 4 个 prompt: 包含 JSON 输出约束', () => {
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.includes('JSON'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('JSON'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('JSON'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('JSON'));
+  assert.ok(LIGHT_CARD_SYSTEM.includes('JSON'));
+  assert.ok(CALIBRATE_SYSTEM.includes('JSON'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('JSON'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('JSON'));
 });
 
 test('全部 4 个 prompt: 都明确提到 Vincent 业务角色', () => {
-  assert.ok(lightCard.LIGHT_CARD_SYSTEM.includes('Vincent'));
-  assert.ok(calibrate.CALIBRATE_SYSTEM.includes('Vincent'));
-  assert.ok(assetUpgrade.ASSET_UPGRADE_SYSTEM.includes('Vincent'));
-  assert.ok(outputGenerate.OUTPUT_GENERATE_SYSTEM.includes('Vincent'));
+  assert.ok(LIGHT_CARD_SYSTEM.includes('Vincent'));
+  assert.ok(CALIBRATE_SYSTEM.includes('Vincent'));
+  assert.ok(ASSET_UPGRADE_SYSTEM.includes('Vincent'));
+  assert.ok(OUTPUT_GENERATE_SYSTEM.includes('Vincent'));
 });
 
 test('全部 4 个 prompt: 都有"不空话/不夸大/不敷衍"等质量约束', () => {
@@ -213,10 +218,10 @@ test('全部 4 个 prompt: 都有"不空话/不夸大/不敷衍"等质量约束'
   ];
   let total = 0;
   const allPrompts = [
-    lightCard.LIGHT_CARD_SYSTEM,
-    calibrate.CALIBRATE_SYSTEM,
-    assetUpgrade.ASSET_UPGRADE_SYSTEM,
-    outputGenerate.OUTPUT_GENERATE_SYSTEM,
+    LIGHT_CARD_SYSTEM,
+    CALIBRATE_SYSTEM,
+    ASSET_UPGRADE_SYSTEM,
+    OUTPUT_GENERATE_SYSTEM,
   ];
   for (const p of allPrompts) {
     for (const c of constraints) {

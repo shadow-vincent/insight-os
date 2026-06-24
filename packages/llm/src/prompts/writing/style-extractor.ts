@@ -15,7 +15,7 @@
  */
 
 import { getActiveKernelsForInjection } from '@insight-os/db';
-import { callLLM } from '../../client.js';
+import { callLLM } from '../../client.ts';
 
 // ============================================
 // LLM Prompt

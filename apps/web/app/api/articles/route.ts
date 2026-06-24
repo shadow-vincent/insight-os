@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
         createdAt: outputs.createdAt,
       })
       .from(outputs)
-      .where(inArray(outputs.outputType, types))
+      .where(inArray(outputs.outputType, types as any))
       .orderBy(desc(outputs.createdAt))
       .limit(limit);
 

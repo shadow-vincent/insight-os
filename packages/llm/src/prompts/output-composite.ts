@@ -19,10 +19,10 @@
  * - writing: 通用写作（V1.0 老类型，向后兼容）
  */
 
-import type { OutputType } from './output-generate';
-import { SPEECH_PROMPT_INJECTION, buildSpeechUserPrompt } from './output-speech';
-import { BOOK_NOTE_PROMPT_INJECTION, buildBookNoteUserPrompt } from './output-book-note';
-import { EMAIL_PROMPT_INJECTION, buildEmailUserPrompt } from './output-email';
+import type { OutputType } from './output-generate.ts';
+import { SPEECH_PROMPT_INJECTION, buildSpeechUserPrompt } from './output-speech.ts';
+import { BOOK_NOTE_PROMPT_INJECTION, buildBookNoteUserPrompt } from './output-book-note.ts';
+import { EMAIL_PROMPT_INJECTION, buildEmailUserPrompt } from './output-email.ts';
 
 export const COMPOSITE_OUTPUT_SYSTEM = `你是 Vincent 的资深研究助理。Vincent 是一名独立管理咨询顾问，受德鲁克"管理本质是激发人的善意和潜能"的影响，写作风格向德鲁克看齐：敢说真话、拒绝空洞、给具体判断。
 
