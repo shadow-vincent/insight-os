@@ -153,6 +153,34 @@ export default function SettingsPage() {
         </div>
       </Link>
 
+      {/* iCloud 同步入口（v1.5） */}
+      <Link href="/settings/sync" className="card card-hover" style={{ display: 'block', marginBottom: 16, padding: 18, textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>☁️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>数据同步 · iCloud</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              导出 / 导入 ZIP · 拖到 iCloud Drive 即可多端同步
+            </div>
+          </div>
+          <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+        </div>
+      </Link>
+
+      {/* 嵌入图谱入口（v1.5） */}
+      <Link href="/settings/embed" className="card card-hover" style={{ display: 'block', marginBottom: 16, padding: 18, textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>📤</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>嵌入图谱 · Embed Widget</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              公开 URL + 一行 &lt;iframe&gt; 嵌入代码 · 把判断力图谱嵌到博客
+            </div>
+          </div>
+          <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+        </div>
+      </Link>
+
       {/* 主题切换 */}
       <div className="card" style={{ padding: 28, marginBottom: 16 }}>
         <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>🎨 主题外观</h2>

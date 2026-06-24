@@ -398,6 +398,27 @@ export function DashboardClient({
         </div>
       </div>
 
+      {/* 本周回顾卡片（v1.5 Weekly Reflection） */}
+      <Link href="/insights/weekly" style={{
+        display: 'block', marginBottom: 16, padding: '14px 20px',
+        background: 'linear-gradient(135deg, var(--primary-soft) 0%, var(--bg-panel) 100%)',
+        border: '1px solid var(--primary)', borderRadius: 10,
+        textDecoration: 'none', color: 'inherit',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ fontSize: 32 }}>📊</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+              本周回顾 · Weekly Reflection
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+              看看这周你沉淀了什么 · 哪些 Kernel 该复盘了
+            </div>
+          </div>
+          <span style={{ color: 'var(--primary)', fontSize: 18 }}>→</span>
+        </div>
+      </Link>
+
       {/* 最近更新 + 活动 feed */}
       <div style={{
         display: 'grid',
