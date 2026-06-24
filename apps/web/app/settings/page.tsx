@@ -172,12 +172,26 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 20 }}>📤</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>嵌入图谱 · Embed Widget</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>导出图谱 PNG / PDF</div>
             <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-              公开 URL + 一行 &lt;iframe&gt; 嵌入代码 · 把判断力图谱嵌到博客
+              本地导出 · 不需要域名 · 贴公众号/朋友圈/发客户
             </div>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+        </div>
+      </Link>
+
+      {/* 博客文章图导出（V1.5 真实使用场景） */}
+      <Link href="/settings/blog-poster" className="card card-hover" style={{ display: 'block', marginBottom: 16, padding: 18, textDecoration: 'none', color: 'inherit', background: 'var(--primary-soft)', border: '1px solid var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>📰</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>博客文章图导出（推荐）</div>
+            <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
+              整篇博客 → 1080 宽长图 · 标题+正文+引用+嵌入 widget+CTA · 公众号/朋友圈专用
+            </div>
+          </div>
+          <span style={{ color: 'var(--primary)', fontSize: 16 }}>→</span>
         </div>
       </Link>
 
