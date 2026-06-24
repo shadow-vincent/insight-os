@@ -1,10 +1,13 @@
 'use client';
 
 /**
- * /insights/weekly — Weekly Reflection 报告（v1.5）
+ * /insights/weekly — Weekly Reflection 报告（V1.6 加自动生成 + 缓存）
  *
- * 数据：过去 7 天的活动 + 30 天没验证的 Kernel + Kernel 被引用
- * 触发：手动打开（V1.6 加每周一 09:00 自动生成）
+ * 流程：
+ * - localStorage 缓存上次生成的报告（7 天内不重新计算）
+ * - "✨ 重新生成本周报告" 按钮：手动触发
+ * - 顶部显示"上次生成于 X · 距今 Y 天 · Z 天后过期"
+ * - 每周一 09:00 在 dashboard banner 提醒（client-side schedule）
  */
 
 import { useEffect, useState } from 'react';
@@ -30,22 +33,69 @@ interface WeeklyReport {
   topKernels: Array<{ id: string; category: string; content: string; confidence: number; referencedCount: number }>;
 }
 
+const CACHE_KEY = 'insight-weekly-report-v1';
+const CACHE_DAYS = 7;
+
+interface CachedReport {
+  report: WeeklyReport;
+  generatedAt: number;  // unix seconds
+}
+
 export default function WeeklyReflectionPage() {
   const [report, setReport] = useState<WeeklyReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/insights/weekly')
-      .then(r => r.json())
-      .then(d => { if (d.ok) setReport(d); })
-      .finally(() => setLoading(false));
+    loadReport();
   }, []);
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>⏳ 正在汇总本周数据…</div>;
+  const loadReport = async () => {
+    setLoading(true);
+    try {
+      // 1) 读 localStorage
+      const cached = readCache();
+      if (cached && !isStale(cached)) {
+        setReport(cached.report);
+        setGeneratedAt(cached.generatedAt);
+        setLoading(false);
+        return;
+      }
+      // 2) 缓存失效 / 不存在 → 重新生成
+      await generate(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generate = async (showLoading = true) => {
+    if (showLoading) setGenerating(true);
+    try {
+      const res = await fetch('/api/insights/weekly');
+      const data = await res.json();
+      if (data.ok) {
+        setReport(data);
+        const now = Math.floor(Date.now() / 1000);
+        setGeneratedAt(now);
+        writeCache({ report: data, generatedAt: now });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (showLoading) setGenerating(false);
+    }
+  };
+
+  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>⏳ 加载中…</div>;
   if (!report) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>暂无数据</div>;
 
   const s = report.summary;
   const weekEmpty = s.assetsNew === 0 && s.feedbackNew === 0 && s.outputsNew === 0;
+  const daysAgo = generatedAt ? Math.floor((Date.now() / 1000 - generatedAt) / 86400) : null;
+  const daysToStale = daysAgo !== null ? Math.max(0, CACHE_DAYS - daysAgo) : 0;
+  const isMonday = new Date().getDay() === 1;
+  const isStaleCached = daysAgo !== null && daysAgo >= CACHE_DAYS;
 
   return (
     <div style={{ maxWidth: 880 }}>
@@ -53,6 +103,48 @@ export default function WeeklyReflectionPage() {
       <p className="page-subtitle">
         {new Date(report.weekRange.start).toLocaleDateString('zh-CN')} ~ {new Date(report.weekRange.end).toLocaleDateString('zh-CN')} · 7 天活动汇总
       </p>
+
+      {/* 缓存状态 + 重新生成 */}
+      <div className="card" style={{
+        padding: 14, marginBottom: 16,
+        background: isStaleCached ? 'var(--warning-bg)' : 'var(--bg-subtle)',
+        border: isStaleCached ? '1px solid var(--warning)' : '1px solid var(--line)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, fontSize: 13, color: 'var(--ink)' }}>
+            {generatedAt ? (
+              <>
+                <span style={{ color: 'var(--text-3)' }}>上次生成：</span>
+                <strong>{new Date(generatedAt * 1000).toLocaleString('zh-CN')}</strong>
+                <span style={{ color: 'var(--text-3)' }}> · {daysAgo === 0 ? '今天' : `${daysAgo} 天前`}</span>
+                {isStaleCached ? (
+                  <span style={{ color: 'var(--warning)', marginLeft: 8, fontWeight: 600 }}>
+                    ⚠️ 缓存已过期
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--text-3)', marginLeft: 8 }}>
+                    · {daysToStale} 天后过期
+                  </span>
+                )}
+              </>
+            ) : (
+              <span>未生成</span>
+            )}
+            {isMonday && !isStaleCached && (
+              <span style={{ marginLeft: 12, padding: '2px 8px', background: 'var(--primary-soft)', color: 'var(--primary)', borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                📅 周一提醒：建议刷新一下
+              </span>
+            )}
+          </div>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => generate(true)}
+            disabled={generating}
+          >
+            {generating ? '生成中…' : '✨ 重新生成本周报告'}
+          </button>
+        </div>
+      </div>
 
       {/* 数据汇总 */}
       <div className="card" style={{ padding: 24, marginBottom: 16 }}>
@@ -80,7 +172,7 @@ export default function WeeklyReflectionPage() {
         )}
       </div>
 
-      {/* 待验证 Kernel（30 天没动） */}
+      {/* 待验证 Kernel */}
       {report.staleKernels.length > 0 && (
         <div className="card" style={{ padding: 24, marginBottom: 16, borderLeft: '3px solid var(--warning)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>
@@ -115,7 +207,7 @@ export default function WeeklyReflectionPage() {
         </div>
       )}
 
-      {/* Top Kernel 被引用最多 */}
+      {/* Top Kernel */}
       {report.topKernels.length > 0 && (
         <div className="card" style={{ padding: 24, marginBottom: 16 }}>
           <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>🏆 被引用最多</h2>
@@ -203,8 +295,30 @@ export default function WeeklyReflectionPage() {
       )}
 
       <div style={{ marginTop: 24, padding: 16, background: 'var(--primary-soft)', borderRadius: 8, fontSize: 12, color: 'var(--text-2)' }}>
-        💡 <strong>Weekly Reflection</strong> 的核心不是"看你做了多少"，是"看你想得对不对"。下周试试 —— 每周一花 10 分钟看一眼这份报告。
+        💡 <strong>Weekly Reflection</strong> 的核心不是"看你做了多少"，是"看你想得对不对"。
+        {isMonday && <><br />📅 今天周一 —— 强烈建议刷新一次本周报告，看看过去 7 天你的判断质量。</>}
       </div>
     </div>
   );
+}
+
+function readCache(): CachedReport | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CachedReport;
+  } catch { return null; }
+}
+
+function writeCache(c: CachedReport) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(c));
+  } catch { /* quota */ }
+}
+
+function isStale(c: CachedReport): boolean {
+  const daysAgo = Math.floor((Date.now() / 1000 - c.generatedAt) / 86400);
+  return daysAgo >= CACHE_DAYS;
 }

@@ -556,6 +556,79 @@ function FeedbackModal({ assetId, currentLevel, onClose, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // v1.6: 反向校准状态
+  const [suggesting, setSuggesting] = useState(false);
+  const [reverseCalibrationResults, setReverseCalibrationResults] = useState<{
+    suggestions: Array<{
+      kernelId: string;
+      kernelCategory: string;
+      kernelContent: string;
+      kernelCounterExample: string | null;
+      hasCounter: boolean;
+      score: number;
+      matchedWords: string[];
+      reason: string;
+      suggestedCounterExample: string;
+    }>;
+  } | null>(null);
+  const [applyingCounter, setApplyingCounter] = useState<string | null>(null);
+
+  const handleSuggestReverseCalibration = async () => {
+    setSuggesting(true);
+    setReverseCalibrationResults(null);
+    try {
+      const res = await fetch('/api/kernel/feedback-suggest', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assetId, reaction: `${reaction} ${mostTouchedPoint} ${followUpQuestions}`.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setReverseCalibrationResults({ suggestions: data.suggestions });
+        if (data.suggestions.length === 0) {
+          alert('没找到与本资产强相关的 Kernel —— 可能这条判断目前不需要反例。');
+        }
+      } else {
+        alert(`分析失败：${data.error}`);
+      }
+    } catch (e: any) {
+      alert(`分析失败：${e.message}`);
+    } finally {
+      setSuggesting(false);
+    }
+  };
+
+  const handleApplyCounter = async (kernelId: string, counterExample: string) => {
+    setApplyingCounter(kernelId);
+    try {
+      const res = await fetch(`/api/kernel/${kernelId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ counterExample }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        // 更新本地结果
+        if (reverseCalibrationResults) {
+          setReverseCalibrationResults({
+            suggestions: reverseCalibrationResults.suggestions.map(s =>
+              s.kernelId === kernelId
+                ? { ...s, hasCounter: true, kernelCounterExample: counterExample }
+                : s
+            ),
+          });
+        }
+        alert('反例已加为反例（也更新了 lastVerifiedAt）');
+      } else {
+        alert(`添加失败：${data.error}`);
+      }
+    } catch (e: any) {
+      alert(`添加失败：${e.message}`);
+    } finally {
+      setApplyingCounter(null);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -658,6 +731,81 @@ function FeedbackModal({ assetId, currentLevel, onClose, onSaved }: {
 
           {error && (
             <div className="callout callout-danger" style={{ marginTop: 12, fontSize: 12 }}>✗ {error}</div>
+          )}
+
+          {/* v1.6: 反向校准建议按钮 */}
+          <div style={{
+            marginTop: 16, padding: 12, background: 'var(--primary-soft)',
+            borderRadius: 6, border: '1px solid var(--primary)',
+          }}>
+            <div style={{ fontSize: 12, color: 'var(--ink)', marginBottom: 8, lineHeight: 1.5 }}>
+              💡 <strong>反向校准</strong>：写完反馈后，看看哪条 Insight Kernel 应该加反例
+            </div>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={handleSuggestReverseCalibration}
+              disabled={suggesting || !reaction}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              {suggesting ? '分析中…' : '🔍 找需要加反例的 Kernel'}
+            </button>
+            {!reaction && (
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, textAlign: 'center' }}>
+                先在"客户/读者反应"里写点内容
+              </div>
+            )}
+          </div>
+
+          {reverseCalibrationResults && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
+                🎯 建议加反例的 Kernel（{reverseCalibrationResults.suggestions.length}）
+              </div>
+              {reverseCalibrationResults.suggestions.length === 0 ? (
+                <div style={{ padding: 10, background: 'var(--bg-subtle)', borderRadius: 6, fontSize: 12, color: 'var(--text-3)' }}>
+                  没找到与本资产强相关的 Kernel
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {reverseCalibrationResults.suggestions.map(s => (
+                    <div key={s.kernelId} style={{
+                      padding: 10, background: 'var(--bg-panel)', borderRadius: 6,
+                      border: '1px solid var(--line)', fontSize: 12,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <span style={{
+                          fontSize: 10, padding: '2px 6px', borderRadius: 6,
+                          background: 'var(--primary-soft)', color: 'var(--primary)',
+                          fontWeight: 600, flexShrink: 0,
+                        }}>{s.kernelCategory}</span>
+                        <span style={{ color: 'var(--ink)', flex: 1, fontWeight: 500 }}>{s.kernelContent}</span>
+                      </div>
+                      {s.suggestedCounterExample && (
+                        <div style={{
+                          padding: 8, background: 'var(--bg-subtle)', borderRadius: 4,
+                          fontSize: 11, color: 'var(--text-2)', marginBottom: 6,
+                          borderLeft: '2px solid var(--accent)',
+                        }}>
+                          <strong>建议反例：</strong> {s.suggestedCounterExample}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {s.hasCounter && (
+                          <span style={{ fontSize: 10, color: 'var(--warning)', alignSelf: 'center' }}>⚠️ 已加过反例</span>
+                        )}
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleApplyCounter(s.kernelId, s.suggestedCounterExample)}
+                          disabled={applyingCounter === s.kernelId}
+                        >
+                          {applyingCounter === s.kernelId ? '应用…' : s.hasCounter ? '更新反例' : '✓ 加为反例'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 

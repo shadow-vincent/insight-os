@@ -29,11 +29,15 @@ const TOPIC_COLORS: Record<string, string> = {
   'default': '#64748b',
 };
 
-function colorFor(tags: string[]): string {
+function topicFor(tags: string[]): string {
   for (const t of tags) {
-    if (TOPIC_COLORS[t]) return TOPIC_COLORS[t];
+    if (TOPIC_COLORS[t]) return t;
   }
-  return TOPIC_COLORS.default;
+  return 'default';
+}
+
+function colorFor(tags: string[]): string {
+  return TOPIC_COLORS[topicFor(tags)] ?? TOPIC_COLORS.default;
 }
 
 export default function PublicGraphPage({ params }: { params: Promise<{ user_id: string }> }) {
@@ -62,12 +66,34 @@ export default function PublicGraphPage({ params }: { params: Promise<{ user_id:
       const nodes = data.nodes.map(n => ({ ...n, x: width / 2 + (Math.random() - 0.5) * 200, y: height / 2 + (Math.random() - 0.5) * 200 }));
       const links: any[] = data.links.map(l => ({ ...l }));
 
+      // v1.6: 计算每个 node 的主题 cluster 中心（让同主题聚类）
+      const topicCenters: Record<string, { x: number; y: number }> = {};
+      const allTopics = Array.from(new Set(nodes.map(n => topicFor(n.tags))));
+      const cols = Math.ceil(Math.sqrt(allTopics.length));
+      const rows = Math.ceil(allTopics.length / cols);
+      const cellW = width * 0.75 / cols;
+      const cellH = height * 0.75 / rows;
+      allTopics.forEach((topic, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        topicCenters[topic] = {
+          x: width * 0.125 + cellW * (col + 0.5),
+          y: height * 0.125 + cellH * (row + 0.5),
+        };
+      });
+
       const sim = (d3 as any).forceSimulation(nodes)
         .force('charge', (d3 as any).forceManyBody().strength(-180))
-        .force('center', (d3 as any).forceCenter(width / 2, height / 2))
+        .force('center', (d3 as any).forceCenter(width / 2, height / 2).strength(0.05))
         .force('collision', (d3 as any).forceCollide().radius(28))
-        .force('x', (d3 as any).forceX(width / 2).strength(0.04))
-        .force('y', (d3 as any).forceY(height / 2).strength(0.05));
+        .force('topicX', (d3 as any).forceX((d: any) => {
+          const t = topicCenters[topicFor(d.tags)];
+          return t?.x ?? width / 2;
+        }).strength(0.18))
+        .force('topicY', (d3 as any).forceY((d: any) => {
+          const t = topicCenters[topicFor(d.tags)];
+          return t?.y ?? height / 2;
+        }).strength(0.18));
 
       if (links.length > 0) {
         sim.force('link', (d3 as any).forceLink(links).id((d: any) => d.id).distance(60).strength(0.4));
@@ -193,6 +219,22 @@ export default function PublicGraphPage({ params }: { params: Promise<{ user_id:
 
         <div style={{ position: 'relative', height: 460, background: '#fdfdfb' }}>
           <svg ref={svgRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+
+          {/* v1.6: 主题 cluster 图例（背景色块） */}
+          <div style={{
+            position: 'absolute', top: 8, right: 8,
+            display: 'flex', flexDirection: 'column', gap: 4,
+            background: 'rgba(255,255,255,0.85)', padding: '6px 8px',
+            borderRadius: 6, fontSize: 10, color: '#475569',
+            backdropFilter: 'blur(4px)',
+          }}>
+            {Object.entries(TOPIC_COLORS).filter(([k]) => k !== 'default').map(([topic, color]) => (
+              <div key={topic} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 4, background: color }} />
+                <span>{topic}</span>
+              </div>
+            ))}
+          </div>
 
           {hovered && tooltipPos && (
             <div style={{
