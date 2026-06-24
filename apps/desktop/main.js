@@ -1,5 +1,5 @@
 // Insight Asset OS — Electron main process
-// 流程：app.whenReady() → 设 userData env → 启动 next start 子进程 → 等 3000 ready → BrowserWindow 加载 3000
+// 流程：app.whenReady() → 设 userData env → 启动 next start 子进程 → 等 PORT ready → BrowserWindow 加载 PORT
 // 退出：kill next start
 
 const { app, BrowserWindow, shell, dialog } = require('electron');
@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 
-const PORT = 3000;
+const PORT = 3100;
 const isDev = process.argv.includes('--dev');
 const isPackaged = !process.defaultApp;
 
