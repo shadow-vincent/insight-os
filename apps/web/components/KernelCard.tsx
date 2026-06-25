@@ -2,6 +2,7 @@
 
 import type { UserKernelRow } from '@insight-os/db';
 import { useState } from 'react';
+import Link from 'next/link';
 
 const CATEGORY_META: Record<string, { label: string; color: string; bg: string; emoji: string }> = {
   belief:     { label: '底层信念',     color: '#6366f1', bg: 'rgba(99, 102, 241, 0.08)',  emoji: '◆' },
@@ -116,6 +117,31 @@ export default function KernelCard({ kernel, onEdit, onArchive, onVerify, onReac
         </div>
       )}
 
+      {/* v1.6: 引用资产（evidence）展示 */}
+      {kernel.evidenceAssetIds && kernel.evidenceAssetIds.length > 0 && (
+        <details style={{ marginTop: 10 }}>
+          <summary style={{
+            fontSize: 11, color: 'var(--text-3)', fontWeight: 600,
+            cursor: 'pointer', listStyle: 'none',
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '4px 0',
+          }}>
+            <span style={{ fontSize: 10 }}>▸</span>
+            引用 {kernel.evidenceAssetIds.length} 张资产
+          </summary>
+          <div style={{ marginTop: 6, paddingLeft: 12, borderLeft: `2px solid ${meta.color}30` }}>
+            {kernel.evidenceAssetIds.slice(0, 5).map((aid) => (
+              <EvidenceAssetLink key={aid} assetId={aid} />
+            ))}
+            {kernel.evidenceAssetIds.length > 5 && (
+              <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
+                + 还有 {kernel.evidenceAssetIds.length - 5} 张
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
       {/* 操作按钮（hover 显示） */}
       <div style={{
         display: 'flex', gap: 6, marginTop: 12,
@@ -147,5 +173,49 @@ export default function KernelCard({ kernel, onEdit, onArchive, onVerify, onReac
         )}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * 引用资产链接（轻量级 client 组件）
+ * 折叠时只显示 ID，展开时按需 fetch 资产标题
+ */
+function EvidenceAssetLink({ assetId }: { assetId: string }) {
+  const [title, setTitle] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTitle = async () => {
+    if (title !== null || loading) return;
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/assets/${assetId}`);
+      const d = await r.json();
+      if (d.ok && d.asset) {
+        setTitle(d.asset.title);
+      } else {
+        setTitle(`(已删除) ${assetId.slice(0, 8)}…`);
+      }
+    } catch {
+      setTitle(`(加载失败) ${assetId.slice(0, 8)}…`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Link
+      href={`/assets/${assetId}`}
+      onMouseEnter={fetchTitle}
+      style={{
+        display: 'block',
+        fontSize: 11, color: 'var(--ink)', textDecoration: 'none',
+        padding: '3px 0',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ color: 'var(--text-3)', marginRight: 4 }}>•</span>
+      {title ?? (loading ? '加载中…' : assetId.slice(0, 8) + '…')}
+    </Link>
   );
 }
