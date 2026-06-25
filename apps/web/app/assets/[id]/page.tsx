@@ -1,5 +1,5 @@
-import { getDb, getRawSqlite, assets, feedback } from '@insight-os/db';
-import { eq, desc } from 'drizzle-orm';
+import { getDb, getRawSqlite, assets, feedback, userKernels, outputs } from '@insight-os/db';
+import { eq, desc, and, like } from 'drizzle-orm';
 import { readFileSync, existsSync } from 'node:fs';
 import { notFound } from 'next/navigation';
 import { isLLMConfigured } from '@insight-os/core';
@@ -64,6 +64,112 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
     ORDER BY created_at DESC
   `).all(`%"${id}"%`) as any[];
 
+  // ===== v1.6 强化进化线 - 5 阶段 =====
+  // 3) Kernel 引用：active kernel 把此资产作为 evidence
+  const activeKernels = db.select().from(userKernels)
+    .where(eq(userKernels.status, 'active'))
+    .all();
+  const referencedKernels = activeKernels.filter((k) => {
+    try {
+      const ids = JSON.parse(k.evidenceAssetIdsJson ?? '[]') as string[];
+      return ids.includes(id);
+    } catch {
+      return false;
+    }
+  });
+
+  // 构造 5 阶段 timeline items
+  const enhancedTimelineItems: Array<{
+    stage: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+    ts: number;
+    title: string;
+    subtitle?: string;
+    meta?: string;
+    href?: string;
+    stageLabel: string;
+    stageColor: string;
+  }> = [];
+
+  // 来源
+  enhancedTimelineItems.push({
+    stage: 'source',
+    ts: asset.createdAt,
+    title: '原始素材入库',
+    subtitle: asset.sourceType && asset.sourceType !== 'unknown' ? `来源类型：${asset.sourceType}` : '手动添加',
+    meta: `从 ${asset.source ?? '未指定来源'} 整理`,
+    stageLabel: '📥 来源',
+    stageColor: '#6366f1',
+  });
+
+  // 升级
+  if (asset.status === 'candidate') {
+    enhancedTimelineItems.push({
+      stage: 'upgrade',
+      ts: asset.createdAt + 60,
+      title: '升级为候选判断',
+      subtitle: 'AI 校准完成，等待人工确认',
+      meta: `当前等级：${asset.evidenceLevel}`,
+      stageLabel: '⬆️ 升级',
+      stageColor: '#f59e0b',
+    });
+  } else if (asset.status === 'in_use') {
+    enhancedTimelineItems.push({
+      stage: 'upgrade',
+      ts: asset.createdAt + 3600,
+      title: '升级为正式资产',
+      subtitle: '人工确认后入库资产库',
+      meta: `当前等级：${asset.evidenceLevel}`,
+      stageLabel: '⬆️ 升级',
+      stageColor: '#f59e0b',
+    });
+  }
+
+  // 被引用
+  for (const o of allOutputs) {
+    enhancedTimelineItems.push({
+      stage: 'output',
+      ts: o.createdAt,
+      title: `被「${o.title}」引用`,
+      subtitle: `输出类型：${o.outputType}`,
+      meta: o.templateType ?? '',
+      href: o.outputType === 'writing' ? `/writing/${o.id}` : `/output`,
+      stageLabel: '✍️ 被引用',
+      stageColor: '#10b981',
+    });
+  }
+
+  // 反馈
+  for (const f of feedbackRows) {
+    const before = f.evidenceLevelBefore ?? '?';
+    const after = f.evidenceLevelAfter ?? '?';
+    enhancedTimelineItems.push({
+      stage: 'feedback',
+      ts: f.createdAt,
+      title: `${f.scene} 反馈`,
+      subtitle: f.mostTouchedPoint ?? f.reaction ?? '',
+      meta: f.evidenceLevelBefore || f.evidenceLevelAfter ? `证据等级：${before} → ${after}` : '',
+      stageLabel: '💬 反馈',
+      stageColor: '#f43f5e',
+    });
+  }
+
+  // Kernel 引用
+  for (const k of referencedKernels) {
+    enhancedTimelineItems.push({
+      stage: 'kernel',
+      ts: k.updatedAt,
+      title: `进入 Kernel：${k.content.slice(0, 40)}…`,
+      subtitle: `置信度 ${k.confidence}/100 · ${k.category}`,
+      meta: '',
+      href: '/kernel',
+      stageLabel: '🧠 进入 Kernel',
+      stageColor: '#a78bfa',
+    });
+  }
+
+  // 按时间倒序
+  enhancedTimelineItems.sort((a, b) => b.ts - a.ts);
+
   return (
     <AssetDetailClient
       asset={{
@@ -98,6 +204,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         })),
         outputs: allOutputs,
       }}
+      enhancedTimeline={enhancedTimelineItems}
     />
   );
 }

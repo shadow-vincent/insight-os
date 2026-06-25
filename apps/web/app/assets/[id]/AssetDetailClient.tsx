@@ -45,9 +45,19 @@ interface AssetDetailClientProps {
       createdAt: number;
     }>;
   };
+  enhancedTimeline: Array<{
+    stage: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+    ts: number;
+    title: string;
+    subtitle?: string;
+    meta?: string;
+    href?: string;
+    stageLabel: string;
+    stageColor: string;
+  }>;
 }
 
-export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeline }: AssetDetailClientProps) {
+export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeline, enhancedTimeline }: AssetDetailClientProps) {
   const router = useRouter();
   const toast = useToast();
   const [showFeedback, setShowFeedback] = useState(false);
@@ -206,7 +216,9 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
                 </div>
               </div>
 
-              {/* v0.10.3 进化时间线 */}
+              {/* v1.6 强化进化线 5 阶段（来源→升级→被引用→反馈→Kernel） */}
+              <EnhancedEvolutionTimeline items={enhancedTimeline} />
+              {/* v0.10.3 进化时间线（保留兼容） */}
               <EvolutionTimeline
                 feedback={timeline.feedback}
                 outputs={timeline.outputs}
@@ -1102,5 +1114,286 @@ function EvolutionTimeline({
         })}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * v1.6 强化进化线（5 阶段）
+ *
+ * 来源 → 升级 → 被引用 → 反馈 → Kernel
+ * 让用户看到「我的专业资产在变强」
+ *
+ * 跟 v0.10.3 EvolutionTimeline 区别：多了"升级"和"进入 Kernel" 2 个阶段
+ */
+function EnhancedEvolutionTimeline({
+  items,
+}: {
+  items: Array<{
+    stage: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+    ts: number;
+    title: string;
+    subtitle?: string;
+    meta?: string;
+    href?: string;
+    stageLabel: string;
+    stageColor: string;
+  }>;
+}) {
+  // 每阶段默认显示前 3 条，>3 的折叠到「+N 更多」
+  const PER_STAGE = 3;
+  const stageOrder: Array<'source' | 'upgrade' | 'output' | 'feedback' | 'kernel'> = [
+    'source', 'upgrade', 'output', 'feedback', 'kernel',
+  ];
+
+  // 按阶段分组
+  const grouped: Record<string, typeof items> = {};
+  for (const s of stageOrder) grouped[s] = [];
+  for (const it of items) grouped[it.stage].push(it);
+
+  // 每阶段截断到 PER_STAGE
+  const truncatedItems: Array<typeof items[number] & { _totalInStage?: number; _stageIndex?: number }> = [];
+  for (const s of stageOrder) {
+    const list = grouped[s];
+    list.forEach((it, idx) => {
+      truncatedItems.push({
+        ...it,
+        _totalInStage: list.length,
+        _stageIndex: idx,
+      });
+    });
+  }
+
+  if (items.length <= 1) {
+    return (
+      <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)' }}>
+        <div style={{
+          fontSize: 11, color: 'var(--text-3)', fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          🧬 进化线 <span style={{ color: 'var(--text-2)', fontWeight: 400, marginLeft: 'auto' }}>· 1 个阶段</span>
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--text-3)', textAlign: 'center', padding: 16,
+          background: 'var(--bg-subtle)', borderRadius: 8,
+          border: '1px dashed var(--line)',
+        }}>
+          📜 这张卡还在「来源」阶段。<br />
+          <span style={{ fontSize: 11 }}>
+            跑一次 12 章节升级 + 引用到一次输出 + 记一次反馈，就会自动出现完整的 5 阶段进化线。
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // 阶段统计
+  const stageCount: Record<string, number> = {};
+  for (const it of items) {
+    stageCount[it.stage] = (stageCount[it.stage] ?? 0) + 1;
+  }
+
+  return (
+    <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)' }}>
+      {/* 头部：标题 + 5 阶段 pill */}
+      <div style={{
+        fontSize: 11, color: 'var(--text-3)', fontWeight: 600,
+        letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <span style={{ color: 'var(--primary)', fontSize: 14 }}>🧬</span>
+        进化线
+        <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>· {items.length} 个事件</span>
+        <span style={{ flex: 1 }} />
+        {/* 5 阶段小条 */}
+        {(['source', 'upgrade', 'output', 'feedback', 'kernel'] as const).map((s) => {
+          const c = stageCount[s] ?? 0;
+          if (c === 0) return null;
+          const meta: Record<typeof s, { color: string; label: string }> = {
+            source: { color: '#6366f1', label: '来源' },
+            upgrade: { color: '#f59e0b', label: '升级' },
+            output: { color: '#10b981', label: '引用' },
+            feedback: { color: '#f43f5e', label: '反馈' },
+            kernel: { color: '#a78bfa', label: 'Kernel' },
+          };
+          return (
+            <span
+              key={s}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                padding: '2px 7px',
+                background: meta[s].color + '15',
+                color: meta[s].color,
+                fontSize: 10, fontWeight: 600,
+                borderRadius: 10,
+                fontFamily: 'JetBrains Mono, monospace',
+              }}
+            >
+              {meta[s].label} {c}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* 时间线：按 5 阶段顺序，每阶段前 PER_STAGE 条 + 折叠 */}
+      <div style={{ position: 'relative', paddingLeft: 18 }}>
+        <div style={{
+          position: 'absolute', left: 6, top: 6, bottom: 6, width: 1.5,
+          background: 'linear-gradient(to bottom, #6366f1 0%, #f59e0b 20%, #10b981 50%, #f43f5e 80%, #a78bfa 100%)',
+        }} />
+        {stageOrder.map((s) => {
+          const list = grouped[s];
+          if (list.length === 0) return null;
+          const shown = list.slice(0, PER_STAGE);
+          const hidden = list.length - shown.length;
+          return (
+            <StageBlock
+              key={s}
+              stageKey={s}
+              shown={shown}
+              hidden={hidden > 0 ? list.slice(PER_STAGE) : []}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 单个阶段块：前 N 条 + 「+M 更多」折叠按钮
+ */
+function StageBlock({
+  stageKey,
+  shown,
+  hidden,
+}: {
+  stageKey: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+  shown: Array<{
+    stage: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+    ts: number;
+    title: string;
+    subtitle?: string;
+    meta?: string;
+    href?: string;
+    stageLabel: string;
+    stageColor: string;
+  }>;
+  hidden: Array<{
+    stage: 'source' | 'upgrade' | 'output' | 'feedback' | 'kernel';
+    ts: number;
+    title: string;
+    subtitle?: string;
+    meta?: string;
+    href?: string;
+    stageLabel: string;
+    stageColor: string;
+  }>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const stageColor = shown[0]?.stageColor ?? '#999';
+  const stageWord = shown[0]?.stageLabel?.replace(/^[^\s]+\s/, '') ?? '事件';
+  const visible = expanded ? [...shown, ...hidden] : shown;
+
+  return (
+    <>
+      {visible.map((ev, i) => {
+        const dot = ev.href ? (
+          <Link href={ev.href} style={{
+            position: 'absolute', left: -18, top: 4, width: 14, height: 14,
+            borderRadius: 7,
+            background: ev.stageColor,
+            border: '2px solid var(--bg-panel)',
+            display: 'block',
+            textDecoration: 'none',
+          }} />
+        ) : (
+          <span style={{
+            position: 'absolute', left: -18, top: 4, width: 14, height: 14,
+            borderRadius: 7,
+            background: ev.stageColor,
+            border: '2px solid var(--bg-panel)',
+            display: 'block',
+          }} />
+        );
+        return (
+          <div key={`${stageKey}-${i}`} style={{ position: 'relative', marginBottom: 10 }}>
+            {dot}
+            <div style={{ fontSize: 12, color: 'var(--ink)', lineHeight: 1.5 }}>
+              <span style={{
+                fontSize: 10, color: ev.stageColor, fontWeight: 600,
+                marginRight: 6,
+              }}>
+                {ev.stageLabel}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                {new Date(ev.ts * 1000).toLocaleDateString('zh-CN')}
+              </span>
+            </div>
+            <div style={{
+              fontSize: 13, color: 'var(--ink)', marginTop: 2,
+              fontWeight: 500,
+            }}>
+              {ev.title}
+            </div>
+            {ev.subtitle && (
+              <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 3, lineHeight: 1.5 }}>
+                {ev.subtitle}
+              </div>
+            )}
+            {ev.meta && (
+              <div style={{
+                fontSize: 10, color: 'var(--text-3)', marginTop: 2,
+                fontFamily: 'JetBrains Mono, monospace',
+              }}>
+                {ev.meta}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {hidden.length > 0 && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: 4,
+            marginBottom: 12,
+            padding: '6px 12px',
+            background: stageColor + '10',
+            color: stageColor,
+            border: `1px dashed ${stageColor}40`,
+            borderRadius: 6,
+            fontSize: 11, fontWeight: 600,
+            cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          + 还有 {hidden.length} 个{stageWord}（展开）
+        </button>
+      )}
+      {hidden.length > 0 && expanded && (
+        <button
+          onClick={() => setExpanded(false)}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: 4,
+            marginBottom: 12,
+            padding: '4px 12px',
+            background: 'transparent',
+            color: 'var(--text-3)',
+            border: 'none',
+            fontSize: 11, fontWeight: 500,
+            cursor: 'pointer',
+            textAlign: 'center',
+          }}
+        >
+          ↑ 收起 {hidden.length} 条
+        </button>
+      )}
+    </>
   );
 }

@@ -146,51 +146,113 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* v0.10.2 今日待办 3 栏 */}
+      {/* v1.6 六层提问法推荐卡 */}
+      <Link
+        href="/learn/six-layers"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          padding: '18px 24px',
+          marginBottom: 24,
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(168,85,247,0.10) 100%)',
+          border: '1.5px solid rgba(99,102,241,0.25)',
+          borderRadius: 12,
+          textDecoration: 'none',
+          color: 'var(--ink)',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = '0 6px 16px rgba(99,102,241,0.12)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
+      >
+        <div style={{
+          fontSize: 32,
+          lineHeight: 1,
+          flexShrink: 0,
+        }}>
+          🎯
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: 'var(--ink)',
+            marginBottom: 4,
+          }}>
+            用 AI 之前先过 6 层：意图 / 背景 / 判断 / 约束 / 风格 / 反馈
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: 'var(--text-2)',
+            lineHeight: 1.5,
+          }}>
+            Vincent 原创方法论 · GPT 协助结构化 · 一键沉淀到你的 Insight Kernel
+          </div>
+        </div>
+        <div style={{
+          fontSize: 13,
+          color: 'var(--primary)',
+          fontWeight: 600,
+          flexShrink: 0,
+        }}>
+          学一下 →
+        </div>
+      </Link>
+
+      {/* v1.6 行动驾驶舱 - 3 栏「今天 3 件最值得推进」 */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>📋 今日待办</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>🎯 今天 3 件最值得推进</h2>
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            {(todayTodos.toCalibrate.count + todayTodos.staleAssets.count + todayTodos.pendingFeedback.count)} 件事可推进
+            按 ROI 自动排序 · 一键推进
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
           <TodoColumn
             tone="amber"
             title="待校准"
-            sub="候选池里的卡，跑 12 章节升级"
+            sub="候选池里最该升级的判断（低 E 优先）"
             count={todayTodos.toCalibrate.count}
             rows={todayTodos.toCalibrate.rows.map(r => ({
-              key: r.id, href: `/candidates`, title: r.title, badge: '候选',
+              key: r.id, href: `/candidates`, title: r.title, badge: r.evidenceLevel,
             }))}
             linkHref="/candidates"
-            linkLabel="去候选池 →"
-            emptyText="候选池已清空"
+            linkLabel="去候选池"
+            emptyText="候选池已清空 ✓"
+            primaryAction={{ label: '一键校准', href: '/candidates' }}
           />
           <TodoColumn
-            tone="slate"
+            tone="indigo"
             title="可输出"
-            sub="E2+ 资产 30 天没引用"
+            sub="E2+ 资产 30 天没引用 = 沉睡的真核心"
             count={todayTodos.staleAssets.count}
             rows={todayTodos.staleAssets.rows.map(r => ({
               key: r.id, href: `/assets/${r.id}`, title: r.title, badge: r.evidenceLevel,
             }))}
             linkHref="/assets"
-            linkLabel="查看全部 →"
+            linkLabel="查看全部"
             emptyText="高 E 资产都在被用"
+            primaryAction={{ label: '生成输出', href: '/writing/new' }}
           />
           <TodoColumn
             tone="rose"
             title="待反馈"
-            sub="已发布但还没记反馈"
+            sub="已发布但还没记反馈 = 错过升级机会"
             count={todayTodos.pendingFeedback.count}
             rows={todayTodos.pendingFeedback.rows.map(r => ({
               key: r.id, href: r.outputType === 'writing' ? `/writing/${r.id}` : `/output`,
               title: r.title, badge: r.outputType === 'writing' ? '写作' : r.outputType === 'talk_script' ? '话术' : '大纲',
             }))}
             linkHref="/output"
-            linkLabel="去看输出 →"
-            emptyText="所有输出都有反馈"
+            linkLabel="去看输出"
+            emptyText="所有输出都有反馈 ✓"
+            primaryAction={{ label: '记反馈', href: '/output' }}
           />
         </div>
       </div>
@@ -578,9 +640,9 @@ function StatCard({
 }
 
 function TodoColumn({
-  tone, title, sub, count, rows, linkHref, linkLabel, emptyText,
+  tone, title, sub, count, rows, linkHref, linkLabel, emptyText, primaryAction,
 }: {
-  tone: 'amber' | 'slate' | 'rose';
+  tone: 'amber' | 'slate' | 'rose' | 'indigo';
   title: string;
   sub: string;
   count: number;
@@ -588,16 +650,19 @@ function TodoColumn({
   linkHref: string;
   linkLabel: string;
   emptyText: string;
+  primaryAction?: { label: string; href: string };
 }) {
   const toneColor: Record<typeof tone, string> = {
     amber: '#b45309',
     slate: '#475569',
     rose: '#be123c',
+    indigo: '#4f46e5',
   };
   const toneBg: Record<typeof tone, string> = {
     amber: 'rgba(245, 158, 11, 0.08)',
     slate: 'rgba(100, 116, 139, 0.08)',
     rose: 'rgba(225, 29, 72, 0.08)',
+    indigo: 'rgba(99, 102, 241, 0.08)',
   };
   const c = toneColor[tone];
   const bg = toneBg[tone];
@@ -642,17 +707,38 @@ function TodoColumn({
           ))
         )}
       </div>
-      <Link
-        href={linkHref}
-        style={{
-          display: 'block', padding: '10px 18px',
-          borderTop: '1px solid var(--line-soft)',
-          fontSize: 12, color: 'var(--primary)',
-          textDecoration: 'none', fontWeight: 600,
-        }}
-      >
-        {linkLabel}
-      </Link>
+      <div style={{
+        padding: '10px 18px',
+        borderTop: '1px solid var(--line-soft)',
+        display: 'flex', alignItems: 'center', gap: 8,
+        background: 'var(--bg-subtle)',
+      }}>
+        {primaryAction && count > 0 && (
+          <Link
+            href={primaryAction.href}
+            style={{
+              flex: 1, padding: '6px 12px',
+              background: c, color: 'white',
+              borderRadius: 6, textDecoration: 'none',
+              fontSize: 12, fontWeight: 600,
+              textAlign: 'center',
+            }}
+          >
+            ⚡ {primaryAction.label}
+          </Link>
+        )}
+        <Link
+          href={linkHref}
+          style={{
+            padding: '6px 10px',
+            color: 'var(--text-2)',
+            textDecoration: 'none',
+            fontSize: 12, fontWeight: 500,
+          }}
+        >
+          {linkLabel} →
+        </Link>
+      </div>
     </div>
   );
 }
