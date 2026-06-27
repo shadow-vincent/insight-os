@@ -7,8 +7,7 @@ import { GlobalSearchModal } from './GlobalSearchModal';
 
 const navItems = [
   { href: '/', label: '仪表盘', icon: 'dashboard' },
-  { href: '/writing/new', label: '开始写作', icon: 'writing' },
-  { href: '/topic-articles/new', label: '主题文章', icon: 'campaign' },
+  { href: '/write', label: '写文章', icon: 'writing' },
   { href: '/inbox', label: '收集箱', icon: 'inbox' },
   { href: '/candidates', label: '候选池', icon: 'candidates' },
   { href: '/assets', label: '资产库', icon: 'assets' },
