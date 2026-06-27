@@ -84,7 +84,7 @@ export async function callLLM<T = unknown>(
   const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.3;
   const topP = options.topP;
-  const maxTokens = options.maxTokens ?? 2000;
+  const maxTokens = options.maxTokens ?? 6000;
   const jsonMode = options.jsonMode ?? true;
 
   // v1.4 Insight Kernel：把用户判断协议自动拼接到 system prompt 前面
@@ -185,7 +185,7 @@ export async function* streamLLM(
   const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.5;
   const topP = options.topP;
-  const maxTokens = options.maxTokens ?? 1500;
+  const maxTokens = options.maxTokens ?? 4000;
 
   // v1.4 Insight Kernel：同样的拼接逻辑
   const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);

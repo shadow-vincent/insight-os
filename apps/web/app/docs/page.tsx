@@ -54,6 +54,17 @@ const DOCS = [
     color: '#f59e0b',
     bg: 'linear-gradient(135deg, rgba(245,158,11,0.06), rgba(244,63,94,0.04))',
   },
+  {
+    href: '/docs/llm-setup',
+    icon: '🔑',
+    title: 'LLM API 开通与配置',
+    subtitle: 'LLM Setup',
+    desc: 'DeepSeek 为例，注册 → 充值 → 创建 key → 在 Insight OS 配置 → 验证。含 OpenAI / Qwen / Ollama 替代方案。',
+    time: '10 分钟',
+    color: '#0ea5e9',
+    bg: 'linear-gradient(135deg, rgba(14,165,233,0.06), rgba(2,132,199,0.04))',
+    badge: '新',
+  },
 ];
 
 const HIGHLIGHTS = [

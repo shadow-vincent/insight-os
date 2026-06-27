@@ -57,3 +57,7 @@ yarn-error.log*
 *.msi
 *.AppImage
 packages/db/.tsconfig.build.json
+apps/web/apps/
+
+# Codex 产品评估 HTML（不 commit，作为内部产品决策参考）
+docs/prototypes/

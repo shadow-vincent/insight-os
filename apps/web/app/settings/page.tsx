@@ -42,6 +42,9 @@ export default function SettingsPage() {
   const [model, setModel] = useState('');
   const [vaultPath, setVaultPath] = useState('');
   const [enabled, setEnabled] = useState(false);
+  // v1.7: 全局偏好
+  const [temperature, setTemperature] = useState(0.5);
+  const [articleLength, setArticleLength] = useState<'short' | 'medium' | 'deep' | 'ultra'>('deep');
 
   useEffect(() => {
     fetch('/api/config')
@@ -53,6 +56,10 @@ export default function SettingsPage() {
           setModel(data.config.llm.model);
           setVaultPath(data.config.paths.vaultPath);
           setEnabled(data.config.llm.enabled);
+          if (data.config.preferences) {
+            setTemperature(data.config.preferences.llmTemperature ?? 0.5);
+            setArticleLength(data.config.preferences.articleLength ?? 'deep');
+          }
         }
       })
       .finally(() => setLoading(false));
@@ -65,6 +72,7 @@ export default function SettingsPage() {
       const body: any = {
         llm: { baseUrl, model, enabled },
         paths: { vaultPath },
+        preferences: { llmTemperature: temperature, articleLength },
       };
       if (apiKeyChanged && apiKey) {
         body.llm.apiKey = apiKey;
@@ -333,6 +341,43 @@ export default function SettingsPage() {
             />
             启用 LLM（启用后才能跑校准 / 升级 / 输出生成）
           </label>
+        </Field>
+
+        <Field
+          label="LLM 温度"
+          hint="低 = 稳定可预测，高 = 随机有惊喜。推荐 0.5（写作场景平衡点）"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <input
+              type="range"
+              min={0}
+              max={1.2}
+              step={0.05}
+              value={temperature}
+              onChange={e => setTemperature(Number(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', minWidth: 40, textAlign: 'right' }}>
+              {temperature.toFixed(2)}
+            </span>
+          </div>
+        </Field>
+
+        <Field
+          label="写作默认篇幅"
+          hint="所有「主题文章 / 系列生成」都用这个篇幅（单篇任务可临时改）"
+        >
+          <select
+            value={articleLength}
+            onChange={e => setArticleLength(e.target.value as any)}
+            className="form-input"
+            style={{ maxWidth: 320 }}
+          >
+            <option value="short">短文（约 800-1200 字）</option>
+            <option value="medium">中等（约 1500-2000 字）</option>
+            <option value="deep">深度长文（约 2500-3500 字）</option>
+            <option value="ultra">超深度（约 4000+ 字）</option>
+          </select>
         </Field>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 18, borderTop: '1px solid var(--line-soft)' }}>

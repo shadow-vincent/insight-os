@@ -48,6 +48,29 @@ export async function POST(req: NextRequest) {
       partial.paths = { vaultPath: body.paths.vaultPath.trim() };
     }
 
+    // v1.6: 用户目标场景（onboarding 5 选 1）
+    if (body.userGoal !== undefined) {
+      const validGoals = ['write', 'client', 'experience', 'methodology', 'extract'];
+      if (body.userGoal === null || validGoals.includes(body.userGoal)) {
+        partial.userGoal = body.userGoal;
+      }
+    }
+
+    // v1.7: 全局偏好（LLM 温度 / 篇幅长度）
+    if (body.preferences) {
+      partial.preferences = {};
+      if (typeof body.preferences.llmTemperature === 'number') {
+        const t = body.preferences.llmTemperature;
+        partial.preferences.llmTemperature = Math.max(0, Math.min(2, t));
+      }
+      if (typeof body.preferences.articleLength === 'string') {
+        const valid = ['short', 'medium', 'deep', 'ultra'];
+        if (valid.includes(body.preferences.articleLength)) {
+          partial.preferences.articleLength = body.preferences.articleLength;
+        }
+      }
+    }
+
     const updated = updateConfig(partial);
     return NextResponse.json({ ok: true, config: sanitize(updated) });
   } catch (e: any) {

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import DailyLoopCard from '@/components/DailyLoopCard';
 
 interface Stats {
   totalAssets: number;
@@ -205,57 +206,8 @@ export function DashboardClient({
         </div>
       </Link>
 
-      {/* v1.6 行动驾驶舱 - 3 栏「今天 3 件最值得推进」 */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>🎯 今天 3 件最值得推进</h2>
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            按 ROI 自动排序 · 一键推进
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
-          <TodoColumn
-            tone="amber"
-            title="待校准"
-            sub="候选池里最该升级的判断（低 E 优先）"
-            count={todayTodos.toCalibrate.count}
-            rows={todayTodos.toCalibrate.rows.map(r => ({
-              key: r.id, href: `/candidates`, title: r.title, badge: r.evidenceLevel,
-            }))}
-            linkHref="/candidates"
-            linkLabel="去候选池"
-            emptyText="候选池已清空 ✓"
-            primaryAction={{ label: '一键校准', href: '/candidates' }}
-          />
-          <TodoColumn
-            tone="indigo"
-            title="可输出"
-            sub="E2+ 资产 30 天没引用 = 沉睡的真核心"
-            count={todayTodos.staleAssets.count}
-            rows={todayTodos.staleAssets.rows.map(r => ({
-              key: r.id, href: `/assets/${r.id}`, title: r.title, badge: r.evidenceLevel,
-            }))}
-            linkHref="/assets"
-            linkLabel="查看全部"
-            emptyText="高 E 资产都在被用"
-            primaryAction={{ label: '生成输出', href: '/writing/new' }}
-          />
-          <TodoColumn
-            tone="rose"
-            title="待反馈"
-            sub="已发布但还没记反馈 = 错过升级机会"
-            count={todayTodos.pendingFeedback.count}
-            rows={todayTodos.pendingFeedback.rows.map(r => ({
-              key: r.id, href: r.outputType === 'writing' ? `/writing/${r.id}` : `/output`,
-              title: r.title, badge: r.outputType === 'writing' ? '写作' : r.outputType === 'talk_script' ? '话术' : '大纲',
-            }))}
-            linkHref="/output"
-            linkLabel="去看输出"
-            emptyText="所有输出都有反馈 ✓"
-            primaryAction={{ label: '记反馈', href: '/output' }}
-          />
-        </div>
-      </div>
+      {/* v1.6 Daily Loop - 替换「3 栏待办」为「今日 10 分钟 4 步」 */}
+      <DailyLoopCard />
 
       {/* 4 统计卡（带趋势） */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>
@@ -635,110 +587,6 @@ function StatCard({
           background: 'var(--bg-subtle)', borderRadius: 10,
         }}>{trend}</div>
       )}
-    </div>
-  );
-}
-
-function TodoColumn({
-  tone, title, sub, count, rows, linkHref, linkLabel, emptyText, primaryAction,
-}: {
-  tone: 'amber' | 'slate' | 'rose' | 'indigo';
-  title: string;
-  sub: string;
-  count: number;
-  rows: Array<{ key: string; href: string; title: string; badge: string }>;
-  linkHref: string;
-  linkLabel: string;
-  emptyText: string;
-  primaryAction?: { label: string; href: string };
-}) {
-  const toneColor: Record<typeof tone, string> = {
-    amber: '#b45309',
-    slate: '#475569',
-    rose: '#be123c',
-    indigo: '#4f46e5',
-  };
-  const toneBg: Record<typeof tone, string> = {
-    amber: 'rgba(245, 158, 11, 0.08)',
-    slate: 'rgba(100, 116, 139, 0.08)',
-    rose: 'rgba(225, 29, 72, 0.08)',
-    indigo: 'rgba(99, 102, 241, 0.08)',
-  };
-  const c = toneColor[tone];
-  const bg = toneBg[tone];
-  return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{
-        padding: '14px 18px', borderBottom: '1px solid var(--line-soft)',
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: bg,
-      }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: c, lineHeight: 1, minWidth: 30 }}>{count}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{title}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{sub}</div>
-        </div>
-      </div>
-      <div style={{ padding: '8px 0' }}>
-        {rows.length === 0 ? (
-          <div style={{ padding: '14px 18px', fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>
-            ✓ {emptyText}
-          </div>
-        ) : (
-          rows.map(r => (
-            <Link
-              key={r.key}
-              href={r.href}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 18px', textDecoration: 'none', color: 'inherit',
-                fontSize: 13, lineHeight: 1.5,
-              }}
-            >
-              <span style={{
-                flexShrink: 0, fontSize: 10, fontWeight: 600,
-                padding: '2px 6px', borderRadius: 3,
-                background: 'var(--bg-subtle)', color: 'var(--text-3)',
-              }}>{r.badge}</span>
-              <span style={{ flex: 1, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {r.title}
-              </span>
-            </Link>
-          ))
-        )}
-      </div>
-      <div style={{
-        padding: '10px 18px',
-        borderTop: '1px solid var(--line-soft)',
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: 'var(--bg-subtle)',
-      }}>
-        {primaryAction && count > 0 && (
-          <Link
-            href={primaryAction.href}
-            style={{
-              flex: 1, padding: '6px 12px',
-              background: c, color: 'white',
-              borderRadius: 6, textDecoration: 'none',
-              fontSize: 12, fontWeight: 600,
-              textAlign: 'center',
-            }}
-          >
-            ⚡ {primaryAction.label}
-          </Link>
-        )}
-        <Link
-          href={linkHref}
-          style={{
-            padding: '6px 10px',
-            color: 'var(--text-2)',
-            textDecoration: 'none',
-            fontSize: 12, fontWeight: 500,
-          }}
-        >
-          {linkLabel} →
-        </Link>
-      </div>
     </div>
   );
 }

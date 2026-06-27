@@ -52,6 +52,7 @@ export async function GET(_req: NextRequest) {
       ok: true,
       llmConfigured,
       vaultPath,
+      userGoal: cfg.userGoal ?? null,
       vaultPathValid,
       totalAssets,
       hasAssets,

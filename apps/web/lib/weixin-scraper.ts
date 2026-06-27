@@ -24,7 +24,8 @@ import { resolve } from 'node:path';
 
 const WECHAT_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.49(0x18003130) NetType/WIFI Language/zh_CN';
 
-const CACHE_DIR = resolve(process.cwd(), 'apps/web/storage/cache/import-url');
+// dev 模式下 process.cwd() 已经是 apps/web，所以直接 storage/cache/import-url 即可
+const CACHE_DIR = resolve(process.cwd(), 'storage/cache/import-url');
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
 
 let _browser: Browser | null = null;

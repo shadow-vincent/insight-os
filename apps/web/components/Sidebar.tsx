@@ -8,6 +8,7 @@ import { GlobalSearchModal } from './GlobalSearchModal';
 const navItems = [
   { href: '/', label: '仪表盘', icon: 'dashboard' },
   { href: '/writing/new', label: '开始写作', icon: 'writing' },
+  { href: '/topic-articles/new', label: '主题文章', icon: 'campaign' },
   { href: '/inbox', label: '收集箱', icon: 'inbox' },
   { href: '/candidates', label: '候选池', icon: 'candidates' },
   { href: '/assets', label: '资产库', icon: 'assets' },
@@ -80,6 +81,14 @@ const icons: Record<string, React.ReactNode> = {
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  ),
+  campaign: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m15 5 4 4-11 11-4-4Z" />
+      <path d="m14 6 4 4" />
+      <path d="M3 21h6" />
+      <path d="m9 9 3 3" />
     </svg>
   ),
 };

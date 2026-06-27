@@ -29,8 +29,25 @@ export interface AppConfig {
   writing: {
     activePreset: string;  // 当前激活的写作风格预设名（默认 'vincent-standard'）
   };
+  // v1.6: 用户目标场景（onboarding 5 选 1 的结果）
+  // write / client / experience / methodology / extract
+  userGoal?: UserGoal | null;
+  // v1.7: 写作偏好（settings 配置）
+  preferences?: {
+    llmTemperature?: number;       // 0-1, 默认 0.5（稳定 vs 创意）
+    articleLength?: ArticleLength; // 短文/中等/深度长文/超深度，默认 'deep'
+  };
   lastUpdated: number;
 }
+
+export type ArticleLength = 'short' | 'medium' | 'deep' | 'ultra';
+
+export type UserGoal =
+  | 'write'         // A. 写文章
+  | 'client'        // B. 做客户方案
+  | 'experience'    // C. 沉淀项目经验
+  | 'methodology'   // D. 管理方法论
+  | 'extract';      // E. 提炼已有知识
 
 const DEFAULT_CONFIG: AppConfig = {
   llm: {
@@ -127,6 +144,11 @@ export function readConfig(): AppConfig {
       llm: { ...DEFAULT_CONFIG.llm, ...parsed.llm },
       paths: { ...DEFAULT_CONFIG.paths, ...parsed.paths },
       writing: { ...DEFAULT_CONFIG.writing, ...(parsed.writing ?? {}) },
+      userGoal: parsed.userGoal ?? null,
+      preferences: {
+        llmTemperature: parsed.preferences?.llmTemperature ?? 0.5,
+        articleLength: parsed.preferences?.articleLength ?? 'deep',
+      },
       lastUpdated: parsed.lastUpdated ?? 0,
     };
   } catch (e) {
@@ -156,6 +178,11 @@ export function updateConfig(partial: Partial<AppConfig>): AppConfig {
     llm: { ...current.llm, ...(partial.llm ?? {}) },
     paths: { ...current.paths, ...(partial.paths ?? {}) },
     writing: { ...current.writing, ...(partial.writing ?? {}) },
+    userGoal: partial.userGoal !== undefined ? partial.userGoal : current.userGoal ?? null,
+    preferences: {
+      ...(current.preferences ?? { llmTemperature: 0.5, articleLength: 'deep' as ArticleLength }),
+      ...(partial.preferences ?? {}),
+    },
     lastUpdated: Date.now(),
   };
   writeConfig(updated);
@@ -175,6 +202,14 @@ export interface SanitizedConfig {
   };
   paths: {
     vaultPath: string;
+  };
+  writing?: {
+    activePreset: string;
+  };
+  userGoal: UserGoal | null;
+  preferences: {
+    llmTemperature: number;
+    articleLength: ArticleLength;
   };
   lastUpdated: number;
 }
@@ -206,6 +241,12 @@ export function sanitize(config: AppConfig): SanitizedConfig {
     },
     paths: {
       vaultPath: config.paths.vaultPath,
+    },
+    writing: config.writing,
+    userGoal: config.userGoal ?? null,
+    preferences: {
+      llmTemperature: config.preferences?.llmTemperature ?? 0.5,
+      articleLength: config.preferences?.articleLength ?? 'deep',
     },
     lastUpdated: config.lastUpdated,
   };
