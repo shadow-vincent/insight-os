@@ -17,6 +17,8 @@ const TYPE_NOT_SUPPORTED = new Set(['twitter', 'wechat-account']);
 export async function POST() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Date.now();
 
     // 选所有 enabled + 到期（last_fetched_at + interval <= now）的源
@@ -59,6 +61,8 @@ async function syncOne(sourceId: string, url: string, type?: string): Promise<{ 
   const { sourceItems } = await import('@insight-os/db');
   const { randomUUID } = await import('node:crypto');
   const db = getDb();
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
   const now = Date.now();
 
   let feed;

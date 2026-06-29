@@ -20,6 +20,8 @@ export async function GET(
   try {
     const { id: writingId } = await params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const list = db
       .select()
       .from(writingVersions)
@@ -50,6 +52,9 @@ export async function POST(
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
     const versionId = `ver_${writingId}_${now}`;
 

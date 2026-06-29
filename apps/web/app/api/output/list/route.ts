@@ -10,6 +10,8 @@ import { desc } from 'drizzle-orm';
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const list = db.select().from(outputs).orderBy(desc(outputs.createdAt)).limit(50).all();
     return NextResponse.json({ ok: true, count: list.length, items: list });
   } catch (e: any) {

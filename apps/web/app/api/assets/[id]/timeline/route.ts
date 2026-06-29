@@ -43,6 +43,8 @@ export async function GET(_req: NextRequest, ctx: RouteCtx) {
   try {
     const { id } = await ctx.params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
 
     // 1) 资产本身

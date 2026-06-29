@@ -28,6 +28,8 @@ const STALE_DAYS = 30;
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
     const weekAgo = now - ONE_WEEK;
     const staleAgo = now - STALE_DAYS * 24 * 3600;

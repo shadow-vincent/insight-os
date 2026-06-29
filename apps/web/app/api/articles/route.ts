@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
     const types = typesParam.split(',').map(s => s.trim()).filter(Boolean);
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const rows = await db
       .select({
         id: outputs.id,

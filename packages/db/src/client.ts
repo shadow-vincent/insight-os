@@ -364,10 +364,22 @@ function initSchema(sqlite: Database.Database) {
 export function getDb() {
   if (_db) return _db;
 
+  // V1.10: Vercel serverless 检测（fs 只读、没 native modules）
+  // 返回 null 让 API routes 处理（catch 后返回空数据）
+  if (process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return null as any;
+  }
+
   const dbPath = resolveDbPath();
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch (e) {
+      // fs 只读或不可写（Vercel serverless 等场景）→ 返回 null
+      console.warn('[db] cannot create db dir, falling back to null db:', e);
+      return null as any;
+    }
   }
 
   _sqlite = new Database(dbPath);

@@ -13,6 +13,8 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     return NextResponse.json({
       ok: true,
       counts: {

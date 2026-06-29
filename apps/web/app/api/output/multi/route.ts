@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
 
     // 读 N 张资产卡
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     type AssetRow = typeof assets.$inferSelect;
     const found = db.select().from(assets).where(inArray(assets.id, assetIds)).all() as AssetRow[];
     if (found.length !== assetIds.length) {

@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
 
     // 读资产卡
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const asset = db.select().from(assets).where(eq(assets.id, assetId)).get();
     if (!asset) {
       return NextResponse.json({ ok: false, error: '资产不存在' }, { status: 404 });

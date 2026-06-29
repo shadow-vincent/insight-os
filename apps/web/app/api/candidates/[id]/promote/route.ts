@@ -47,6 +47,8 @@ export async function POST(
     const { id } = await params;
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     const light = db.select().from(assets).where(eq(assets.id, id)).get();
     if (!light) {
       return NextResponse.json({ ok: false, error: '候选卡不存在' }, { status: 404 });

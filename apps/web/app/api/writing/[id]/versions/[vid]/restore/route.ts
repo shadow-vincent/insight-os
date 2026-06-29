@@ -19,6 +19,8 @@ export async function POST(
     const { id: writingId, vid } = await params;
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1) 找版本
     const version = db
       .select()

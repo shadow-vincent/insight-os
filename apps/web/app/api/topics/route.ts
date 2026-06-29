@@ -13,6 +13,8 @@ import { randomUUID } from 'node:crypto';
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const allTopics = db.select().from(topics).orderBy(topics.sortOrder).all();
     // v0.8：一次拿所有 kernel 摘要
     type TopicKernelRow = typeof topicKernels.$inferSelect;
@@ -100,6 +102,9 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
 
     // 自动生成 slug（如果没传）
     // 规则：

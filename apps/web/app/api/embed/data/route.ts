@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     let assetIds: string[] | null = null;
     if (topicId) {
       const links = db.select().from(assetTopics).where(eq(assetTopics.topicId, topicId)).all();

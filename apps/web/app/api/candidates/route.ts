@@ -18,6 +18,11 @@ export async function GET(req: NextRequest) {
   try {
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) {
+      return NextResponse.json({ ok: true, count: 0, candidates: [] });
+    }
+
     // 候选池显示：candidate（待确认）+ archived（已归档）
     // 排除 in_use（已入库）和 inbox（原始输入）
     const { searchParams } = new URL(req.url);

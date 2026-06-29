@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
 
     // 读 N 张资产卡
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const found = db.select().from(assets).where(inArray(assets.id, assetIds)).all();
     if (found.length !== assetIds.length) {
       const foundIds = new Set(found.map(a => a.id));

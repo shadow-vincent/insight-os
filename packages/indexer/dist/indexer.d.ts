@@ -7,7 +7,7 @@
  * 3. 文件 hash 用于检测外部修改
  * 4. 增量索引：跳过 hash 一致的文件
  */
-import { type CardType, type EvidenceLevel } from '@insight-os/core';
+import { type CardType } from '@insight-os/core';
 export interface IndexResult {
     scanned: number;
     indexed: number;
@@ -27,64 +27,10 @@ export interface IndexOptions {
  */
 export declare function indexFile(filePath: string): {
     action: "unchanged";
-    record: {
-        id: string;
-        type: "light" | "asset" | "kernel";
-        status: "inbox" | "sorting" | "calibrating" | "candidate" | "in_use" | "archived";
-        title: string;
-        evidenceLevel: "E0" | "E1" | "E2" | "E3" | "E4" | "E5";
-        priority: "A" | "B" | "C";
-        tagsJson: string;
-        source: string;
-        sourceType: "book" | "knowledge_card" | "project" | "article" | "original" | "unknown";
-        oneSentenceInsight: string;
-        antiCommonSense: string;
-        filePath: string;
-        fileMtime: number;
-        fileHash: string;
-        feedbackCount: number;
-        lastUsedAt: number;
-        sourceMaterialId: string;
-        scoreTotal: number;
-        scoreBreakdownJson: string;
-        outputCount: number;
-        processedAt: number;
-        isKernelCandidate: number;
-        isKernelApproved: number;
-        relatedIdsJson: string;
-        createdAt: number;
-        updatedAt: number;
-    };
+    record: any;
 } | {
     action: "updated";
-    record: {
-        type: CardType;
-        title: string;
-        evidenceLevel: EvidenceLevel;
-        tagsJson: string;
-        id: string;
-        status: "inbox" | "sorting" | "calibrating" | "candidate" | "in_use" | "archived";
-        priority: "A" | "B" | "C";
-        source: string;
-        sourceType: "book" | "knowledge_card" | "project" | "article" | "original" | "unknown";
-        oneSentenceInsight: string;
-        antiCommonSense: string;
-        filePath: string;
-        fileMtime: number;
-        fileHash: string;
-        feedbackCount: number;
-        lastUsedAt: number;
-        sourceMaterialId: string;
-        scoreTotal: number;
-        scoreBreakdownJson: string;
-        outputCount: number;
-        processedAt: number;
-        isKernelCandidate: number;
-        isKernelApproved: number;
-        relatedIdsJson: string;
-        createdAt: number;
-        updatedAt: number;
-    };
+    record: any;
 } | {
     action: "indexed";
     record: {

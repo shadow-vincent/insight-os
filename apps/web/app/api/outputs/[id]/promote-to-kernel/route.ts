@@ -87,6 +87,9 @@ export async function POST(
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1. 拿 output
     const output = db.select().from(outputs).where(eq(outputs.id, id)).get();
     if (!output) {

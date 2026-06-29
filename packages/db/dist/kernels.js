@@ -593,10 +593,18 @@ function initSchema(sqlite) {
 }
 function getDb() {
   if (_db) return _db;
+  if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return null;
+  }
   const dbPath = resolveDbPath();
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch (e) {
+      console.warn("[db] cannot create db dir, falling back to null db:", e);
+      return null;
+    }
   }
   _sqlite = new Database(dbPath);
   _sqlite.pragma("journal_mode = WAL");

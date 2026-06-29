@@ -32,6 +32,8 @@ export async function GET(_req: NextRequest, ctx: PathContext) {
   try {
     const { id: topicId } = await ctx.params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const row = db.select().from(topicKernels).where(eq(topicKernels.topicId, topicId)).get();
     if (!row) {
       return Response.json({ ok: true, kernel: null });
@@ -58,6 +60,8 @@ export async function POST(req: NextRequest, ctx: PathContext) {
   try {
     const { id: topicId } = await ctx.params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
 
     // 1) 查主题
     const topic = db.select().from(topics).where(eq(topics.id, topicId)).get();
@@ -198,6 +202,8 @@ export async function DELETE(_req: NextRequest, ctx: PathContext) {
   try {
     const { id: topicId } = await ctx.params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     db.delete(topicKernels).where(eq(topicKernels.topicId, topicId)).run();
     return Response.json({ ok: true });
   } catch (e: any) {

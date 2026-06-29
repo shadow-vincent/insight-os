@@ -44,6 +44,9 @@ export async function POST(req: NextRequest) {
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 检查资产存在
     const asset = db.select().from(assets).where(eq(assets.id, assetId)).get();
     if (!asset) {
@@ -101,6 +104,9 @@ export async function GET(req: NextRequest) {
     const assetId = url.searchParams.get('assetId');
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     let list;
     if (assetId) {
       list = db.select().from(feedback).where(eq(feedback.assetId, assetId)).orderBy(sql`${feedback.createdAt} desc`).limit(50).all();

@@ -24,6 +24,8 @@ export async function POST(
     const { id: sourceId, itemId } = await params;
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     const item = db.select().from(sourceItems)
       .where(and(eq(sourceItems.id, itemId), eq(sourceItems.sourceId, sourceId)))
       .get();

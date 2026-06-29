@@ -120,6 +120,9 @@ async function loadArticleById(id: string): Promise<{ title: string; content: st
   const { eq } = await import('drizzle-orm');
 
   const db = getDb();
+
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
   const rows = await db.select().from(outputs).where(eq(outputs.id, id)).limit(1);
   const row = rows[0];
   if (!row) return null;

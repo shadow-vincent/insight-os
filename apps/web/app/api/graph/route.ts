@@ -52,6 +52,8 @@ export async function GET() {
   try {
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1. 拿所有正式资产
     const allAssets = db
       .select()

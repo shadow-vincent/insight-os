@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const light = db.select().from(assets).where(eq(assets.id, assetId)).get();
     if (!light) {
       return NextResponse.json({ ok: false, error: '轻量卡不存在' }, { status: 404 });

@@ -62,6 +62,9 @@ export async function POST(_req: NextRequest) {
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1) 找最常被引用的资产：扫 outputs.assetIdsJson，LIKE 算频次
     // 简化方案：先拿所有 outputs 解析算频次，再 join assets
     const allOutputs = db

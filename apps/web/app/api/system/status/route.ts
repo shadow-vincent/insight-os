@@ -26,6 +26,8 @@ export async function GET(_req: NextRequest) {
   try {
     const cfg = readConfig();
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const sqlite = getRawSqlite();
 
     const llmConfigured = isLLMConfigured();

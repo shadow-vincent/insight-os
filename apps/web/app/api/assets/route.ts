@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '500', 10) || 500, 500);
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     type AssetRow = typeof assets.$inferSelect;
     let list: AssetRow[];
 

@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
 
     // 2. 查主题
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const topic = db.select().from(topics).where(eq(topics.id, topicId)).get();
     if (!topic) {
       return NextResponse.json({ ok: false, error: '主题不存在' }, { status: 404 });

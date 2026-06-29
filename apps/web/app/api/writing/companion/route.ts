@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
 
     // 2) 拿写作记录
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const writing = db.select().from(outputs).where(eq(outputs.id, writingId)).get();
     if (!writing) {
       return Response.json({ ok: false, error: '写作记录不存在' }, { status: 404 });

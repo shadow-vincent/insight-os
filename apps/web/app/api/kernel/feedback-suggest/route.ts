@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     }
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1) 拿资产
     const asset = db.select().from(assets).where(eq(assets.id, assetId)).get();
     if (!asset) {

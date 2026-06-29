@@ -16,6 +16,8 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const list = db.select().from(outputs).orderBy(desc(outputs.createdAt)).limit(50).all();
 
     // 收集所有 assetId

@@ -34,6 +34,8 @@ export async function POST(
   try {
     const { id } = await params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
 
     const row = db.select().from(assets).where(eq(assets.id, id)).get();

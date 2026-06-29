@@ -31,6 +31,8 @@ interface SourceRow {
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const rows = db.all(sql`
       SELECT id, type, url, title, enabled, last_fetched_at as lastFetchedAt,
              last_error as lastError, fetch_interval_min as fetchIntervalMin,
@@ -94,6 +96,9 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
 
     // 重复检查
     const existing = db.select().from(sources).where(eq(sources.url, resolvedUrl)).get();

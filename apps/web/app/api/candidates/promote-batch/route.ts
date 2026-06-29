@@ -70,6 +70,9 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const lights = db.select().from(assets)
       .where(inArray(assets.id, ids))
       .all();
@@ -125,6 +128,8 @@ export async function POST(req: NextRequest) {
  */
 async function promoteOne(light: any): Promise<PromoteResult> {
   const db = getDb();
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
 
   // 重新读一次最新状态（防止 race）
   const fresh = db.select().from(assets).where(eq(assets.id, light.id)).get();

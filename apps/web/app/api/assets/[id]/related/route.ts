@@ -25,6 +25,8 @@ export async function GET(
     const { id: assetId } = await params;
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1. 找当前资产的所有主题
     const myTopicRows = db
       .select()

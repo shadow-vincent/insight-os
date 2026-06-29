@@ -75,6 +75,9 @@ export async function POST(req: NextRequest) {
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 读旧资产
     const oldAssets = db.select().from(assets)
       .where(inArray(assets.id, assetIds))

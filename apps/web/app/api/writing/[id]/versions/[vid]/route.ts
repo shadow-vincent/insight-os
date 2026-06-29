@@ -15,6 +15,8 @@ export async function GET(
   try {
     const { id: writingId, vid } = await params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const row = db
       .select()
       .from(writingVersions)

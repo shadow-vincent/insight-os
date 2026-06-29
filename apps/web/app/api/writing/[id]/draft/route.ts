@@ -16,6 +16,8 @@ export async function GET(
   try {
     const { id } = await params;
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const row = db.select().from(writingDrafts).where(eq(writingDrafts.writingId, id)).get();
     if (!row) {
       return NextResponse.json({ ok: true, draft: null });
@@ -38,6 +40,9 @@ export async function POST(
     }
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
     const existing = db.select().from(writingDrafts).where(eq(writingDrafts.writingId, writingId)).get();
 

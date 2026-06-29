@@ -444,6 +444,8 @@ async function callSearchAPI(query: string, limit: number): Promise<CardSnippet[
 async function getCardSnippets(ids: string[]): Promise<CardSnippet[]> {
   if (ids.length === 0) return [];
   const db = getDb();
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
   const rows = db.select().from(assets).where(inArray(assets.id, ids)).all();
   const sqlite = getRawSqlite();
   return rows.map(r => {

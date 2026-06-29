@@ -23,6 +23,8 @@ export async function POST(
     const { id } = await params;
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     const src = db.select().from(sources).where(eq(sources.id, id)).get();
     if (!src) {
       return NextResponse.json({ ok: false, error: '源不存在' }, { status: 404 });

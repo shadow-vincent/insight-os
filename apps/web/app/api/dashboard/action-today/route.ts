@@ -24,6 +24,8 @@ export async function GET() {
   try {
     const db = getDb();
 
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     // 1) 待校准：candidate 资产 + 按 evidenceLevel 升序（E0 先升级）+ feedbackCount 降序
     const candidates = db
       .select({

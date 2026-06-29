@@ -26,6 +26,9 @@ export async function GET(
 
     const db = getDb();
 
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+
     const statusFilter = status ? sql`AND status = ${status}` : sql``;
     const items = db.all(sql`
       SELECT id, guid, title, url, excerpt, published_at as publishedAt,

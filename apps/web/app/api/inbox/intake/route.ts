@@ -166,6 +166,8 @@ export async function POST(req: NextRequest) {
 
     // ========== Step 2: 逐段 LLM 抽卡 ==========
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const now = Math.floor(Date.now() / 1000);
     const cfg = readConfig();
     const vaultDir = cfg.paths.vaultPath + '/04_管理洞察';

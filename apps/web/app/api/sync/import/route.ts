@@ -49,6 +49,8 @@ async function loadZip(file: File) {
 
 async function computeDiff(zip: JSZip, manifest: any): Promise<DiffReport> {
   const db = getDb();
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
   const diff: Record<string, DiffItem> = {};
   let totalInsert = 0, totalUpdate = 0, totalSkip = 0;
 
@@ -87,6 +89,8 @@ function dryRunMessage(ins: number, upd: number): string {
 
 async function applyImport(zip: JSZip) {
   const db = getDb();
+
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
   const counts = { inserted: 0, updated: 0, skipped: 0 };
   const errors: string[] = [];
 

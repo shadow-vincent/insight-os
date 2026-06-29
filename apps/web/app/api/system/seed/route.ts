@@ -147,6 +147,8 @@ const SAMPLE_TOPICS = [
 export async function POST(_req: NextRequest) {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const sqlite = getRawSqlite();
 
     // 幂等检查

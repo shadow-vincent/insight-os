@@ -10,6 +10,8 @@ import { asc } from 'drizzle-orm';
 export async function GET() {
   try {
     const db = getDb();
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const list = db.select().from(topics).orderBy(asc(topics.sortOrder)).all();
     return NextResponse.json({
       ok: true,

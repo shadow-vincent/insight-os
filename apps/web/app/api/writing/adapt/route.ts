@@ -153,6 +153,8 @@ export async function POST(req: NextRequest) {
     if (!sourceContent && writingId) {
       const { getDb } = await import('@insight-os/db');
       const db = getDb();
+
+      if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
       const row = db.select().from(outputs).where(eq(outputs.id, writingId)).get();
       if (!row) {
         return NextResponse.json({ ok: false, error: 'writingId 不存在' }, { status: 404 });
@@ -190,6 +192,8 @@ export async function POST(req: NextRequest) {
       try {
         const { getDb } = await import('@insight-os/db');
         const db = getDb();
+
+        if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
         const now = Math.floor(Date.now() / 1000);
         const verId = `ver_${writingId}_${now}_pre_adapt`;
         db.insert(writingVersions).values({

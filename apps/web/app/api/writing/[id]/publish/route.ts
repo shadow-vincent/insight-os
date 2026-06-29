@@ -30,6 +30,9 @@ export async function POST(req: NextRequest, ctx: PathContext) {
     const sourceUrl = typeof body?.sourceUrl === 'string' ? body.sourceUrl.slice(0, 500) : null;
 
     const db = getDb();
+
+
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
     const sqlite = getRawSqlite();
     const row = db.select().from(outputs).where(eq(outputs.id, id)).get();
     if (!row) {
