@@ -17,7 +17,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -93,6 +93,106 @@ export function TodayProcessingPageClient({
   const [error, setError] = useState<string | null>(null);
   const [expandedScoreId, setExpandedScoreId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // V1.10: 从 IndexedDB 优先读数据（demo 数据 / 用户本地 IndexedDB 数据）
+  // 如果 IndexedDB 有数据，覆盖 server props
+  const [clientCandidates, setClientCandidates] = useState<Candidate[] | null>(null);
+  const [clientReadyTopics, setClientReadyTopics] = useState<ReadyTopic[] | null>(null);
+  const [clientKernelCandidates, setClientKernelCandidates] = useState<KernelCandidateRow[] | null>(null);
+  const [clientSources, setClientSources] = useState<SourceRow[] | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    (async () => {
+      try {
+        const DexieModule = await import('dexie');
+        const Dexie = (DexieModule as any).default || DexieModule;
+        const db = new Dexie('insight-os');
+        db.version(1).stores({
+          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+          topics: 'id, slug, sortOrder, updatedAt',
+          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
+          sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
+          topicKernels: 'id, topicId, generatedAt',
+        });
+
+        const [allAssets, allTopics, allAssetTopics, allSources] = await Promise.all([
+          db.assets.toArray(),
+          db.topics.toArray(),
+          db.assetTopics.toArray(),
+          db.sources.toArray(),
+        ]);
+
+        // 候选卡：status in ('candidate', 'sorting', 'inbox') + scoreTotal > 0
+        const candidateRows = allAssets
+          .filter(a => ['candidate', 'sorting', 'inbox'].includes(a.status) && a.scoreTotal > 0)
+          .sort((a, b) => b.scoreTotal - a.scoreTotal)
+          .slice(0, 5);
+        setClientCandidates(candidateRows.map(row => {
+          let breakdown = { clear: 0.5, evidence: 0.5, contrarian: 0.5, reusable: 0.5, output: 0.5, kernel: 0.5, novelty: 0.5 };
+          try {
+            const parsed = JSON.parse(row.scoreBreakdownJson || '{}');
+            if (parsed && typeof parsed === 'object') breakdown = { ...breakdown, ...parsed };
+          } catch {}
+          let topics: string[] = [];
+          try { const tags = JSON.parse(row.tagsJson || '[]'); if (Array.isArray(tags)) topics = tags.slice(0, 3); } catch {}
+          return {
+            id: row.id,
+            title: row.title,
+            statement: row.oneSentenceInsight ?? '',
+            scoreTotal: row.scoreTotal,
+            evidenceLevel: row.evidenceLevel,
+            recommendedAction: (row.scoreTotal >= 80 ? 'process' : row.scoreTotal >= 65 ? 'candidate' : row.scoreTotal >= 50 ? 'signal' : 'ignore') as any,
+            reasoning: '基于 7 维度评分推荐',
+            breakdown,
+            topics,
+            scenarios: [],
+            createdAt: row.createdAt,
+            evidenceType: [],
+          };
+        }));
+
+        // Ready topics：每个 topic 关联的资产 + 输出统计
+        const readyTopicList = allTopics.map(topic => {
+          const topicAssets = allAssetTopics.filter(at => at.topicId === topic.id).map(at => allAssets.find(a => a.id === at.assetId)).filter(Boolean);
+          const e2Plus = topicAssets.filter((a: any) => ['E2', 'E3', 'E4', 'E5'].includes(a.evidenceLevel)).length;
+          return {
+            id: topic.id,
+            name: topic.name,
+            slug: topic.slug,
+            assetCount: topicAssets.length,
+            e2PlusCount: e2Plus,
+            outputCount: 0,
+            lastOutputAt: null as number | null,
+          };
+        });
+        setClientReadyTopics(readyTopicList);
+
+        // Kernel candidates：isKernelCandidate=1
+        const kernelCands = allAssets
+          .filter(a => a.isKernelCandidate === 1)
+          .sort((a, b) => b.outputCount - a.outputCount)
+          .slice(0, 3);
+        setClientKernelCandidates(kernelCands.map(a => ({
+          id: a.id, title: a.title, evidenceLevel: a.evidenceLevel, outputCount: a.outputCount, feedbackCount: a.feedbackCount,
+        })));
+
+        // Sources
+        setClientSources(allSources.filter((s: any) => s.enabled === 1).map((s: any) => ({
+          id: s.id, type: s.type, url: s.url, title: s.title, enabled: s.enabled,
+          lastError: s.lastError, newItemsCount: s.newItemsCount, totalItemsCount: s.totalItemsCount,
+        })));
+      } catch (e) {
+        console.error('[TodayProcessingPageClient] IDB load failed:', e);
+      }
+    })();
+  }, []);
+
+  // 优先用 IndexedDB 数据，回退到 server props
+  const finalCandidates = clientCandidates ?? candidates;
+  const finalReadyTopics = clientReadyTopics ?? readyTopics;
+  const finalKernelCandidates = clientKernelCandidates ?? kernelCandidates;
+  const finalSources = clientSources ?? sourceRows;
 
   const handleSubmit = async () => {
     if (!material.trim()) { setError('素材不能为空'); return; }
@@ -247,8 +347,8 @@ export function TodayProcessingPageClient({
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
             📡 信息源订阅
             <span style={{ color: 'var(--text-3)', fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
-              {sourceRows.length > 0
-                ? `${sourceRows.length} 个源 · ${sourceRows.reduce((sum, s) => sum + s.newItemsCount, 0)} 条新内容`
+              {finalSources.length > 0
+                ? `${finalSources.length} 个源 · ${finalSources.reduce((sum, s) => sum + s.newItemsCount, 0)} 条新内容`
                 : '订阅 RSS，开 insight-os 自动拉新'}
             </span>
           </h2>
@@ -263,7 +363,7 @@ export function TodayProcessingPageClient({
                 background: 'transparent', color: 'var(--text-2)',
                 border: '1px solid var(--line)', cursor: 'pointer',
               }}
-              disabled={sourceRows.length === 0}
+              disabled={finalSources.length === 0}
             >
               🔄 立即同步
             </button>
@@ -280,18 +380,18 @@ export function TodayProcessingPageClient({
           </div>
         </div>
 
-        {sourceRows.length === 0 ? (
+        {finalSources.length === 0 ? (
           <div className="card" style={{ padding: 16, textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
             还没有订阅。<Link href="/sources" style={{ color: 'var(--primary)', textDecoration: 'none' }}>添加第一个 RSS 源 →</Link>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sourceRows.slice(0, 3).map(s => (
+            {finalSources.slice(0, 3).map(s => (
               <SourceRowCard key={s.id} source={s} />
             ))}
-            {sourceRows.length > 3 && (
+            {finalSources.length > 3 && (
               <Link href="/sources" style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', textDecoration: 'none', padding: 4 }}>
-                还有 {sourceRows.length - 3} 个源 · 查看全部 →
+                还有 {finalSources.length - 3} 个源 · 查看全部 →
               </Link>
             )}
           </div>
@@ -299,7 +399,7 @@ export function TodayProcessingPageClient({
       </div>
 
       {/* ============== Section 2: 今日推荐加工 · 5 条 ============== */}
-      {candidates.length > 0 && (
+      {finalCandidates.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', margin: 0 }}>
@@ -312,7 +412,7 @@ export function TodayProcessingPageClient({
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {candidates.map(c => (
+            {finalCandidates.map(c => (
               <CandidateCard
                 key={c.id}
                 candidate={c}
@@ -326,7 +426,7 @@ export function TodayProcessingPageClient({
       )}
 
       {/* 空状态 */}
-      {candidates.length === 0 && (
+      {finalCandidates.length === 0 && (
         <div className="card" style={{ padding: 32, textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🎯</div>
           <div style={{ fontSize: 14, color: 'var(--text-3)' }}>粘贴素材后，AI 提炼的候选会出现在这里。</div>
@@ -334,7 +434,7 @@ export function TodayProcessingPageClient({
       )}
 
       {/* ============== Section 3 + 4: 底部 2 段（核心差异化场景）============== */}
-      {(readyTopics.length > 0 || kernelCandidates.length > 0) && (
+      {(finalReadyTopics.length > 0 || finalKernelCandidates.length > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 32 }}>
           {/* 📚 你的主题已具备输出条件 */}
           <div>
@@ -344,13 +444,13 @@ export function TodayProcessingPageClient({
               </h2>
               <Link href="/topics" style={{ fontSize: 11, color: 'var(--text-3)', textDecoration: 'none' }}>查看全部 →</Link>
             </div>
-            {readyTopics.length === 0 ? (
+            {finalReadyTopics.length === 0 ? (
               <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
                 主题还没达到输出条件。<br/>在「判断资产」把资产归到主题，凑齐 5 个 E2+ 后会出现。
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {readyTopics.map(t => {
+                {finalReadyTopics.map(t => {
                   // 计算"已具备"和"还缺"
                   const hasArticle = t.outputCount >= 1;
                   const hasTalk = t.outputCount >= 2;
@@ -399,13 +499,13 @@ export function TodayProcessingPageClient({
               </h2>
               <Link href="/assets" style={{ fontSize: 11, color: 'var(--text-3)', textDecoration: 'none' }}>查看全部 →</Link>
             </div>
-            {kernelCandidates.length === 0 ? (
+            {finalKernelCandidates.length === 0 ? (
               <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
                 还没有被反复引用的判断。<br/>被引用 5 次 + 收到 1 条反馈后会出现在这里。
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {kernelCandidates.map(a => (
+                {finalKernelCandidates.map(a => (
                   <div key={a.id} className="card" style={{ padding: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                       <div className={`ev-badge ev-${a.evidenceLevel}`} style={{

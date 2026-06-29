@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeScript } from '@/components/ThemeScript';
 import { ToastProvider } from '@/components/ToastProvider';
+import { DemoLoader } from '@/components/DemoLoader';
 import AssistantButton from '@/components/Assistant/AssistantButton';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeScript />
       </head>
       <body>
+        <DemoLoader />
         <ThemeProvider>
           <ToastProvider>
             <div className="app-shell">
