@@ -45,6 +45,7 @@ interface Props {
 export default async function SourceDetailPage({ params }: Props) {
   const { id } = await params;
   const db = getDb();
+  if (!db) return null;
 
   const source = db.get(sql`
     SELECT id, type, url, title, enabled, last_fetched_at as lastFetchedAt,

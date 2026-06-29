@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = getDb();
+  if (!db) return null;
   const sqlite = getRawSqlite();
   const asset = db.select().from(assets).where(eq(assets.id, id)).get();
 

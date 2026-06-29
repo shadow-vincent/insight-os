@@ -36,6 +36,7 @@ interface SourceRow {
 
 export default function SourcesPage() {
   const db = getDb();
+  if (!db) return null;
   const rows = db.all(sql`
     SELECT id, type, url, title, enabled, last_fetched_at as lastFetchedAt,
            last_error as lastError, fetch_interval_min as fetchIntervalMin,

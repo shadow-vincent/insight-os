@@ -29,6 +29,7 @@ export const dynamic = 'force-dynamic';
 
 export default function InsightsPage() {
   const db = getDb();
+  if (!db) return null;
   const sqlite = getRawSqlite();
   const now = Math.floor(Date.now() / 1000);
   const DAY = 86400;

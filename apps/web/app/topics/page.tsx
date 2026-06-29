@@ -40,6 +40,7 @@ interface TopicKernelInfo {
 
 export default function TopicsPage() {
   const db = getDb();
+  if (!db) return null;
 
   // 1. 加载所有主题
   const allTopics = db.select().from(topics).orderBy(topics.sortOrder).all();
