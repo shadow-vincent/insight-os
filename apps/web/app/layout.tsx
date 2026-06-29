@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeScript } from '@/components/ThemeScript';
 import { ToastProvider } from '@/components/ToastProvider';
+import { IndexedDBProvider } from '@/lib/idb';
 import AssistantButton from '@/components/Assistant/AssistantButton';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -23,15 +24,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeScript />
       </head>
       <body>
-        <ThemeProvider>
-          <ToastProvider>
-            <div className="app-shell">
-              <Sidebar />
-              <main className="app-main">{children}</main>
-            </div>
-            <AssistantButton />
-          </ToastProvider>
-        </ThemeProvider>
+        <IndexedDBProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <div className="app-shell">
+                <Sidebar />
+                <main className="app-main">{children}</main>
+              </div>
+              <AssistantButton />
+            </ToastProvider>
+          </ThemeProvider>
+        </IndexedDBProvider>
       </body>
     </html>
   );
