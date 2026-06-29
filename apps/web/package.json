@@ -13,9 +13,9 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@insight-os/core": "*",
-    "@insight-os/db": "*",
-    "@insight-os/indexer": "*",
+    "@insight-os/core": "file:../packages/core",
+    "@insight-os/db": "file:../packages/db",
+    "@insight-os/indexer": "file:../packages/indexer",
     "better-sqlite3": "^11.5.0",
     "drizzle-orm": "^0.36.4",
     "jszip": "^3.10.1",
