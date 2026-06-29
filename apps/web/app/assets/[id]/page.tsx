@@ -184,11 +184,14 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         antiCommonSense: asset.antiCommonSense,
         filePath: asset.filePath,
         body,
-        feedbackCount: asset.feedbackCount ?? 0,
-        fileExists,
-        createdAt: asset.createdAt,
-        updatedAt: asset.updatedAt,
-      }}
+      feedbackCount: asset.feedbackCount ?? 0,
+      fileExists,
+      createdAt: asset.createdAt,
+      updatedAt: asset.updatedAt,
+      // v1.8.0 新字段
+      isKernelCandidate: asset.isKernelCandidate ?? 0,
+      isKernelApproved: asset.isKernelApproved ?? 0,
+    }}
       initialBody={body}
       tags={tags}
       llmEnabled={llmEnabled}

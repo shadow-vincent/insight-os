@@ -18,6 +18,7 @@ import { callLLM, buildOutputGenerateUserPrompt, OUTPUT_GENERATE_SYSTEM, type Ou
 import { isLLMConfigured, readConfig } from '@insight-os/core';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { incrementOutputCount } from '@/lib/output-count';
 
 export async function POST(req: NextRequest) {
   try {
@@ -125,6 +126,9 @@ export async function POST(req: NextRequest) {
         updatedAt: now,
       })
       .run();
+
+    // v1.8.0 引用计数自动维护：output_count + 1（够 5 次自动推荐 is_kernel_candidate）
+    incrementOutputCount([assetId]);
 
     // 更新资产卡的 last_used_at + feedback_count（feedback_count 不增，统计用）
     db.update(assets)

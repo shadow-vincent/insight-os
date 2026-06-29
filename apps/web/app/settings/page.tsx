@@ -45,6 +45,10 @@ export default function SettingsPage() {
   // v1.7: 全局偏好
   const [temperature, setTemperature] = useState(0.5);
   const [articleLength, setArticleLength] = useState<'short' | 'medium' | 'deep' | 'ultra'>('deep');
+  // v1.9.1: RSSHub 配置
+  const [rsshubBase, setRSSHubBase] = useState('https://rsshub.app');
+  const [testingRSSHub, setTestingRSSHub] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/config')
@@ -59,6 +63,7 @@ export default function SettingsPage() {
           if (data.config.preferences) {
             setTemperature(data.config.preferences.llmTemperature ?? 0.5);
             setArticleLength(data.config.preferences.articleLength ?? 'deep');
+            setRSSHubBase(data.config.preferences.rsshubBase ?? 'https://rsshub.app');
           }
         }
       })
@@ -72,7 +77,7 @@ export default function SettingsPage() {
       const body: any = {
         llm: { baseUrl, model, enabled },
         paths: { vaultPath },
-        preferences: { llmTemperature: temperature, articleLength },
+        preferences: { llmTemperature: temperature, articleLength, rsshubBase },
       };
       if (apiKeyChanged && apiKey) {
         body.llm.apiKey = apiKey;
@@ -114,6 +119,28 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: e.message });
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleTestRSSHub = async () => {
+    setTestingRSSHub(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/config/test-rsshub', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rsshubBase }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTestResult({ ok: true, text: `✓ RSSHub 可用 · 抓取 ${data.itemCount} 条样例` });
+      } else {
+        setTestResult({ ok: false, text: `✗ 失败: ${data.error}` });
+      }
+    } catch (e: any) {
+      setTestResult({ ok: false, text: e.message });
+    } finally {
+      setTestingRSSHub(false);
     }
   };
 
@@ -378,6 +405,50 @@ export default function SettingsPage() {
             <option value="deep">深度长文（约 2500-3500 字）</option>
             <option value="ultra">超深度（约 4000+ 字）</option>
           </select>
+        </Field>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 18, borderTop: '1px solid var(--line-soft)' }}>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? '保存中…' : '💾 保存'}
+          </button>
+        </div>
+      </div>
+
+      {/* RSSHub 接入（v1.9.1） */}
+      <div className="card" style={{ padding: 28, marginBottom: 16 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>📡 RSSHub 接入</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 20px' }}>
+          Twitter / 公众号等封闭生态走 RSSHub。默认用公共实例（限流严），可自部署后填自己的 URL。
+        </p>
+
+        <Field
+          label="RSSHub Base URL"
+          hint="默认 https://rsshub.app。自部署：https://rsshub.yourdomain.com（末尾不要 /）"
+        >
+          <input
+            value={rsshubBase}
+            onChange={e => setRSSHubBase(e.target.value)}
+            placeholder="https://rsshub.app"
+            className="form-input"
+          />
+        </Field>
+
+        <Field label="测试连接" hint="点击后访问 /twitter/user/elonmusk 验证 RSSHub 可用">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleTestRSSHub}
+              disabled={testingRSSHub}
+              type="button"
+            >
+              {testingRSSHub ? '测试中…' : '🔍 测试连接'}
+            </button>
+            {testResult && (
+              <span style={{ fontSize: 12, color: testResult.ok ? '#16a34a' : '#dc2626' }}>
+                {testResult.text}
+              </span>
+            )}
+          </div>
         </Field>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 20, paddingTop: 18, borderTop: '1px solid var(--line-soft)' }}>

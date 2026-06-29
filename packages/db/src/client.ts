@@ -88,6 +88,14 @@ CREATE TABLE IF NOT EXISTS assets (
   feedback_count INTEGER NOT NULL DEFAULT 0,
   last_used_at INTEGER,
   related_ids_json TEXT NOT NULL DEFAULT '[]',
+  -- ===== v1.8.0 主动判断加工系统 =====
+  source_material_id TEXT,
+  score_total INTEGER NOT NULL DEFAULT 0,
+  score_breakdown_json TEXT NOT NULL DEFAULT '{}',
+  output_count INTEGER NOT NULL DEFAULT 0,
+  processed_at INTEGER,
+  is_kernel_candidate INTEGER NOT NULL DEFAULT 0,
+  is_kernel_approved INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -96,6 +104,7 @@ CREATE INDEX IF NOT EXISTS assets_status_idx ON assets(status);
 CREATE INDEX IF NOT EXISTS assets_type_idx ON assets(type);
 CREATE INDEX IF NOT EXISTS assets_evidence_idx ON assets(evidence_level);
 CREATE INDEX IF NOT EXISTS assets_updated_idx ON assets(updated_at);
+-- v1.8.0 索引移到下方兼容旧库块（避免旧库 CREATE INDEX 引用不存在列）
 
 CREATE TABLE IF NOT EXISTS outputs (
   id TEXT PRIMARY KEY,
@@ -173,14 +182,49 @@ CREATE TABLE IF NOT EXISTS topic_kernels (
 
 CREATE INDEX IF NOT EXISTS topic_kernels_topic_idx ON topic_kernels(topic_id);
 
+-- ===== v1.9.0 信息源订阅 =====
+CREATE TABLE IF NOT EXISTS sources (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'rss' CHECK(type IN ('rss','twitter','wechat-account','reddit')),
+  url TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  last_fetched_at INTEGER,
+  last_error TEXT,
+  fetch_interval_min INTEGER NOT NULL DEFAULT 60,
+  new_items_count INTEGER NOT NULL DEFAULT 0,
+  total_items_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sources_url_idx ON sources(url);
+CREATE INDEX IF NOT EXISTS sources_enabled_idx ON sources(enabled);
+
+CREATE TABLE IF NOT EXISTS source_items (
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  guid TEXT NOT NULL,
+  title TEXT NOT NULL,
+  url TEXT,
+  excerpt TEXT,
+  content TEXT,
+  published_at INTEGER,
+  fetched_at INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','imported','skipped')),
+  asset_id TEXT,
+  UNIQUE(source_id, guid)
+);
+CREATE INDEX IF NOT EXISTS source_items_source_idx ON source_items(source_id);
+CREATE INDEX IF NOT EXISTS source_items_status_idx ON source_items(status);
+
 -- ===== v1.4 Insight Kernel 用户判断协议 =====
 -- 用户级的「判断宪法」：每次 LLM 调用自动注入 system prompt
 -- 4 类别（belief/contrarian/expertise/challenge）+ 4 字段（content/confidence/counterExample/scope）
 -- 6 条 ship-ready 默认由 /api/kernel/seed-default 种子
 CREATE TABLE IF NOT EXISTS user_kernels (
   id TEXT PRIMARY KEY,
-  category TEXT NOT NULL CHECK(category IN ('belief','contrarian','expertise','challenge')),
-  kind TEXT NOT NULL DEFAULT 'belief' CHECK(kind IN ('belief','hypothesis','experience','contrarian')),
+  category TEXT NOT NULL CHECK(category IN ('belief','contrarian','expertise','challenge','principle')),
+  kind TEXT NOT NULL DEFAULT 'belief' CHECK(kind IN ('belief','hypothesis','experience','contrarian','principle')),
   content TEXT NOT NULL,
   confidence INTEGER NOT NULL DEFAULT 70,
   counter_example TEXT,
@@ -260,12 +304,30 @@ function initSchema(sqlite: Database.Database) {
   if (_initialized) return;
   sqlite.exec(SCHEMA_SQL);
 
-  // 兼容旧库：补加 v0.5 + v0.9 的新字段（如果不存在）
+  // 兼容旧库：补加 v0.5 + v0.9 + v1.8.0 的新字段（如果不存在）
   try {
     const assetsCols = sqlite.prepare("PRAGMA table_info(assets)").all() as { name: string }[];
     if (!assetsCols.some(c => c.name === 'related_ids_json')) {
       sqlite.exec("ALTER TABLE assets ADD COLUMN related_ids_json TEXT NOT NULL DEFAULT '[]'");
     }
+    // v1.8.0 主动判断加工系统
+    const addAssetsCol = (col: string, def: string) => {
+      if (!assetsCols.some(c => c.name === col)) {
+        sqlite.exec(`ALTER TABLE assets ADD COLUMN ${col} ${def}`);
+      }
+    };
+    addAssetsCol('source_material_id', 'TEXT');
+    addAssetsCol('score_total', 'INTEGER NOT NULL DEFAULT 0');
+    addAssetsCol('score_breakdown_json', "TEXT NOT NULL DEFAULT '{}'");
+    addAssetsCol('output_count', 'INTEGER NOT NULL DEFAULT 0');
+    addAssetsCol('processed_at', 'INTEGER');
+    addAssetsCol('is_kernel_candidate', 'INTEGER NOT NULL DEFAULT 0');
+    addAssetsCol('is_kernel_approved', 'INTEGER NOT NULL DEFAULT 0');
+    // v1.8.0 索引（ALTER 之后再建，确保列存在）
+    sqlite.exec("CREATE INDEX IF NOT EXISTS assets_score_idx ON assets(score_total)");
+    sqlite.exec("CREATE INDEX IF NOT EXISTS assets_kernel_candidate_idx ON assets(is_kernel_candidate) WHERE is_kernel_candidate = 1");
+    sqlite.exec("CREATE INDEX IF NOT EXISTS assets_kernel_approved_idx ON assets(is_kernel_approved) WHERE is_kernel_approved = 1");
+
     // v0.9 写作场景：outputs 表加 5 个字段
     const outputsCols = sqlite.prepare("PRAGMA table_info(outputs)").all() as { name: string }[];
     const addCol = (col: string, def: string) => {

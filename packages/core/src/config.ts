@@ -36,6 +36,7 @@ export interface AppConfig {
   preferences?: {
     llmTemperature?: number;       // 0-1, 默认 0.5（稳定 vs 创意）
     articleLength?: ArticleLength; // 短文/中等/深度长文/超深度，默认 'deep'
+    rsshubBase?: string;           // v1.9.1: RSSHub 实例 URL，默认 'https://rsshub.app'
   };
   lastUpdated: number;
 }
@@ -148,6 +149,7 @@ export function readConfig(): AppConfig {
       preferences: {
         llmTemperature: parsed.preferences?.llmTemperature ?? 0.5,
         articleLength: parsed.preferences?.articleLength ?? 'deep',
+        rsshubBase: parsed.preferences?.rsshubBase ?? 'https://rsshub.app',
       },
       lastUpdated: parsed.lastUpdated ?? 0,
     };
@@ -247,6 +249,7 @@ export function sanitize(config: AppConfig): SanitizedConfig {
     preferences: {
       llmTemperature: config.preferences?.llmTemperature ?? 0.5,
       articleLength: config.preferences?.articleLength ?? 'deep',
+      rsshubBase: config.preferences?.rsshubBase ?? 'https://rsshub.app',
     },
     lastUpdated: config.lastUpdated,
   };

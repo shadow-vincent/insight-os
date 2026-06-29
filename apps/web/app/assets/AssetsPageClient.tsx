@@ -73,9 +73,9 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
     <div className="page-container">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="page-title">资产库</h1>
+          <h1 className="page-title">判断资产</h1>
           <p className="page-subtitle">
-            {all.length} 张资产 · 来源：OpenClaw 加工 + 本应用整理
+            {all.length} 张判断资产 · 来源：OpenClaw 加工 + 本应用整理
             {selected.size > 0 && (
               <span style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 600 }}>
                 · 已选 {selected.size} 张

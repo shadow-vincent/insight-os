@@ -212,11 +212,11 @@ export default function KernelListClient() {
 
   return (
     <div style={{ padding: '32px 40px', maxWidth: 1200, margin: '0 auto' }}>
-      {/* 顶部 hero */}
+      {/* 顶部 hero · v1.8.4 改名「我的方法论」 */}
       <div style={{ marginBottom: 28 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink)', margin: 0, letterSpacing: '-0.01em' }}>
-            🧠 Insight Kernel
+          <h1 className="page-title" style={{ margin: 0 }}>
+            我的方法论
           </h1>
           {stats && (
             <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
@@ -224,8 +224,8 @@ export default function KernelListClient() {
             </span>
           )}
         </div>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
-          你的「判断宪法」——每次 LLM 调用自动注入，决定 AI 用什么立场跟你对话。
+        <p className="page-subtitle" style={{ margin: 0 }}>
+          让 AI 按你的判断方式写作和分析——不是每次重新教 AI，而是让它长期记住你的判断。
         </p>
       </div>
 

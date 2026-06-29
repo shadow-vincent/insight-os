@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { AssetThreeSections } from './AssetThreeSections';
 
 interface AssetDetailClientProps {
   asset: {
@@ -22,6 +23,9 @@ interface AssetDetailClientProps {
     feedbackCount: number;
     createdAt: number;
     updatedAt: number;
+    // v1.8.0 新字段
+    isKernelCandidate?: number;
+    isKernelApproved?: number;
   };
   initialBody: string;
   tags: string[];
@@ -89,7 +93,7 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
         {/* 顶部工具条（返回 / tags）— 全宽，不受两列影响 */}
         <div style={{ maxWidth: 1440, margin: '0 auto 20px' }}>
           <Link href="/assets" style={{ fontSize: 13, color: 'var(--text-3)', textDecoration: 'none' }}>
-            ← 返回资产库
+            ← 返回判断资产
           </Link>
         </div>
 
@@ -140,6 +144,16 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
             )}
 
             <div className="markdown-body" dangerouslySetInnerHTML={{ __html: simpleMd(initialBody) }} />
+
+            {/* v1.8.2 3 段卡片：帮你产出了 / 下一步还能变强 / 完整进化线（折叠） */}
+            <AssetThreeSections
+              asset={asset}
+              outputs={timeline.outputs}
+              feedbackCount={asset.feedbackCount}
+              feedbackRows={timeline.feedback}
+              kernelCandidates={asset.isKernelCandidate}
+              kernelApproved={asset.isKernelApproved}
+            />
 
             {/* 相关资产 */}
             <RelatedAssetsSection assetId={asset.id} />

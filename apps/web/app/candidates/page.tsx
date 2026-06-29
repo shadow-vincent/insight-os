@@ -145,12 +145,12 @@ export default function CandidatesPage() {
     <div className="page-container">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="page-title">候选池</h1>
+          <h1 className="page-title">候选判断</h1>
           <p className="page-subtitle">
-            {list.length} 张轻量卡 · 待确认 / 已入库 / 已归档
+            {list.length} 张候选 · 待确认 / 已入库 / 已归档
           </p>
         </div>
-        <Link href="/inbox" className="btn btn-primary">+ 新增</Link>
+        <Link href="/" className="btn btn-primary">+ 去粘贴</Link>
       </div>
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--line)' }}>

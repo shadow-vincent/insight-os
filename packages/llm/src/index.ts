@@ -1,5 +1,7 @@
 export * from './client.ts';
 export * from './kernel-injector.ts';
+export * from './scoring.ts';
+export * from './prompts/score-candidate.ts';
 export * from './prompts/light-card.ts';
 export * from './prompts/calibrate.ts';
 export * from './prompts/asset-upgrade.ts';

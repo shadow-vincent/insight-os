@@ -69,6 +69,13 @@ export async function POST(req: NextRequest) {
           partial.preferences.articleLength = body.preferences.articleLength;
         }
       }
+      // v1.9.1: RSSHub base URL
+      if (typeof body.preferences.rsshubBase === 'string') {
+        const url = body.preferences.rsshubBase.trim().replace(/\/+$/, '');
+        if (url && /^https?:\/\//.test(url)) {
+          partial.preferences.rsshubBase = url;
+        }
+      }
     }
 
     const updated = updateConfig(partial);

@@ -5,24 +5,37 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { GlobalSearchModal } from './GlobalSearchModal';
 
+// v1.8.0 主动判断加工系统 · 6 主导航
+// 设计原则：每日工作流 2 / 判断资产 2 / 输出方法论 2（按 v3 原型对齐）
 const navItems = [
-  { href: '/', label: '仪表盘', icon: 'dashboard' },
-  { href: '/write', label: '写文章', icon: 'writing' },
-  { href: '/inbox', label: '收集箱', icon: 'inbox' },
-  { href: '/candidates', label: '候选池', icon: 'candidates' },
-  { href: '/assets', label: '资产库', icon: 'assets' },
-  { href: '/map', label: '资产地图', icon: 'map' },
-  { href: '/graph', label: '资产图谱', icon: 'graph' },
-  { href: '/output', label: '输出历史', icon: 'output' },
+  { section: '每日工作流', href: '/', label: '今日加工', icon: 'today' },
+  { section: '每日工作流', href: '/candidates', label: '候选判断', icon: 'candidates' },
+  { section: '判断资产', href: '/assets', label: '判断资产', icon: 'assets' },
+  { section: '判断资产', href: '/topics', label: '主题资产包', icon: 'topic' },
+  { section: '输出与方法论', href: '/output', label: '输出包', icon: 'output' },
+  { section: '输出与方法论', href: '/kernel', label: '我的方法论', icon: 'methodology' },
 ];
 
 const icons: Record<string, React.ReactNode> = {
-  dashboard: (
+  today: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  ),
+  topic: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+      <line x1="8" y1="2" x2="8" y2="18" />
+      <line x1="16" y1="6" x2="16" y2="22" />
+    </svg>
+  ),
+  methodology: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 0 0-7 17l-1 4 4-1a10 10 0 1 0 4-20z" />
+      <circle cx="9" cy="11" r="1" fill="currentColor" />
+      <circle cx="15" cy="11" r="1" fill="currentColor" />
+      <path d="M9 14h6" />
     </svg>
   ),
   writing: (
@@ -143,22 +156,46 @@ export function Sidebar() {
           }}>⌘K</kbd>
         </button>
 
-        <div className="sidebar-section">工作流</div>
-        {navItems.map(item => {
-          const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-            >
-              {icons[item.icon]}
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+        {/* v1.8.0 按 section 分组渲染 */}
+        {(() => {
+          const grouped = new Map<string, typeof navItems>();
+          for (const item of navItems) {
+            const sec = item.section ?? '其他';
+            if (!grouped.has(sec)) grouped.set(sec, []);
+            grouped.get(sec)!.push(item);
+          }
+          const elements: React.ReactNode[] = [];
+          for (const [section, items] of grouped) {
+            elements.push(
+              <div key={`sec-${section}`} className="sidebar-section">{section}</div>
+            );
+            for (const item of items) {
+              const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+              elements.push(
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-item ${isActive ? 'active' : ''}`}
+                >
+                  {icons[item.icon]}
+                  <span>{item.label}</span>
+                </Link>
+              );
+            }
+          }
+          return elements;
+        })()}
 
         <div className="sidebar-section">系统</div>
+        <Link href="/insights" className={`nav-item ${pathname === '/insights' ? 'active' : ''}`}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+          </svg>
+          <span>仪表盘</span>
+        </Link>
         <Link href="/docs" className={`nav-item ${pathname.startsWith('/docs') ? 'active' : ''}`}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>

@@ -71,6 +71,22 @@ export const assets = sqliteTable('assets', {
   feedbackCount: integer('feedback_count').notNull().default(0),
   lastUsedAt: integer('last_used_at'), // 时间戳
 
+  // ===== v1.8.0 主动判断加工系统 =====
+  // 来源素材 ID（如果此资产来自粘贴的素材）
+  sourceMaterialId: text('source_material_id'),
+  // 7 维度评分总分（0-100，仅 status='candidate' 时有效）
+  scoreTotal: integer('score_total').notNull().default(0),
+  // 7 维度评分明细 JSON
+  scoreBreakdownJson: text('score_breakdown_json').notNull().default('{}'),
+  // 被引用次数（output 引用此 asset 时 +1）
+  outputCount: integer('output_count').notNull().default(0),
+  // Vincent 点"加工"的时间戳（从 candidate 升级到 in_use 的时间）
+  processedAt: integer('processed_at'),
+  // 是否建议沉淀为方法论（output_count >= 5 + feedback_count >= 1 时自动 true）
+  isKernelCandidate: integer('is_kernel_candidate').notNull().default(0),
+  // 是否已沉淀为我的方法论（Vincent 手动确认）
+  isKernelApproved: integer('is_kernel_approved').notNull().default(0),
+
   // ===== 引用关系（v0.5 血脉图用）=====
   // 从 .md frontmatter 的 `related` 字段解析，存相关资产卡的 id 数组
   // 例：AI是分化加速器 → [asset_xxx_buffer, asset_yyy_org_formula]
@@ -195,6 +211,62 @@ export const assetTopics = sqliteTable('asset_topics', {
 export const topicsSlugIdx = index('topics_slug_idx').on(topics.slug);
 export const assetTopicsAssetIdx = index('asset_topics_asset_idx').on(assetTopics.assetId);
 export const assetTopicsTopicIdx = index('asset_topics_topic_idx').on(assetTopics.topicId);
+
+/**
+ * sources 表 —— 信息源订阅（v1.9.0）
+ *
+ * V1.9.0 只支持 type='rss'，V1.9.1+ 扩展 twitter / wechat-account
+ * url: RSS feed URL
+ * fetchIntervalMin: 默认 60 分钟抓一次
+ * lastFetchedAt / lastError: 调试用，记录最近一次同步状态
+ */
+export const sources = sqliteTable('sources', {
+  id: text('id').primaryKey(),
+  // V1.9.2: 加 'reddit'（官方 RSS 端点，无需 RSSHub）
+  // V1.9.1: 'twitter' + 'wechat-account'（需 RSSHub，公共实例被 Cloudflare 挡）
+  // V1.9.0: 'rss'（直接 RSS）
+  type: text('type', { enum: ['rss', 'twitter', 'wechat-account', 'reddit'] }).notNull().default('rss'),
+  url: text('url').notNull().unique(),
+  title: text('title').notNull(),
+  enabled: integer('enabled').notNull().default(1),
+  lastFetchedAt: integer('last_fetched_at'),
+  lastError: text('last_error'),
+  fetchIntervalMin: integer('fetch_interval_min').notNull().default(60),
+  newItemsCount: integer('new_items_count').notNull().default(0), // 主页"待处理"用
+  totalItemsCount: integer('total_items_count').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+});
+
+export const sourcesUrlIdx = index('sources_url_idx').on(sources.url);
+export const sourcesEnabledIdx = index('sources_enabled_idx').on(sources.enabled);
+
+/**
+ * source_items 表 —— 抓来的内容（v1.9.0）
+ *
+ * (source_id, guid) UNIQUE 去重（同一篇文章多次抓不会被重复入库）
+ * status:
+ *   - new:        新抓到的，UI 显示在主页"📡 信息源"section
+ *   - imported:   已调 intake 进 assets，assetId 关联
+ *   - skipped:    用户主动跳过（点击"忽略"按钮）
+ */
+export const sourceItems = sqliteTable('source_items', {
+  id: text('id').primaryKey(),
+  sourceId: text('source_id').notNull(),
+  guid: text('guid').notNull(),
+  title: text('title').notNull(),
+  url: text('url'),
+  excerpt: text('excerpt'),                          // 前 500 字摘要（避免 source_items 太大）
+  content: text('content'),                          // 完整正文（V1.9.0 先不存，V1.9.1 优化）
+  publishedAt: integer('published_at'),
+  fetchedAt: integer('fetched_at').notNull(),
+  status: text('status', { enum: ['new', 'imported', 'skipped'] }).notNull().default('new'),
+  assetId: text('asset_id'),                         // 关联 assets.id（imported 后填）
+});
+
+export const sourceItemsSourceIdx = index('source_items_source_idx').on(sourceItems.sourceId);
+export const sourceItemsStatusIdx = index('source_items_status_idx').on(sourceItems.status);
+export const sourceItemsGuidIdx = index('source_items_guid_idx').on(sourceItems.sourceId, sourceItems.guid);
 
 /**
  * topic_kernels 表 —— 主题思想内核（v0.8）
