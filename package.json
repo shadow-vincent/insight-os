@@ -21,7 +21,8 @@
     "build:packages": "node build-packages.mjs",
     "build:desktop": "npm run rebuild:native && npm run build && npm run build:packages && cd apps/desktop && npx electron-builder --mac",
     "build:desktop:dir": "npm run rebuild:native && npm run build && npm run build:packages && cd apps/desktop && npx electron-builder --mac --dir",
-    "rebuild:native": "cd apps/web && npx electron-rebuild -f -w better-sqlite3 -v 32.2.5"
+    "rebuild:native": "cd apps/web && npx electron-rebuild -f -w better-sqlite3 -v 32.2.5",
+    "postinstall": "node scripts/setup-monorepo-links.mjs"
   },
   "dependencies": {
     "d3-force": "^3.0.0",

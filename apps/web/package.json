@@ -10,7 +10,8 @@
     "lint": "next lint",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "postinstall": "node ../../scripts/setup-monorepo-links.mjs"
   },
   "dependencies": {
     "@insight-os/core": "file:../packages/core",
