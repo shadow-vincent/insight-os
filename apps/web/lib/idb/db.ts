@@ -4,12 +4,10 @@
  * 镜像 packages/db/src/schema.ts 的 11 张 SQLite 表到 IndexedDB。
  * FTS5 全文搜索 → MiniSearch（在 lib/idb/search.ts 实现），不建 IDB table。
  *
- * Dexie schema 语法：'primaryKey, index1, index2, [compoundIndex1+compoundIndex2]'
- * - id 是 primary key（Drizzle 主键约定）
- * - 其余字段按查询模式建索引
+ * V1.10: Dexie 改成 lazy dynamic import（避免 Vercel Lambda server load 时 Dexie 模块顶层报错）
  */
 
-import Dexie, { type Table } from 'dexie';
+import type { Table } from 'dexie'; // type-only import：编译时删，不影响 runtime
 
 // ===== 类型定义（镜像 SQLite schema） =====
 

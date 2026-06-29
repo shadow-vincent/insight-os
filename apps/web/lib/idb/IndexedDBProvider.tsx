@@ -9,84 +9,47 @@
  *   3. 检查今天是否需要自动备份
  *   4. 如果需要，静默触发 JSON export 下载
  *
+ * V1.10 修复：所有 Dexie/IDB 模块都 dynamic import 在 useEffect 里跑
+ * （顶层 import 会让 Vercel Lambda server load 时 Dexie 模块报错）
+ *
  * 挂载位置：apps/web/app/layout.tsx
  */
 
-import { useEffect, useState } from 'react';
-import { migrateFromSqlite, maybeAutoBackup, type MigrationResult, type BackupResult } from './migrate';
+import { useEffect } from 'react';
 
 interface IndexedDBProviderProps {
   children: React.ReactNode;
 }
 
 export function IndexedDBProvider({ children }: IndexedDBProviderProps) {
-  const [migrationStatus, setMigrationStatus] = useState<'pending' | 'migrating' | 'done' | 'error'>('pending');
-  const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
-  const [backupResult, setBackupResult] = useState<BackupResult | null>(null);
-
   useEffect(() => {
-    let cancelled = false;
+    // 仅 client mount 时跑（typeof window 检查保证 server 不会 load Dexie）
+    if (typeof window === 'undefined') return;
 
-    async function bootstrap() {
-      // 1. 跑迁移
-      setMigrationStatus('migrating');
-      const mResult = await migrateFromSqlite();
-      if (cancelled) return;
-      setMigrationResult(mResult);
-      setMigrationStatus(mResult.success ? 'done' : 'error');
+    (async () => {
+      try {
+        // dynamic import：仅 client load Dexie 相关模块
+        const { migrateFromSqlite, maybeAutoBackup } = await import('./migrate');
 
-      if (!mResult.success) {
-        console.error('[IndexedDBProvider] migration failed:', mResult.error);
-        // 不阻塞 UI —— 用户可以用 IndexedDB 创建新数据
-      } else if (mResult.source !== 'skip' && mResult.source !== 'empty') {
-        console.log('[IndexedDBProvider] migration done:', mResult.migrated);
+        // 1. 跑迁移
+        const mResult = await migrateFromSqlite();
+        if (!mResult.success) {
+          console.error('[IndexedDBProvider] migration failed:', mResult.error);
+        } else if (mResult.source !== 'skip' && mResult.source !== 'empty') {
+          console.log('[IndexedDBProvider] migration done:', mResult.migrated);
+        }
+
+        // 2. 自动备份（如果今天还没备份）
+        const bResult = await maybeAutoBackup();
+        if (!bResult.success && bResult.error !== 'already-backed-up-today' && bResult.error !== 'no-data-yet') {
+          console.warn('[IndexedDBProvider] auto backup failed:', bResult.error);
+        }
+      } catch (e) {
+        console.error('[IndexedDBProvider] bootstrap error:', e);
       }
-
-      // 2. 自动备份（如果今天还没备份）
-      const bResult = await maybeAutoBackup();
-      if (cancelled) return;
-      setBackupResult(bResult);
-      if (!bResult.success && bResult.error !== 'already-backed-up-today') {
-        console.warn('[IndexedDBProvider] auto backup failed:', bResult.error);
-      }
-    }
-
-    bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
+    })();
   }, []);
 
   // 不管 migration 状态如何，都渲染 children（不阻塞 UI）
   return <>{children}</>;
-}
-
-/**
- * Hook: 让组件拿到 migration / backup 状态（用于 UI 提示）
- */
-export function useIndexedDBStatus() {
-  const [status, setStatus] = useState<{
-    migration: 'pending' | 'migrating' | 'done' | 'error';
-    backup: BackupResult | null;
-    migrationResult: MigrationResult | null;
-  }>({
-    migration: 'pending',
-    backup: null,
-    migrationResult: null,
-  });
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const migrated = localStorage.getItem('migrated-v1.10');
-      setStatus({
-        migration: migrated === 'true' ? 'done' : 'pending',
-        backup: null,
-        migrationResult: null,
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return status;
 }
