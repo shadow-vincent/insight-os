@@ -12,7 +12,7 @@
   },
   "scripts": {
     "dev": "cd apps/web && next dev --port 4191",
-    "build": "cd apps/web && next build",
+    "build": "npm run build:packages && cd apps/web && next build",
     "start": "cd apps/web && next start --port 4191",
     "lint": "cd apps/web && next lint",
     "test": "node --test tests/*.test.mjs",
