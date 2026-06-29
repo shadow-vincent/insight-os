@@ -208,7 +208,9 @@ export async function exportAllAsJson(): Promise<BackupResult> {
  * 行为：
  *   - 检查 localStorage 'last-backup-v1.10' 的日期
  *   - 今天已备份 → 跳过
- *   - 今天没备份 → 静默调 exportAllAsJson 触发下载
+ *   - 今天没备份 → 检查 IndexedDB 是否有数据
+ *     - 没数据 → 只设标记，不下载（避免新用户被打扰）
+ *     - 有数据 → 调 exportAllAsJson 触发下载
  *
  * 注意：浏览器静默下载可能被拦截，但用户主动操作是 OK 的
  *       Electron 桌面版可改为直接写本地文件（IPC）
@@ -221,6 +223,28 @@ export async function maybeAutoBackup(): Promise<BackupResult> {
   const lastBackup = localStorage.getItem(BACKUP_KEY);
   if (lastBackup === today) {
     return { success: true, size: 0, error: 'already-backed-up-today' };
+  }
+
+  // 检查 IndexedDB 是否有任何数据（避免给新用户下载空 JSON 打扰）
+  try {
+    const db = getDb();
+    const totalCount = await Promise.all([
+      db.assets.count(),
+      db.outputs.count(),
+      db.feedback.count(),
+      db.topics.count(),
+      db.sources.count(),
+      db.userKernels.count(),
+    ]).then(counts => counts.reduce((sum, n) => sum + n, 0));
+
+    if (totalCount === 0) {
+      // 新用户没数据，只设标记，不下载
+      localStorage.setItem(BACKUP_KEY, today);
+      return { success: true, size: 0, error: 'no-data-yet' };
+    }
+  } catch (e) {
+    // 检查失败也跳过，避免给用户报错
+    return { success: false, size: 0, error: 'count-failed' };
   }
 
   const result = await exportAllAsJson();
