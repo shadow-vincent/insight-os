@@ -4,17 +4,50 @@
  * 数据库位置：./storage/insight.db（相对于 apps/web 运行时）
  * v0.1 用同步的 better-sqlite3，单用户本地使用够用
  *
+ * V1.10: Vercel serverless 兼容 —— 用 createRequire + try/catch 把 better-sqlite3
+ * 改成 lazy require（避免 ESM 顶层 import 在 serverless 加载 native binding 失败）
+ *
  * 启动时自动建表（如果表不存在）—— 单用户本地应用不需要 migrate
  */
 
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
 import * as schema from './schema.ts';
 import { mkdirSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+// V1.10: lazy load drizzle-orm/better-sqlite3（顶层 import 也可能在 serverless 失败）
+let _drizzleFn: any = null;
+function loadDrizzle() {
+  if (_drizzleFn) return _drizzleFn;
+  try {
+    _drizzleFn = require('drizzle-orm/better-sqlite3').drizzle;
+  } catch (e) {
+    console.warn('[db] drizzle-orm/better-sqlite3 not available:', (e as Error).message);
+    _drizzleFn = null;
+  }
+  return _drizzleFn;
+}
+
+// V1.10: lazy load better-sqlite3（顶层静态 import 会让 Vercel Lambda 加载时尝试加载 native binding）
+let _DatabaseClass: any = null;
+let _DatabaseLoadAttempted = false;
+function loadDatabaseClass() {
+  if (_DatabaseLoadAttempted) return _DatabaseClass;
+  _DatabaseLoadAttempted = true;
+  try {
+    _DatabaseClass = require('better-sqlite3');
+  } catch (e) {
+    // better-sqlite3 native binding 加载失败（Vercel / 不支持的平台）
+    _DatabaseClass = null;
+    console.warn('[db] better-sqlite3 not available:', (e as Error).message);
+  }
+  return _DatabaseClass;
+}
+
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
-let _sqlite: Database.Database | null = null;
+let _sqlite: any = null;
 let _initialized = false;
 
 /**
@@ -370,6 +403,12 @@ export function getDb() {
     return null as any;
   }
 
+  // V1.10: lazy load better-sqlite3（避免顶层 import 加载 native binding 失败）
+  const Database = loadDatabaseClass();
+  if (!Database) {
+    return null as any;
+  }
+
   const dbPath = resolveDbPath();
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
@@ -382,14 +421,19 @@ export function getDb() {
     }
   }
 
-  _sqlite = new Database(dbPath);
+  try {
+    _sqlite = new Database(dbPath);
+  } catch (e) {
+    console.warn('[db] cannot create SQLite instance, falling back to null db:', e);
+    return null as any;
+  }
   _sqlite.pragma('journal_mode = WAL');
   _sqlite.pragma('foreign_keys = ON');
 
   // 自动建表（首次启动时执行）
   initSchema(_sqlite);
 
-  _db = drizzle(_sqlite, { schema });
+  _db = loadDrizzle()(_sqlite, { schema });
   return _db;
 }
 

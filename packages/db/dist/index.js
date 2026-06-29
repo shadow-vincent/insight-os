@@ -5,8 +5,7 @@ var __export = (target, all) => {
 };
 
 // packages/db/src/client.ts
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { createRequire } from "module";
 
 // packages/db/src/schema.ts
 var schema_exports = {};
@@ -285,6 +284,31 @@ var writingVersionsWritingIdx = index("writing_versions_writing_idx").on(writing
 // packages/db/src/client.ts
 import { mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+var require2 = createRequire(import.meta.url);
+var _drizzleFn = null;
+function loadDrizzle() {
+  if (_drizzleFn) return _drizzleFn;
+  try {
+    _drizzleFn = require2("drizzle-orm/better-sqlite3").drizzle;
+  } catch (e) {
+    console.warn("[db] drizzle-orm/better-sqlite3 not available:", e.message);
+    _drizzleFn = null;
+  }
+  return _drizzleFn;
+}
+var _DatabaseClass = null;
+var _DatabaseLoadAttempted = false;
+function loadDatabaseClass() {
+  if (_DatabaseLoadAttempted) return _DatabaseClass;
+  _DatabaseLoadAttempted = true;
+  try {
+    _DatabaseClass = require2("better-sqlite3");
+  } catch (e) {
+    _DatabaseClass = null;
+    console.warn("[db] better-sqlite3 not available:", e.message);
+  }
+  return _DatabaseClass;
+}
 var _db = null;
 var _sqlite = null;
 var _initialized = false;
@@ -592,6 +616,10 @@ function getDb() {
   if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     return null;
   }
+  const Database = loadDatabaseClass();
+  if (!Database) {
+    return null;
+  }
   const dbPath = resolveDbPath();
   const dir = dirname(dbPath);
   if (!existsSync(dir)) {
@@ -602,11 +630,16 @@ function getDb() {
       return null;
     }
   }
-  _sqlite = new Database(dbPath);
+  try {
+    _sqlite = new Database(dbPath);
+  } catch (e) {
+    console.warn("[db] cannot create SQLite instance, falling back to null db:", e);
+    return null;
+  }
   _sqlite.pragma("journal_mode = WAL");
   _sqlite.pragma("foreign_keys = ON");
   initSchema(_sqlite);
-  _db = drizzle(_sqlite, { schema: schema_exports });
+  _db = loadDrizzle()(_sqlite, { schema: schema_exports });
   return _db;
 }
 function getRawSqlite() {
