@@ -72,6 +72,7 @@ export interface SanitizedConfig {
     preferences: {
         llmTemperature: number;
         articleLength: ArticleLength;
+        rsshubBase?: string;
     };
     lastUpdated: number;
 }

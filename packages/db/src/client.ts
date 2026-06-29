@@ -46,7 +46,7 @@ function loadDatabaseClass() {
   return _DatabaseClass;
 }
 
-let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let _db: any = null;
 let _sqlite: any = null;
 let _initialized = false;
 
@@ -88,7 +88,7 @@ function resolveDbPath(): string {
 
   // 兜底：packaged 模式用 userData（Electron app.getPath('userData')），
   // 其他场景（web dev / 脚本）用第一个候选（apps/web/storage/）
-  if (process.env.NODE_ENV === 'production' && process.resourcesPath) {
+  if (process.env.NODE_ENV === 'production' && (process as any).resourcesPath) {
     // packaged Electron：cwd 在 .app bundle 内，绝对不能写 .app bundle
     // 兜底到 HOME（实际由 main.js 设 INSIGHT_APP_DATA_DIR 决定）
     const home = process.env.HOME || '/tmp';
@@ -333,7 +333,7 @@ END;
  * 初始化数据库（建表 + 索引）
  * 只跑一次，后续调用 noop
  */
-function initSchema(sqlite: Database.Database) {
+function initSchema(sqlite: any) {
   if (_initialized) return;
   sqlite.exec(SCHEMA_SQL);
 
@@ -437,7 +437,7 @@ export function getDb() {
   return _db;
 }
 
-export function getRawSqlite(): Database.Database {
+export function getRawSqlite(): any {
   if (!_sqlite) {
     getDb();
   }

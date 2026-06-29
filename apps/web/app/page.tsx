@@ -51,6 +51,22 @@ interface KernelCandidateRow {
 export default function DashboardPage() {
   const db = getDb();
 
+  // V1.10: Vercel serverless 下 SQLite 不可用（better-sqlite3 native binding 加载失败）
+  // 返回空状态，让客户端 IndexedDB 提供数据（V1.10 Phase 2 实现）
+  if (!db) {
+    return (
+      <TodayProcessingPageClient
+        candidates={[]}
+        totalCount={0}
+        llmEnabled={false}
+        readyTopics={[]}
+        kernelCandidates={[]}
+        inboxCount={0}
+        sources={[]}
+      />
+    );
+  }
+
   // ===== 1. 候选判断（AI 评分了但人还没决策的全部状态：candidate + sorting + inbox）
   // 原型"今日推荐加工" = 所有 AI 评分了但还没变成正式资产的
   // V1.8.0 状态机：inbox → sorting（AI 评分后）→ candidate（高价值排序待确认）→ in_use

@@ -10,7 +10,7 @@
  * 启动时自动建表（如果表不存在）—— 单用户本地应用不需要 migrate
  */
 export declare function getDb(): any;
-export declare function getRawSqlite(): Database.Database;
+export declare function getRawSqlite(): any;
 /**
  * 关闭连接（测试用）
  */
