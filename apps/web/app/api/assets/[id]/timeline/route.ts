@@ -44,7 +44,7 @@ export async function GET(_req: NextRequest, ctx: RouteCtx) {
     const { id } = await ctx.params;
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     const now = Math.floor(Date.now() / 1000);
 
     // 1) 资产本身

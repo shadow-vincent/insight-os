@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     const allTopics = db.select().from(topics).orderBy(topics.sortOrder).all();
     // v0.8：一次拿所有 kernel 摘要
     type TopicKernelRow = typeof topicKernels.$inferSelect;
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     const db = getDb();
 
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
 
     // 自动生成 slug（如果没传）
     // 规则：

@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     // 3. 加载已有资产标题（用于检测相似）
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     const existingAssetTitles = db.select({ title: assets.title })
       .from(assets)
       .where(inArray(assets.status, ['in_use', 'candidate'] as any))

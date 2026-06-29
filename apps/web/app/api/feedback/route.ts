@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const db = getDb();
 
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
 
     // 检查资产存在
     const asset = db.select().from(assets).where(eq(assets.id, assetId)).get();
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     const db = getDb();
 
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     let list;
     if (assetId) {
       list = db.select().from(feedback).where(eq(feedback.assetId, assetId)).orderBy(sql`${feedback.createdAt} desc`).limit(50).all();

@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
     // ========== Step 2: 逐段 LLM 抽卡 ==========
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     const now = Math.floor(Date.now() / 1000);
     const cfg = readConfig();
     const vaultDir = cfg.paths.vaultPath + '/04_管理洞察';

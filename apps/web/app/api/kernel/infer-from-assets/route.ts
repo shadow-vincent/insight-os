@@ -63,7 +63,7 @@ export async function POST(_req: NextRequest) {
     const db = getDb();
 
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
 
     // 1) 找最常被引用的资产：扫 outputs.assetIdsJson，LIKE 算频次
     // 简化方案：先拿所有 outputs 解析算频次，再 join assets

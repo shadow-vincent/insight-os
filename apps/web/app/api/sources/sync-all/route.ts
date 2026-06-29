@@ -18,7 +18,7 @@ export async function POST() {
   try {
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
     const now = Date.now();
 
     // 选所有 enabled + 到期（last_fetched_at + interval <= now）的源
@@ -62,7 +62,7 @@ async function syncOne(sourceId: string, url: string, type?: string): Promise<{ 
   const { randomUUID } = await import('node:crypto');
   const db = getDb();
 
-  if (!db) return NextResponse.json({ ok: true, data: [], count: 0 });
+  if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
   const now = Date.now();
 
   let feed;
