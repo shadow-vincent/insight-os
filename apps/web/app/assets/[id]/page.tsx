@@ -1,7 +1,6 @@
 import { getDb, getRawSqlite, assets, feedback, userKernels, outputs } from '@insight-os/db';
 import { eq, desc, and, like } from 'drizzle-orm';
 import { readFileSync, existsSync } from 'node:fs';
-import { notFound } from 'next/navigation';
 import { isLLMConfigured } from '@insight-os/core';
 import { AssetDetailClient } from './AssetDetailClient';
 import { ClientAssetLoader } from '@/components/ClientAssetLoader';
@@ -16,8 +15,10 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const sqlite = getRawSqlite();
   const asset = db.select().from(assets).where(eq(assets.id, id)).get();
 
+  // V1.11.10: SQLite 找不到时 fallback 到 client IDB（V1.10 后用户更多在 IDB 写卡）
+  // 避免 Vercel 用户导回本地版后 /assets/[id] 跳出来空白
   if (!asset) {
-    return notFound();
+    return <ClientAssetLoader id={id} />;
   }
 
   const tags: string[] = JSON.parse(asset.tagsJson || '[]');
