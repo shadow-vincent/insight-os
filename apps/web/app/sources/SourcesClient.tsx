@@ -70,11 +70,11 @@ export function SourcesClient({ initialSources }: Props) {
   const { data: idbSources } = useSources();
 
   useEffect(() => {
+    // V1.11.11: IDB 优先仅在"有数据"时；IDB 空保留 initialSources（防 Vincent 闪一下 bug）
     if (idbSources && idbSources.length > 0) {
       setSources(idbSources as any);
-    } else if (idbSources) {
-      setSources([]);
     }
+    // idbSources === null (loading) 或 idbSources.length === 0 → 保留 initialSources
   }, [idbSources]);
 
   const handleAdd = async () => {

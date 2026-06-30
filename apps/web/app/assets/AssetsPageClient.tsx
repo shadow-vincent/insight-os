@@ -27,6 +27,8 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
   const [list, setList] = useState<AssetItem[]>(all);
 
   useEffect(() => {
+    // V1.11.11: IDB 优先仅在"有数据"时；IDB 空（未加载 / 真没数据）保留 props.all
+    // 修 Vincent bug：之前 idbAssets=[] 触发 setList([]) 把 server SQLite 数据清掉
     if (idbAssets && idbAssets.length > 0) {
       const mapped: AssetItem[] = idbAssets.map(a => ({
         id: a.id,
@@ -38,10 +40,8 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
         filePath: a.filePath,
       }));
       setList(mapped);
-    } else if (idbAssets) {
-      // idbAssets 是空数组（不是 null）→ 覆盖 props
-      setList([]);
     }
+    // idbAssets === null (loading) 或 idbAssets.length === 0 (空) → 保留 list（不动）
   }, [idbAssets]);
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
