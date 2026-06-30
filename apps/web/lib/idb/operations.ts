@@ -48,6 +48,14 @@ async function getDb(): Promise<any> {
     writingDrafts: 'id, writingId, updatedAt',
     writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
   });
+  // V1.10 Phase 2.12: preferences 表（LLM config 等 key-value）
+  _dbInstance.version(2).stores({
+    preferences: 'key',
+  });
+  // V1.11.13: assetBodies 表（存完整 .md body）
+  _dbInstance.version(3).stores({
+    assetBodies: 'id',
+  });
   return _dbInstance;
 }
 
@@ -616,8 +624,37 @@ export interface AssetBodyRow {
   importedAt: number;
 }
 
-export async function addAssetBody(id: string, body: string, fileName?: string): Promise<void> {
+/**
+ * V1.11.13.1: 检测旧 IDB schema（v2 无 assetBodies 表），自动删库重建
+ * 触发场景：用户之前已 demo loaded（v2 schema），升级到 v1.11.13 后浏览器 IDB 没自动升 v3
+ * 解决：Dexie 声明式 schema 升级在 class 缓存单例时不触发，需要显式重建
+ */
+async function ensureV3Schema(): Promise<{ db: any; needReload: boolean }> {
   const db = await getDb();
+  if (!db.assetBodies) {
+    // 旧 schema —— 删库重建（先关闭再删，再清单例）
+    console.warn('[addAssetBody] 检测到旧 IDB schema，删除重建以升级到 v3');
+    try { await db.close(); } catch (e) { /* ignore */ }
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.deleteDatabase('insight-os');
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => resolve();
+    });
+    // 重置本地单例，让下一次 getDb() 重新 new Dexie() 走 v3 schema
+    _dbInstance = null;
+    return { db: null, needReload: true };
+  }
+  return { db, needReload: false };
+}
+
+export async function addAssetBody(id: string, body: string, fileName?: string): Promise<void> {
+  const { db, needReload } = await ensureV3Schema();
+  if (needReload) {
+    // IDB 已删，刷新页面让 Dexie 用 v3 schema 重建库
+    window.location.reload();
+    return;
+  }
   await db.assetBodies.put({ id, body, fileName, importedAt: Date.now() });
 }
 
