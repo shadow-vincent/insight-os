@@ -19,6 +19,8 @@ export default function DataPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [vaultPath, setVaultPath] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -78,6 +80,78 @@ export default function DataPage() {
       setMessage({ type: 'error', text: e.message });
     } finally {
       setMigrating(false);
+    }
+  };
+
+  // V1.11.8: 从 JSON 导入
+  const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      // 验证格式（必须有 version 字段，是 exportAllAsJson 导出格式）
+      if (!json.version && !json.assets) {
+        throw new Error('JSON 格式不对（缺少 version 或 assets 字段）');
+      }
+      // V1.11.8: 同时写 IDB + 调 server API 写 SQLite（双写）
+      // 1. 写 IDB（让本地浏览器也有数据）
+      try {
+        const DexieModule = await import('dexie');
+        const Dexie = (DexieModule as any).default || DexieModule;
+        const db = new Dexie('insight-os');
+        db.version(2).stores({
+          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
+          feedback: 'id, assetId, scene, outputId, createdAt',
+          topics: 'id, slug, sortOrder, updatedAt',
+          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
+          sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
+          sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
+          topicKernels: 'id, topicId, generatedAt',
+          userKernels: 'id, category, status, sortOrder, updatedAt',
+          writingDrafts: 'id, writingId, updatedAt',
+          writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
+          preferences: 'key',
+        });
+        if (json.assets?.length) await db.assets.bulkPut(json.assets);
+        if (json.outputs?.length) await db.outputs.bulkPut(json.outputs);
+        if (json.feedback?.length) await db.feedback.bulkPut(json.feedback);
+        if (json.topics?.length) await db.topics.bulkPut(json.topics);
+        if (json.assetTopics?.length) await db.assetTopics.bulkPut(json.assetTopics);
+        if (json.sources?.length) await db.sources.bulkPut(json.sources);
+        if (json.sourceItems?.length) await db.sourceItems.bulkPut(json.sourceItems);
+        if (json.topicKernels?.length) await db.topicKernels.bulkPut(json.topicKernels);
+        if (json.userKernels?.length) await db.userKernels.bulkPut(json.userKernels);
+        if (json.writingDrafts?.length) await db.writingDrafts.bulkPut(json.writingDrafts);
+        if (json.writingVersions?.length) await db.writingVersions.bulkPut(json.writingVersions);
+      } catch (idbErr: any) {
+        console.warn('[handleImportJson] IDB 写入失败（可忽略）:', idbErr);
+      }
+
+      // 2. 调 server API 写 SQLite
+      const res = await fetch('/api/migrate/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(json),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const summary = Object.entries(data.counts || {}).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        setImportResult({ ok: true, text: `✓ 导入成功 · ${summary}` });
+        setTimeout(() => window.location.reload(), 2000);
+      } else if (data.code === 'NO_SQLITE') {
+        setImportResult({ ok: true, text: `✓ 已导入浏览器 IDB（Vercel 部署版无 SQLite，本地版打开自动同步）` });
+      } else {
+        setImportResult({ ok: false, text: `✗ 导入失败: ${data.error}` });
+      }
+    } catch (e: any) {
+      setImportResult({ ok: false, text: `✗ 解析失败: ${e.message}` });
+    } finally {
+      setImporting(false);
+      e.target.value = ''; // 清 file input 允许重选同文件
     }
   };
 
@@ -148,6 +222,31 @@ export default function DataPage() {
         >
           {migrating ? '迁移中…' : '📦 开始迁移'}
         </button>
+      </div>
+
+      {/* V1.11.8: 从 JSON 导入（Vercel demo → 本地版）*/}
+      <div className="card" style={{ padding: 28, marginBottom: 16 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>📥 从 JSON 导入</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 20px' }}>
+          如果你之前在 Vercel demo 体验后导出了 JSON（`insight-os-backup-*.json`），选这个文件导入到本地版 SQLite。
+          <br />
+          <strong>注意</strong>：仅本地版生效（Vercel 部署版没 SQLite）。
+        </p>
+        <input
+          type="file"
+          accept="application/json"
+          onChange={handleImportJson}
+          disabled={importing}
+          style={{ display: 'block', marginBottom: 12, fontSize: 13 }}
+        />
+        {importing && (
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>导入中…</div>
+        )}
+        {importResult && (
+          <div style={{ fontSize: 13, color: importResult.ok ? '#16a34a' : '#dc2626', marginTop: 8 }}>
+            {importResult.text}
+          </div>
+        )}
       </div>
     </div>
   );
