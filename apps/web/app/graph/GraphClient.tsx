@@ -80,7 +80,7 @@ export default function GraphClient() {
         const nodes: any[] = [];
         const links: any[] = [];
         for (const a of assets.slice(0, 200)) {
-          nodes.push({ id: a.id, title: a.title, type: a.type, evidenceLevel: a.evidenceLevel });
+          nodes.push({ id: a.id, title: a.title, type: a.type, evidenceLevel: a.evidenceLevel, createdAt: a.createdAt });
           const ats = await getAssetTopicsByAsset(a.id);
           for (const at of ats) {
             const t = topicMap.get(at.topicId);
@@ -88,7 +88,7 @@ export default function GraphClient() {
           }
         }
         for (const t of topics) {
-          nodes.push({ id: t.id, title: t.name, type: 'topic' });
+          nodes.push({ id: t.id, title: t.name, type: 'topic', createdAt: t.createdAt ?? 0 });
         }
         setData({ ok: true, nodes, links, total: nodes.length, stats: { nodeCount: nodes.length, edgeCount: links.length, topicCount: topics.length }, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
       } catch (e: any) {
