@@ -53,6 +53,8 @@ export function ClientAssetLoader({ id }: { id: string }) {
   // 评分校准 modal
   const [calibrating, setCalibrating] = useState(false);
   const [calibrationResult, setCalibrationResult] = useState<{ newEvidenceLevel: string; reasoning: string; confidence: number } | null>(null);
+  // V1.11.13: assetBodies.body (本地导入 .md 后有完整内容)
+  const [mdBody, setMdBody] = useState<string | null>(null);
 
   const reload = async () => {
     try {
@@ -97,6 +99,16 @@ const [a, fb, ops, krs, tps, assetTopicRows] = await Promise.all([
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // V1.11.13: 读 assetBodies.body 写到 mdBody（本地导入 .md 后的完整内容）
+  useEffect(() => {
+    if (typeof window === 'undefined' || !asset) return;
+    (async () => {
+      const { getAssetBody } = await import('@/lib/idb/operations');
+      const b = await getAssetBody(asset.id);
+      setMdBody(b ?? null);
+    })();
+  }, [asset]);
 
   if (loading) {
     return <div style={{padding: 64, textAlign: 'center', color: 'var(--text-3)'}}>加载中...</div>;
@@ -241,17 +253,6 @@ const [a, fb, ops, krs, tps, assetTopicRows] = await Promise.all([
     }
     body = sections.join('\n\n');
   }
-
-// ===== V1.11.13: 优先读 assetBodies.body（本地导入 .md 后有完整内容）=====
-  const [mdBody, setMdBody] = useState<string | null>(null);
-  useEffect(() => {
-    if (!asset) return;
-    (async () => {
-      const { getAssetBody } = await import('@/lib/idb/operations');
-      const b = await getAssetBody(asset.id);
-      setMdBody(b ?? null);
-    })();
-  }, [asset]);
 
   // 5 阶段 timeline
   const timeline: TimelineItem[] = [];
