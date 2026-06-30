@@ -97,7 +97,7 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
         <div>
           <h1 className="page-title">判断资产</h1>
           <p className="page-subtitle">
-            {all.length} 张判断资产 · 来源：OpenClaw 加工 + 本应用整理
+            {list.length} 张判断资产 · 来源：OpenClaw 加工 + 本应用整理
             {selected.size > 0 && (
               <span style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 600 }}>
                 · 已选 {selected.size} 张
