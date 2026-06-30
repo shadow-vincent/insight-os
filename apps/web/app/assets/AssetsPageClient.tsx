@@ -27,10 +27,29 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
   const [list, setList] = useState<AssetItem[]>(all);
 
   useEffect(() => {
-    // V1.11.11: IDB 优先仅在"有数据"时；IDB 空（未加载 / 真没数据）保留 props.all
-    // 修 Vincent bug：之前 idbAssets=[] 触发 setList([]) 把 server SQLite 数据清掉
-    if (idbAssets && idbAssets.length > 0) {
-      const mapped: AssetItem[] = idbAssets.map(a => ({
+    // V1.11.11: 合并 IDB + server SQLite（去重 by id）
+    // 修 Vincent bug：之前 IDB 优先把 server SQLite 老数据清掉，导致"显示 5 张然后没了"
+    // 现在：两路数据合并，IDB 更新覆盖 server 副本（IDB 是新数据来源）
+    if (idbAssets === null) {
+      // 还在加载，不动 list（保留 server 初始值）
+      return;
+    }
+    const mappedIdb: AssetItem[] = idbAssets.map(a => ({
+      id: a.id,
+      title: a.title,
+      oneSentenceInsight: a.oneSentenceInsight ?? null,
+      evidenceLevel: a.evidenceLevel,
+      priority: a.priority ?? null,
+      tagsJson: a.tagsJson,
+      filePath: a.filePath,
+    }));
+    // 合并：IDB 优先（用 IDB 数据填入 server 副本缺失的 title/insight 等）
+    const idbIds = new Set(mappedIdb.map(a => a.id));
+    const serverOnly = all.filter(a => !idbIds.has(a.id));
+    // 去重 + IDB 优先排序
+    const merged: AssetItem[] = [
+      ...mappedIdb,
+      ...serverOnly.map(a => ({
         id: a.id,
         title: a.title,
         oneSentenceInsight: a.oneSentenceInsight ?? null,
@@ -38,11 +57,10 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
         priority: a.priority ?? null,
         tagsJson: a.tagsJson,
         filePath: a.filePath,
-      }));
-      setList(mapped);
-    }
-    // idbAssets === null (loading) 或 idbAssets.length === 0 (空) → 保留 list（不动）
-  }, [idbAssets]);
+      })),
+    ];
+    setList(merged);
+  }, [idbAssets, all]);
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
     e.preventDefault();

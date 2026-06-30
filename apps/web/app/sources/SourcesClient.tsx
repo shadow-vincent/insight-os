@@ -70,12 +70,16 @@ export function SourcesClient({ initialSources }: Props) {
   const { data: idbSources } = useSources();
 
   useEffect(() => {
-    // V1.11.11: IDB 优先仅在"有数据"时；IDB 空保留 initialSources（防 Vincent 闪一下 bug）
-    if (idbSources && idbSources.length > 0) {
-      setSources(idbSources as any);
+    // V1.11.11: 合并 IDB + initialSources（去重 by id）
+    // 修 Vincent bug：之前 IDB 覆盖 server 老数据导致"显示后消失"
+    if (idbSources === null) {
+      // 还在加载，不动
+      return;
     }
-    // idbSources === null (loading) 或 idbSources.length === 0 → 保留 initialSources
-  }, [idbSources]);
+    const idbIds = new Set(idbSources.map((s: any) => s.id));
+    const serverOnly = initialSources.filter(s => !idbIds.has(s.id));
+    setSources([...idbSources, ...serverOnly] as any);
+  }, [idbSources, initialSources]);
 
   const handleAdd = async () => {
     if (addType === 'rss' && !newUrl.trim()) {
