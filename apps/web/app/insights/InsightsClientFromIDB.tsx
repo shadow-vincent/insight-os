@@ -96,6 +96,27 @@ export function InsightsClientFromIDB() {
           } catch {}
         }
 
+        // 4.1 topCores（被引用最多的资产，从全量 outputs 算）
+        const assetRefCount = new Map<string, number>();
+        for (const o of allOutputs) {
+          try {
+            const ids = JSON.parse(o.assetIdsJson || '[]');
+            if (Array.isArray(ids)) ids.forEach((id: string) => assetRefCount.set(id, (assetRefCount.get(id) ?? 0) + 1));
+          } catch {}
+        }
+        const topCoreRows = Array.from(assetRefCount.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([id, count]) => {
+            const a = allAssets.find((aa: any) => aa.id === id);
+            return {
+              id,
+              title: a?.title ?? '(已删除)',
+              refCount: count,
+              evidenceLevel: a?.evidenceLevel ?? 'E0',
+            };
+          });
+
         // 5. 最近更新（资产）
         const recentAssets = [...allAssets]
           .sort((a: any, b: any) => b.updatedAt - a.updatedAt)
@@ -126,6 +147,7 @@ export function InsightsClientFromIDB() {
           writingRecap: {
             count: monthWritings.length,
             referencedAssetCount: monthAssetIds.size,
+            topCores: topCoreRows,
             items: monthWritings.slice(0, 8).map((w: any) => ({
               id: w.id,
               title: w.title,
