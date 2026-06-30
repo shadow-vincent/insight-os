@@ -82,6 +82,7 @@ export function CandidateDetailClient({ id }: { id: string }) {
             recommendedAction: asset.scoreTotal >= 80 ? 'process' : asset.scoreTotal >= 65 ? 'candidate' : asset.scoreTotal >= 50 ? 'signal' : 'ignore',
             reasoning: '',
             breakdown: { clear: 0, evidence: 0, contrarian: 0, reusable: 0, output: 0, kernel: 0, novelty: 0 },
+            scoreBreakdown: { clear: 0, evidence: 0, contrarian: 0, reusable: 0, output: 0, kernel: 0, novelty: 0 },
             topics: topicNames,
             tags: [],  // V1.11.15: 详情页 candidate.tags.length 用，给个空数组防 undefined throw
             scenarios: [],
