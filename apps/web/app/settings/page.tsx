@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -48,6 +48,7 @@ export default function SettingsPage() {
   // v1.9.1: RSSHub 配置
   const [rsshubBase, setRSSHubBase] = useState('https://rsshub.app');
   const [testingRSSHub, setTestingRSSHub] = useState(false);
+  const [migrating, setMigrating] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
@@ -512,10 +513,55 @@ export default function SettingsPage() {
       </div>
 
       {message && (
-        <div className={`callout ${message.type === 'success' ? 'callout-success' : 'callout-error'}`}>
+        <div className={`callout ${message.type === 'success' ? 'callout-success' : message.type === 'info' ? 'callout-info' : 'callout-error'}`}>
           {message.text}
         </div>
       )}
+
+      {/* V1.11: 老版本数据迁移 */}
+      <div className="card" style={{ padding: 28, marginBottom: 16 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>📦 老版本数据迁移</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 20px' }}>
+          如果你从 V1.10 之前的版本升级，本地 SQLite 里有数据。点下面的按钮把老数据导入到浏览器 IndexedDB。
+          <br />
+          <strong>注意</strong>：Vercel 部署版没 SQLite，请用本地 dev 或 Electron 桌面版迁移。
+        </p>
+        <button
+          onClick={async () => {
+            setMigrating(true);
+            setMessage(null);
+            try {
+              const { migrateFromSqlite } = await import('@/lib/idb/migrate');
+              const result = await migrateFromSqlite();
+              if (result.source === 'empty') {
+                setMessage({ type: 'info', text: 'ℹ️ 你的 SQLite 是空的（或没找到数据库），跳过迁移' });
+              } else if (result.source === 'skip') {
+                setMessage({ type: 'info', text: '⏭️ 已经迁移过，跳过' });
+              } else if (result.success) {
+                const summary = Object.entries(result.migrated).map(([k, v]) => `${k}: ${v}`).join(' · ');
+                setMessage({ type: 'success', text: `✓ 迁移成功 · ${summary}` });
+                // 强制刷新 layout 让客户端 useEffect 重新读 IDB
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                setMessage({ type: 'error', text: `迁移失败: ${result.error}` });
+              }
+            } catch (e: any) {
+              setMessage({ type: 'error', text: e.message });
+            } finally {
+              setMigrating(false);
+            }
+          }}
+          disabled={migrating}
+          className="btn"
+          style={{
+            background: 'var(--primary)', color: 'white', borderColor: 'transparent',
+            fontSize: 13, padding: '8px 16px',
+            opacity: migrating ? 0.5 : 1,
+          }}
+        >
+          {migrating ? '迁移中…' : '📦 开始迁移'}
+        </button>
+      </div>
 
       <style jsx>{`
         .form-input {
