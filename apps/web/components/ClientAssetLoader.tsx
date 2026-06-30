@@ -1,19 +1,21 @@
 'use client';
 
 /**
- * V1.11.9 ClientAssetLoader (升级版)
+ * V1.11.12 ClientAssetLoader (跟本地版 /assets/[id] 功能一致)
  *
  * 当 server-side SQLite 不可用时（Vercel serverless / demo 模式），
- * 从用户浏览器 IndexedDB 读取 asset + feedback + outputs + kernels，渲染完整详情页
+ * 从用户浏览器 IndexedDB 读取 asset + 关联数据，渲染完整详情页 + 编辑能力
  *
- * 跟本地版 /assets/[id] 一样展示：
+ * 功能（跟本地版 AssetDetailClient 一致）：
  * - 5 阶段 timeline (来源/升级/输出/反馈/Kernel)
  * - body markdown（按行渲染 + ## 标题）
+ * - 主题归属（读 assetTopics + topics）
  * - outputs 引用列表
  * - feedback 列表
+ * - 顶部按钮组：升级状态 / 评分校准 / 写
+ * - 评分校准：调 LLM 评分 → 升级 E 等级（client fetch 走 CORS 允许的 LLM）
  *
- * 不包含：AssetDetailClient 编辑器（编辑/评分校准/校准 prompt）
- *   demo 用户只需"看"，不一定要在 Vercel 改（改了下次清缓存就没了）
+ * 写操作全部走 IDB（不依赖 server API / SQLite）
  */
 
 import { useEffect, useState } from 'react';
@@ -43,61 +45,71 @@ export function ClientAssetLoader({ id }: { id: string }) {
   const [feedback, setFeedback] = useState<any[]>([]);
   const [outputs, setOutputs] = useState<any[]>([]);
   const [kernels, setKernels] = useState<any[]>([]);
+  const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  // 评分校准 modal
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibrationResult, setCalibrationResult] = useState<{ newEvidenceLevel: string; reasoning: string; confidence: number } | null>(null);
+
+  const reload = async () => {
+    try {
+      const DexieModule = await import('dexie');
+      const Dexie = (DexieModule as any).default || DexieModule;
+      const db = new Dexie('insight-os');
+      db.version(1).stores({
+        assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+        outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
+        feedback: 'id, assetId, scene, outputId, createdAt',
+        topics: 'id, slug, sortOrder, updatedAt',
+        assetTopics: 'id, assetId, topicId, [assetId+topicId]',
+        sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
+        sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
+        topicKernels: 'id, topicId, generatedAt',
+        userKernels: 'id, category, status, sortOrder, updatedAt',
+        writingDrafts: 'id, writingId, updatedAt',
+        writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
+      });
+      db.version(2).stores({ preferences: 'key' });
+
+      const [a, fb, ops, krs, tps, assetTopicRows] = await Promise.all([
+        db.assets.get(id),
+        db.feedback.where('assetId').equals(id).reverse().sortBy('createdAt'),
+        db.outputs.toArray(),
+        db.userKernels.where('status').equals('active').toArray(),
+        db.topics.toArray(),
+        db.assetTopics.where('assetId').equals(id).toArray(),
+      ]);
+
+      setAsset(a);
+      setFeedback(fb);
+      const myOutputs = ops.filter((o: any) => {
+        try {
+          const ids = JSON.parse(o.assetIdsJson || '[]');
+          return Array.isArray(ids) && ids.includes(id);
+        } catch { return false; }
+      }).sort((a: any, b: any) => b.createdAt - a.createdAt);
+      setOutputs(myOutputs);
+      setKernels(krs.filter((k: any) => {
+        try {
+          const ids = JSON.parse(k.evidenceAssetIdsJson || '[]');
+          return Array.isArray(ids) && ids.includes(id);
+        } catch { return false; }
+      }));
+      const myTopicIds = new Set(assetTopicRows.map((at: any) => at.topicId));
+      setTopics(tps.filter((t: any) => myTopicIds.has(t.id)));
+    } catch (e) {
+      console.error('[ClientAssetLoader] failed:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    (async () => {
-      try {
-        const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        // V1.10: 完整 11 table schema
-        db.version(1).stores({
-          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
-          feedback: 'id, assetId, scene, outputId, createdAt',
-          topics: 'id, slug, sortOrder, updatedAt',
-          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
-          sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
-          sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
-          topicKernels: 'id, topicId, generatedAt',
-          userKernels: 'id, category, status, sortOrder, updatedAt',
-          writingDrafts: 'id, writingId, updatedAt',
-          writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
-        });
-
-        const [a, fb, ops, krs] = await Promise.all([
-          db.assets.get(id),
-          db.feedback.where('assetId').equals(id).reverse().sortBy('createdAt'),
-          db.outputs.toArray(),
-          db.userKernels.where('status').equals('active').toArray(),
-        ]);
-
-        setAsset(a);
-        setFeedback(fb);
-        // 找引用了本资产的 outputs（assetIdsJson 包含本 id）
-        const myOutputs = ops.filter((o: any) => {
-          try {
-            const ids = JSON.parse(o.assetIdsJson || '[]');
-            return Array.isArray(ids) && ids.includes(id);
-          } catch { return false; }
-        }).sort((a: any, b: any) => b.createdAt - a.createdAt);
-        setOutputs(myOutputs);
-        // 找 active kernel 把本资产作为 evidence
-        const myKernels = krs.filter((k: any) => {
-          try {
-            const ids = JSON.parse(k.evidenceAssetIdsJson || '[]');
-            return Array.isArray(ids) && ids.includes(id);
-          } catch { return false; }
-        });
-        setKernels(myKernels);
-      } catch (e) {
-        console.error('[ClientAssetLoader] failed:', e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (loading) {
@@ -121,7 +133,105 @@ export function ClientAssetLoader({ id }: { id: string }) {
     if (Array.isArray(parsed)) tags = parsed;
   } catch {}
 
-  // 构造 body markdown（light 卡：拼 oneSentenceInsight + antiCommonSense + tags）
+  // ===== Actions =====
+
+  const handleStatusChange = async (newStatus: string) => {
+    setActionMessage(null);
+    try {
+      const { updateAsset } = await import('@/lib/idb/operations');
+      await updateAsset(id, { status: newStatus });
+      setActionMessage({ type: 'success', text: `✓ 状态已更新为「${newStatus}」` });
+      await reload();
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: `更新失败: ${e.message}` });
+    }
+  };
+
+  const handleCalibrate = async () => {
+    setCalibrating(true);
+    setCalibrationResult(null);
+    setActionMessage(null);
+    try {
+      const { callLLMDirect, updateAsset, getLLMConfig } = await import('@/lib/idb/operations');
+      const cfg = await getLLMConfig();
+      if (!cfg) {
+        setActionMessage({ type: 'info', text: 'ℹ️ LLM 未配置，去 /settings/integrations 配 API key 后可调' });
+        setCalibrating(false);
+        return;
+      }
+      // 调 LLM 评估当前资产
+      const tags = (() => {
+        try { return JSON.parse(asset.tagsJson || '[]'); } catch { return []; }
+      })();
+      const system = `你是判断力校准助手。给定一张资产卡的当前信息，输出 1) 建议新证据等级 E0-E5 2) 校准理由 3) 置信度 0-100。
+证据等级定义：
+- E0: 无证据，纯假设
+- E1: 个人观察
+- E2: 1 个案例
+- E3: 多案例
+- E4: 实践验证
+- E5: 反复实践
+
+只输出 JSON: { "newEvidenceLevel": "E0-E5", "reasoning": "50-100 字理由", "confidence": 0-100 }`;
+      const user = `资产卡：
+- 标题: ${asset.title}
+- 当前等级: ${asset.evidenceLevel}
+- 一句话洞察: ${asset.oneSentenceInsight ?? '(无)'}
+- 反常识: ${asset.antiCommonSense ?? '(无)'}
+- 标签: ${tags.join(', ') || '(无)'}
+- 当前评分: ${asset.scoreTotal}
+
+评估后给建议：`;
+
+      const result = await callLLMDirect<{ newEvidenceLevel: string; reasoning: string; confidence: number }>(system, user, { temperature: 0.3, jsonMode: true });
+      if (!result.ok || !result.data) {
+        setActionMessage({ type: 'error', text: `✗ LLM 失败: ${result.error || '未知错误'}` });
+        return;
+      }
+      const { newEvidenceLevel, reasoning, confidence } = result.data;
+      if (!['E0','E1','E2','E3','E4','E5'].includes(newEvidenceLevel)) {
+        setActionMessage({ type: 'error', text: `✗ LLM 返回等级不合法: ${newEvidenceLevel}` });
+        return;
+      }
+      setCalibrationResult({ newEvidenceLevel, reasoning, confidence });
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: `✗ 校准失败: ${e.message}` });
+    } finally {
+      setCalibrating(false);
+    }
+  };
+
+  const applyCalibration = async () => {
+    if (!calibrationResult) return;
+    try {
+      const { updateAsset, addFeedback } = await import('@/lib/idb/operations');
+      const fromLevel = asset.evidenceLevel;
+      const toLevel = calibrationResult.newEvidenceLevel;
+      await updateAsset(id, {
+        evidenceLevel: toLevel,
+        scoreTotal: calibrationResult.confidence,
+      });
+      // 写一条 feedback 记录这次校准
+      await addFeedback({
+        id: `fb_cal_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        assetId: id,
+        scene: 'other',
+        reaction: `LLM 校准: ${calibrationResult.reasoning}`,
+        mostTouchedPoint: `证据等级 ${fromLevel} → ${toLevel} (置信度 ${calibrationResult.confidence})`,
+        evidenceLevelBefore: fromLevel,
+        evidenceLevelAfter: toLevel,
+        createdAt: Date.now(),
+      });
+      setActionMessage({ type: 'success', text: `✓ 校准应用: ${fromLevel} → ${toLevel}` });
+      setCalibrationResult(null);
+      await reload();
+    } catch (e: any) {
+      setActionMessage({ type: 'error', text: `应用失败: ${e.message}` });
+    }
+  };
+
+  // ===== Render =====
+
   const bodySections: string[] = [];
   if (asset.oneSentenceInsight) {
     bodySections.push(`## 一句话洞察\n\n${asset.oneSentenceInsight}`);
@@ -137,10 +247,8 @@ export function ClientAssetLoader({ id }: { id: string }) {
   }
   const body = bodySections.join('\n\n');
 
-  // ===== 5 阶段 timeline =====
+  // 5 阶段 timeline
   const timeline: TimelineItem[] = [];
-
-  // 来源
   timeline.push({
     stage: 'source',
     ts: asset.createdAt,
@@ -151,7 +259,6 @@ export function ClientAssetLoader({ id }: { id: string }) {
     stageColor: STAGE_COLOR.source,
   });
 
-  // 升级
   if (asset.status === 'candidate') {
     timeline.push({
       stage: 'upgrade',
@@ -174,7 +281,6 @@ export function ClientAssetLoader({ id }: { id: string }) {
     });
   }
 
-  // 被引用
   for (const o of outputs) {
     timeline.push({
       stage: 'output',
@@ -188,7 +294,6 @@ export function ClientAssetLoader({ id }: { id: string }) {
     });
   }
 
-  // 反馈
   for (const f of feedback) {
     const before = f.evidenceLevelBefore ?? '?';
     const after = f.evidenceLevelAfter ?? '?';
@@ -203,7 +308,6 @@ export function ClientAssetLoader({ id }: { id: string }) {
     });
   }
 
-  // Kernel 引用
   for (const k of kernels) {
     timeline.push({
       stage: 'kernel',
@@ -217,10 +321,8 @@ export function ClientAssetLoader({ id }: { id: string }) {
     });
   }
 
-  // 按时间倒序
   timeline.sort((a, b) => b.ts - a.ts);
 
-  // 简单 markdown 渲染（按行处理 ## 标题 + 段落）
   const renderBody = () => {
     return body.split('\n\n').map((section, i) => {
       if (section.startsWith('## ')) {
@@ -260,11 +362,84 @@ export function ClientAssetLoader({ id }: { id: string }) {
         {asset.isKernelApproved === 1 && <span style={{ padding: '2px 8px', background: '#a78bfa', color: 'white', borderRadius: 4 }}>🧠 Kernel</span>}
       </div>
 
-      <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, marginBottom: 24, color: 'var(--ink)' }}>
+      <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, marginBottom: 16, color: 'var(--ink)' }}>
         {asset.title}
       </h1>
 
-      {/* body markdown（按行） */}
+      {/* 顶部按钮组（跟本地版 AssetDetailClient 一致）*/}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {asset.status === 'candidate' && (
+          <button onClick={() => handleStatusChange('in_use')} className="btn btn-primary" style={{ fontSize: 13 }}>
+            ⬆️ 升为正式资产
+          </button>
+        )}
+        {asset.status === 'in_use' && (
+          <button onClick={() => handleStatusChange('archived')} className="btn" style={{ fontSize: 13 }}>
+            📦 归档
+          </button>
+        )}
+        {asset.status === 'archived' && (
+          <button onClick={() => handleStatusChange('in_use')} className="btn" style={{ fontSize: 13 }}>
+            ♻️ 恢复
+          </button>
+        )}
+        {asset.status !== 'candidate' && (
+          <button onClick={() => handleStatusChange('candidate')} className="btn" style={{ fontSize: 13 }}>
+            ⏪ 退回候选
+          </button>
+        )}
+        <button
+          onClick={handleCalibrate}
+          disabled={calibrating}
+          className="btn"
+          style={{ fontSize: 13, opacity: calibrating ? 0.5 : 1 }}
+        >
+          {calibrating ? '校准中…' : '🤖 LLM 校准'}
+        </button>
+        <Link href={`/writing?seed=${asset.id}`} className="btn" style={{ fontSize: 13, textDecoration: 'none' }}>
+          ✍️ 基于此卡写作
+        </Link>
+      </div>
+
+      {actionMessage && (
+        <div className={`callout ${actionMessage.type === 'success' ? 'callout-success' : actionMessage.type === 'info' ? 'callout-info' : 'callout-error'}`} style={{ marginBottom: 16 }}>
+          {actionMessage.text}
+        </div>
+      )}
+
+      {/* 评分校准 modal */}
+      {calibrationResult && (
+        <div style={{ padding: 20, background: 'rgba(99, 102, 241, 0.05)', border: '1.5px solid rgba(99, 102, 241, 0.3)', borderRadius: 10, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#4f46e5', marginBottom: 12 }}>🤖 LLM 校准建议</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto auto auto', gap: 16, alignItems: 'center', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>当前</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{asset.evidenceLevel}</div>
+            </div>
+            <div style={{ fontSize: 20, color: 'var(--text-3)' }}>→</div>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>建议</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#4f46e5' }}>{calibrationResult.newEvidenceLevel}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8, lineHeight: 1.6 }}>
+            <strong>理由：</strong>{calibrationResult.reasoning}
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 12 }}>
+            <strong>置信度：</strong>{calibrationResult.confidence}/100
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={applyCalibration} className="btn btn-primary" style={{ fontSize: 13 }}>
+              ✓ 应用
+            </button>
+            <button onClick={() => setCalibrationResult(null)} className="btn" style={{ fontSize: 13 }}>
+              ✕ 取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* body markdown */}
       {body && (
         <div className="card" style={{ padding: 24, marginBottom: 16 }}>
           {renderBody()}
@@ -290,6 +465,21 @@ export function ClientAssetLoader({ id }: { id: string }) {
         </div>
       </div>
 
+      {/* 主题归属（V1.11.12 新增）*/}
+      {topics.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', marginBottom: 12 }}>📚 所属主题 ({topics.length})</h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {topics.map((t: any) => (
+              <Link key={t.id} href={`/topics`} className="card card-hover" style={{ padding: '8px 14px', textDecoration: 'none', color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 14 }}>📖</span>
+                <span style={{ fontSize: 13, color: 'var(--ink)' }}>{t.name}</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* 5 阶段 timeline */}
       <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', marginBottom: 16 }}>🕐 进化时间线</h2>
       <div className="card" style={{ padding: 20, marginBottom: 16 }}>
@@ -299,11 +489,9 @@ export function ClientAssetLoader({ id }: { id: string }) {
           <div style={{ position: 'relative' }}>
             {timeline.map((t, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, paddingBottom: i < timeline.length - 1 ? 20 : 0, position: 'relative' }}>
-                {/* 时间线竖线 */}
                 {i < timeline.length - 1 && (
                   <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 2, background: 'var(--line)' }} />
                 )}
-                {/* 圆点 */}
                 <div style={{
                   width: 24, height: 24, borderRadius: 12, flexShrink: 0,
                   background: 'white', border: `2px solid ${t.stageColor}`,
@@ -313,7 +501,6 @@ export function ClientAssetLoader({ id }: { id: string }) {
                 }}>
                   {i + 1}
                 </div>
-                {/* 内容 */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 10, color: t.stageColor, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -335,7 +522,7 @@ export function ClientAssetLoader({ id }: { id: string }) {
         )}
       </div>
 
-      {/* 输出引用列表 */}
+      {/* outputs */}
       {outputs.length > 0 && (
         <>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', marginBottom: 12 }}>✍️ 输出引用 ({outputs.length})</h2>
@@ -353,7 +540,7 @@ export function ClientAssetLoader({ id }: { id: string }) {
         </>
       )}
 
-      {/* 反馈列表 */}
+      {/* feedback */}
       {feedback.length > 0 && (
         <>
           <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--ink)', marginBottom: 12 }}>💬 反馈记录 ({feedback.length})</h2>
