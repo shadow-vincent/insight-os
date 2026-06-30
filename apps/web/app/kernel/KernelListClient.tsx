@@ -52,14 +52,51 @@ export default function KernelListClient() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [kRes, sRes] = await Promise.all([
-        fetch('/api/kernel?status=all'),
-        fetch('/api/kernel/stats'),
-      ]);
-      const kData = await kRes.json();
-      const sData = await sRes.json();
-      if (kData.ok) setKernels(kData.kernels);
-      if (sData.ok) setStats(sData);
+      // V1.10: 优先从 IndexedDB 读（demo / Vercel），回退到 server API
+      let idbKernels: UserKernelRow[] | null = null;
+      try {
+        const DexieModule = await import('dexie');
+        const Dexie = (DexieModule as any).default || DexieModule;
+        const db = new Dexie('insight-os');
+        db.version(2).stores({
+          userKernels: 'id, category, status, sortOrder, updatedAt',
+        });
+        idbKernels = await db.userKernels.toArray();
+        if (idbKernels.length === 0) idbKernels = null;
+      } catch { /* IDB 不可用时回退 server */ }
+
+      if (idbKernels && idbKernels.length > 0) {
+        setKernels(idbKernels);
+        // 计算 stats（从 IDB 数据本地算）
+        const active = idbKernels.filter((k: any) => k.status === 'active');
+        const archived = idbKernels.filter((k: any) => k.status === 'archived');
+        const byCategory: Record<string, number> = {};
+        let totalConf = 0;
+        let totalRef = 0;
+        for (const k of idbKernels) {
+          byCategory[k.category] = (byCategory[k.category] ?? 0) + 1;
+          totalConf += k.confidence || 0;
+          totalRef += k.referencedCount || 0;
+        }
+        setStats({
+          total: idbKernels.length,
+          active: active.length,
+          archived: archived.length,
+          byCategory,
+          avgConfidence: idbKernels.length > 0 ? totalConf / idbKernels.length : 0,
+          totalReferenced: totalRef,
+        });
+      } else {
+        // 回退 server API
+        const [kRes, sRes] = await Promise.all([
+          fetch('/api/kernel?status=all'),
+          fetch('/api/kernel/stats'),
+        ]);
+        const kData = await kRes.json();
+        const sData = await sRes.json();
+        if (kData.ok) setKernels(kData.kernels);
+        if (sData.ok) setStats(sData);
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
