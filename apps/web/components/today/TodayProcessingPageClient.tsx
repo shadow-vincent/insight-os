@@ -108,12 +108,19 @@ export function TodayProcessingPageClient({
         const DexieModule = await import('dexie');
         const Dexie = (DexieModule as any).default || DexieModule;
         const db = new Dexie('insight-os');
+        // V1.10: 必须用完整 11 table schema（和 DemoLoader 一致）
         db.version(1).stores({
           assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
+          feedback: 'id, assetId, scene, outputId, createdAt',
           topics: 'id, slug, sortOrder, updatedAt',
           assetTopics: 'id, assetId, topicId, [assetId+topicId]',
           sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
+          sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
           topicKernels: 'id, topicId, generatedAt',
+          userKernels: 'id, category, status, sortOrder, updatedAt',
+          writingDrafts: 'id, writingId, updatedAt',
+          writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
         });
 
         const [allAssets, allTopics, allAssetTopics, allSources] = await Promise.all([
