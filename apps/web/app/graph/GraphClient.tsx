@@ -80,15 +80,25 @@ export default function GraphClient() {
         const nodes: any[] = [];
         const links: any[] = [];
         for (const a of assets.slice(0, 200)) {
-          nodes.push({ id: a.id, title: a.title, type: a.type, evidenceLevel: a.evidenceLevel, createdAt: a.createdAt });
           const ats = await getAssetTopicsByAsset(a.id);
+          const primaryTopic = ats.length > 0 ? topicMap.get(ats[0].topicId)?.name : null;
+          nodes.push({
+            id: a.id,
+            title: a.title,
+            type: a.type,
+            evidenceLevel: a.evidenceLevel,
+            createdAt: a.createdAt,
+            primaryTopic,
+            color: a.evidenceLevel === 'E0' ? '#ef4444' : a.evidenceLevel === 'E1' ? '#f97316' : a.evidenceLevel === 'E2' ? '#eab308' : a.evidenceLevel === 'E3' ? '#22c55e' : a.evidenceLevel === 'E4' ? '#3b82f6' : '#8b5cf6',
+            topicNames: ats.map((at: any) => topicMap.get(at.topicId)?.name).filter(Boolean),
+          });
           for (const at of ats) {
             const t = topicMap.get(at.topicId);
             if (t) links.push({ source: a.id, target: t.id, type: 'asset_topic' });
           }
         }
         for (const t of topics) {
-          nodes.push({ id: t.id, title: t.name, type: 'topic', createdAt: t.createdAt ?? 0 });
+          nodes.push({ id: t.id, title: t.name, type: 'topic', createdAt: t.createdAt ?? 0, primaryTopic: t.name, color: '#3b82f6' });
         }
         setData({ ok: true, nodes, links, total: nodes.length, stats: { nodeCount: nodes.length, edgeCount: links.length, topicCount: topics.length }, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
       } catch (e: any) {
