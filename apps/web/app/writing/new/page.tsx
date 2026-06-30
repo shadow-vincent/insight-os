@@ -167,24 +167,34 @@ function NewWritingInner() {
     }
     setGenerating(true);
     try {
-      const res = await fetch('/api/writing/scaffold', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          templateType,
-          topicId,
-          coreBelief: selectedBelief.text,
-          assetIds: selectedCards,
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        router.push(`/writing/${data.writingId}`);
-      } else {
-        toast.error(`生成失败：${data.error ?? '未知错误'}`);
+      // V1.11.16: IDB-first（Vercel NO_SQLITE：/api/writing/scaffold 返 ok:true 但 writingId undefined）
+      const { addOutput, getAsset } = await import('@/lib/idb/operations');
+      const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      const now = Date.now();
+      // 收集 seed 资产标题（给草稿一个"基于这 5 张" 的 placeholder title）
+      const cardTitles: string[] = [];
+      for (const aid of selectedCards) {
+        const a = await getAsset(aid);
+        if (a?.title) cardTitles.push(a.title);
       }
+      const title = `${selectedBelief.text.slice(0, 30)} · 基于 ${cardTitles.length} 张卡`;
+      await addOutput({
+        id,
+        outputType: 'article',
+        status: 'draft',
+        writingStatus: 'scaffold',
+        title,
+        topicId: topicId ?? null,
+        templateType,
+        assetIdsJson: JSON.stringify(selectedCards),
+        content: `# ${title}\n\n> 基于核心判断: ${selectedBelief.text}\n> 来自 ${cardTitles.length} 张资产卡：\n${cardTitles.map(t => `- ${t}`).join('\n')}\n\n（待生成）\n`,
+        createdAt: now,
+        updatedAt: now,
+      });
+      toast.success('已创建草稿，去写作页面继续');
+      router.push(`/writing/${id}`);
     } catch (e: any) {
-      toast.error(`网络错误：${e.message}`);
+      toast.error(`创建失败：${e.message}`);
     } finally {
       setGenerating(false);
     }

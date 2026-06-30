@@ -36,17 +36,17 @@ export default function KernelSettingsPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
+  // V1.11.16: 改 IDB-first（之前 /api/kernel Vercel NO_SQLITE 500）
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [kRes, sRes] = await Promise.all([
-        fetch(`/api/kernel?status=${statusFilter}`),
-        fetch('/api/kernel/stats'),
+      const { getUserKernels, getUserKernelStats } = await import('@/lib/idb/operations');
+      const [kernels, stats] = await Promise.all([
+        getUserKernels({ status: statusFilter }),
+        getUserKernelStats(),
       ]);
-      const kData = await kRes.json();
-      const sData = await sRes.json();
-      if (kData.ok) setKernels(kData.kernels);
-      if (sData.ok) setStats(sData);
+      setKernels(kernels);
+      setStats(stats);
     } catch (e: any) {
       toast.error('加载失败: ' + e.message);
     } finally {
@@ -60,17 +60,14 @@ export default function KernelSettingsPage() {
     ? kernels
     : kernels.filter(k => k.category === category);
 
+  // V1.11.16: IDB-first
   const handleSeed = async () => {
     setSeeding(true);
     try {
-      const res = await fetch('/api/kernel/seed-default', { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success(`已种入 ${data.seeded} 条 ship-ready 默认内核`);
-        await loadData();
-      } else {
-        toast.error(data.error ?? '种子失败');
-      }
+      const { seedDefaultKernels } = await import('@/lib/idb/kernel-seeds');
+      const n = await seedDefaultKernels();
+      toast.success(`已种入 ${n} 条 ship-ready 默认内核`);
+      await loadData();
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -81,14 +78,10 @@ export default function KernelSettingsPage() {
   const handleArchive = async (k: UserKernelRow) => {
     if (!confirm(`归档这条内核？\n\n${k.content}\n\n归档后可恢复。`)) return;
     try {
-      const res = await fetch(`/api/kernel/${k.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success('已归档');
-        await loadData();
-      } else {
-        toast.error(data.error ?? '归档失败');
-      }
+      const { archiveUserKernel } = await import('@/lib/idb/operations');
+      await archiveUserKernel(k.id);
+      toast.success('已归档');
+      await loadData();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -96,14 +89,10 @@ export default function KernelSettingsPage() {
 
   const handleVerify = async (k: UserKernelRow) => {
     try {
-      const res = await fetch(`/api/kernel/verify/${k.id}`, { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success('已标记为"重新想过"，lastVerifiedAt 已刷新');
-        await loadData();
-      } else {
-        toast.error(data.error ?? '验证失败');
-      }
+      const { verifyUserKernel } = await import('@/lib/idb/operations');
+      await verifyUserKernel(k.id);
+      toast.success('已标记为"重新想过"，lastVerifiedAt 已刷新');
+      await loadData();
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -111,14 +100,10 @@ export default function KernelSettingsPage() {
 
   const handleReactivate = async (k: UserKernelRow) => {
     try {
-      const res = await fetch(`/api/kernel/${k.id}`, { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success('已恢复');
-        await loadData();
-      } else {
-        toast.error(data.error ?? '恢复失败');
-      }
+      const { reactivateUserKernel } = await import('@/lib/idb/operations');
+      await reactivateUserKernel(k.id);
+      toast.success('已恢复');
+      await loadData();
     } catch (e: any) {
       toast.error(e.message);
     }

@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
       const { getDb } = await import('@insight-os/db');
       const db = getDb();
 
-      if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+      if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
       const row = db.select().from(outputs).where(eq(outputs.id, writingId)).get();
       if (!row) {
         return NextResponse.json({ ok: false, error: 'writingId 不存在' }, { status: 404 });
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
         const { getDb } = await import('@insight-os/db');
         const db = getDb();
 
-        if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+        if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
         const now = Math.floor(Date.now() / 1000);
         const verId = `ver_${writingId}_${now}_pre_adapt`;
         db.insert(writingVersions).values({

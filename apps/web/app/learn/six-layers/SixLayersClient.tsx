@@ -38,36 +38,27 @@ export default function SixLayersClient() {
   const [adopted, setAdopted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // V1.11.16: IDB-first
   useEffect(() => {
-    fetch('/api/kernel/seed-six-layers')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setData(d);
-        else setError(d.error ?? '加载失败');
-      })
-      .catch((e) => setError(e.message));
+    (async () => {
+      try {
+        const { seedSixLayersKernels } = await import('@/lib/idb/kernel-seeds');
+        const d = await seedSixLayersKernels({ preview: true });
+        setData(d);
+      } catch (e: any) {
+        setError(e.message);
+      }
+    })();
   }, []);
 
   const adopt = async () => {
     setAdopting(true);
     try {
-      const res = await fetch('/api/kernel/seed-six-layers', { method: 'POST' });
-      const d = await res.json();
-      if (d.ok) {
-        setAdopted(true);
-        toast.success(`已沉淀 6 条六层提问法内核`);
-        // 3 秒后跳到 /kernel
-        setTimeout(() => router.push('/kernel'), 1500);
-      } else {
-        // 409 已存在 = 已经存过
-        if (d.existingCount) {
-          setAdopted(true);
-          toast.info(`已有 ${d.existingCount} 条六层内核，直接进入查看`);
-          setTimeout(() => router.push('/kernel'), 1500);
-        } else {
-          toast.error(d.error ?? '沉淀失败');
-        }
-      }
+      const { seedSixLayersKernels } = await import('@/lib/idb/kernel-seeds');
+      await seedSixLayersKernels({ preview: false });
+      setAdopted(true);
+      toast.success('已沉淀 6 条六层提问法内核');
+      setTimeout(() => router.push('/kernel'), 1500);
     } catch (e: any) {
       toast.error(e.message);
     } finally {

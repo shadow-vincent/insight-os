@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, ctx: PathContext) {
     const { id: topicId } = await ctx.params;
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+    if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
     const row = db.select().from(topicKernels).where(eq(topicKernels.topicId, topicId)).get();
     if (!row) {
       return Response.json({ ok: true, kernel: null });
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, ctx: PathContext) {
     const { id: topicId } = await ctx.params;
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+    if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
 
     // 1) 查主题
     const topic = db.select().from(topics).where(eq(topics.id, topicId)).get();
@@ -203,7 +203,7 @@ export async function DELETE(_req: NextRequest, ctx: PathContext) {
     const { id: topicId } = await ctx.params;
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+    if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
     db.delete(topicKernels).where(eq(topicKernels.topicId, topicId)).run();
     return Response.json({ ok: true });
   } catch (e: any) {

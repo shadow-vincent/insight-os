@@ -659,16 +659,22 @@ function FeedbackModal({ assetId, currentLevel, onClose, onSaved }: {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ assetId, scene, reaction, mostTouchedPoint, followUpQuestions, evidenceLevelAfter }),
+      // V1.11.16: IDB-first 写反馈（Vercel NO_SQLITE 兼容）
+      const { addFeedback } = await import('@/lib/idb/operations');
+      await addFeedback({
+        id: `fb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        assetId,
+        scene: scene || null,
+        outputId: null,
+        rating: 0,
+        reaction: reaction || null,
+        mostTouchedPoint: mostTouchedPoint || null,
+        followUpQuestions: followUpQuestions || null,
+        evidenceLevelAfter: evidenceLevelAfter || null,
       });
-      const data = await res.json();
-      if (data.ok) onSaved();
-      else setError(data.error || '保存失败');
+      onSaved();
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || '保存失败');
     } finally {
       setSaving(false);
     }

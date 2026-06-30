@@ -153,17 +153,19 @@ function InboxInner() {
         return;
       }
 
-      const res = await fetch('/api/inbox/intake', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        setResult(data);
-      } else {
-        setError(data.error || '整理失败');
+      // V1.11.16: IDB-first（Vercel NO_SQLITE：/api/inbox/intake 返 ok:true 但 assetIds undefined）
+      const { clientIntakeLightCard, callLLMDirect, getLLMConfig } = await import('@/lib/idb/operations');
+      const llmConfig = await getLLMConfig();
+      if (!llmConfig?.apiKey) {
+        setError('请先在 /settings/integrations 配置 LLM API Key');
+        setBusy(false);
+        return;
       }
+      const data = await clientIntakeLightCard({
+        rawContent: text,
+        sourceType: source,
+      });
+      setResult({ ok: true, assetIds: [data.id], count: 1 });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -181,22 +183,23 @@ function InboxInner() {
 
     try {
       if (isVideoUrl) {
-        // 直接 POST 给新 intake
-        const detectedType = /youtube|youtu\.be/.test(url) ? 'youtube'
-          : /bilibili|b23/.test(url) ? 'bilibili'
-          : /xiaoyuzhou/.test(url) ? 'xiaoyuzhou'
-          : 'web';
-        const res = await fetch('/api/inbox/intake', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, sourceType: detectedType }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          setResult(data);
-        } else {
-          setError(data.error || '抓取失败');
+        // V1.11.16: IDB-first — Vercel 上需要先抓 transcript + LLM 整理
+        // 由于视频 transcript 抓取复杂，fallback 到直接创建 light 卡
+        const { clientIntakeLightCard, getLLMConfig } = await import('@/lib/idb/operations');
+        const llmConfig = await getLLMConfig();
+        if (!llmConfig?.apiKey) {
+          setError('请先在 /settings/integrations 配置 LLM API Key');
+          setUrlFetching(false);
+          return;
         }
+        // 视频 URL → 创建 source 素材 + light 卡（user 后续手动填 transcript）
+        const data = await clientIntakeLightCard({
+          rawContent: `[视频 URL] ${url}\n\n（待补充字幕）`,
+          sourceType: /youtube|youtu\.be/.test(url) ? 'youtube'
+            : /bilibili|b23/.test(url) ? 'bilibili'
+            : /xiaoyuzhou/.test(url) ? 'xiaoyuzhou' : 'web',
+        });
+        setResult({ ok: true, assetIds: [data.id], count: 1, note: '视频已创建素材卡，字幕待补充' });
         setUrlFetching(false);
         return;
       }

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     // 读 N 张资产卡
     const db = getDb();
 
-    if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+    if (!db) return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
     const found = db.select().from(assets).where(inArray(assets.id, assetIds)).all();
     if (found.length !== assetIds.length) {
       const foundIds = new Set(found.map(a => a.id));

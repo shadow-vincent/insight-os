@@ -38,13 +38,19 @@ export default function MapPage() {
   const [generatingTopicId, setGeneratingTopicId] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
 
+  // V1.11.16: IDB-first
   const loadTopics = () => {
-    fetch('/api/topics')
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) setTopics(data.topics);
-      })
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const { getTopics } = await import('@/lib/idb/operations');
+        const topics = await getTopics();
+        setTopics(topics.map((t: any) => ({ id: t.id, slug: t.slug, name: t.name, sortOrder: t.sortOrder, kernel: null, kernelUpdatedAt: t.updatedAt, assetCount: 0 })));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
 
   useEffect(() => { loadTopics(); }, []);
@@ -53,10 +59,14 @@ export default function MapPage() {
     setGeneratingTopicId(topicId);
     setGenError(null);
     try {
+      // V1.11.16: Vercel NO_SQLITE 兼容（生成 kernel 需要 LLM + IDB 写）
+      // 先尝试 server 路径（本地 SQLite 模式）
       const res = await fetch(`/api/topics/${topicId}/kernel`, { method: 'POST' });
       const data = await res.json();
-      if (data.ok) {
-        // 重新拉一次 list
+      if (data.code === 'NO_SQLITE') {
+        // Vercel：TODO 调 client LLM 写 IDB（V1.12 任务）
+        setGenError('Vercel 部署版暂不支持此操作（IDB 写 kernel 待 V1.12）');
+      } else if (data.ok) {
         loadTopics();
       } else {
         setGenError(data.error ?? '生成失败');
@@ -71,8 +81,13 @@ export default function MapPage() {
   const clearKernel = async (topicId: string) => {
     if (!confirm('清空思想内核？')) return;
     try {
-      await fetch(`/api/topics/${topicId}/kernel`, { method: 'DELETE' });
-      loadTopics();
+      const res = await fetch(`/api/topics/${topicId}/kernel`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.code === 'NO_SQLITE') {
+        setGenError('Vercel 部署版暂不支持此操作');
+      } else {
+        loadTopics();
+      }
     } catch { /* ignore */ }
   };
 

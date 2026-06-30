@@ -69,15 +69,34 @@ export default function GraphClient() {
   const [mode, setMode] = useState<'pedigree' | 'overview'>('pedigree');
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
 
+  // V1.11.16: IDB-first
   useEffect(() => {
-    fetch('/api/graph')
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok) setData(d);
-        else setError(d.error || '加载失败');
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const { getAssets, getAssetTopicsByAsset, getTopics, getRelatedAssets } = await import('@/lib/idb/operations');
+        const [assets, topics] = await Promise.all([getAssets({}), getTopics()]);
+        // 构造 graph nodes + links（Vercel 上 server SQLite 不可用，本地构造）
+        const topicMap = new Map(topics.map((t: any) => [t.id, t]));
+        const nodes: any[] = [];
+        const links: any[] = [];
+        for (const a of assets.slice(0, 200)) {
+          nodes.push({ id: a.id, title: a.title, type: a.type, evidenceLevel: a.evidenceLevel });
+          const ats = await getAssetTopicsByAsset(a.id);
+          for (const at of ats) {
+            const t = topicMap.get(at.topicId);
+            if (t) links.push({ source: a.id, target: t.id, type: 'asset_topic' });
+          }
+        }
+        for (const t of topics) {
+          nodes.push({ id: t.id, title: t.name, type: 'topic' });
+        }
+        setData({ ok: true, nodes, links, total: nodes.length, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading) {

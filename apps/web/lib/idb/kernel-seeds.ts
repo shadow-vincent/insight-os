@@ -178,7 +178,24 @@ export async function seedDefaultKernels(): Promise<{ seeded: number; existingCo
   return { seeded, existingCount };
 }
 
-export async function seedSixLayersKernels(): Promise<{ seeded: number; existingCount: number }> {
+export async function seedSixLayersKernels(opts?: { preview?: boolean }): Promise<{ seeded: number; existingCount: number; title?: string; description?: string; origin?: string; layers?: any[]; usage?: string }> {
+  if (opts?.preview) {
+    return {
+      seeded: 0,
+      existingCount: 0,
+      title: '六层提问法',
+      description: '用 AI 之前，先问自己 6 个层次的问题：意图 / 背景 / 判断 / 约束 / 风格 / 反馈。',
+      origin: 'Vincent 原创方法论，GPT 协助结构化总结',
+      layers: SIX_LAYERS_KERNELS.map((k, i) => ({
+        order: i + 1,
+        label: k.label,
+        content: k.content,
+        confidence: k.confidence,
+        counterExample: k.counterExample,
+      })),
+      usage: 'POST 一次性种入 6 条到 user_kernels',
+    };
+  }
   let seeded = 0;
   let existingCount = 0;
   for (const k of SIX_LAYERS_KERNELS) {

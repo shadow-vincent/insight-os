@@ -70,13 +70,19 @@ export function OutputPackageClient() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toast = useToast();
 
+  // V1.11.16: IDB-first
   useEffect(() => {
-    fetch('/api/outputs')
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) setList(data.outputs);
-      })
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const { getOutputs } = await import('@/lib/idb/operations');
+        const outputs = await getOutputs();
+        setList(outputs);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const filtered = filterType === 'all' ? list : list.filter(o => o.outputType === filterType);

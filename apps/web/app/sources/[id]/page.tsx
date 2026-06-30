@@ -1,15 +1,16 @@
 /**
  * /sources/[id] 信息源详情页
  *
- * 看该源抓到的所有 source_items：
- * - new（未处理）/ imported（已进 assets）/ skipped（用户跳过）
- * - 标题 + 摘要 + 发布时间
- * - 后续 V1.9.1+ 可以加"导入为候选"按钮（调 intake）
+ * V1.11.16: Vercel IDB-first（之前 getDb() 返 null → blank 页）
+ * - server 端 getDb() 拿数据 fallback 到 <ClientSourceItemsLoader id={id} />
+ * - ClientSourceItemsLoader 从 IDB 读 source + items 渲染
  */
 
 import { getDb } from '@insight-os/db';
 import { sql } from 'drizzle-orm';
+import Link from 'next/link';
 import { SourceItemsClient } from './SourceItemsClient';
+import { ClientSourceItemsLoader } from './ClientSourceItemsLoader';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,10 @@ interface Props {
 export default async function SourceDetailPage({ params }: Props) {
   const { id } = await params;
   const db = getDb();
-  if (!db) return null;
+  if (!db) {
+    // V1.11.16: Vercel NO_SQLITE → 客户端 IDB-first 加载
+    return <ClientSourceItemsLoader sourceId={id} />;
+  }
 
   const source = db.get(sql`
     SELECT id, type, url, title, enabled, last_fetched_at as lastFetchedAt,
