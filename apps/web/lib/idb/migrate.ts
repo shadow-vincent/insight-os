@@ -100,7 +100,14 @@ export async function migrateFromSqlite(): Promise<MigrationResult> {
       throw new Error(`migration export failed: ${res.status}`);
     }
 
-    const raw = await res.json() as {
+    // V1.11: Vercel 返回 200 + {ok:false, empty:true} 视为空
+    const data0 = await res.clone().json().catch(() => null);
+    if (data0?.empty) {
+      markMigrated();
+      return { success: true, migrated: {}, source: 'empty' };
+    }
+
+    const raw = data0 ?? (await res.json() as {
       assets?: AssetRow[];
       outputs?: OutputRow[];
       feedback?: FeedbackRow[];
@@ -112,7 +119,7 @@ export async function migrateFromSqlite(): Promise<MigrationResult> {
       userKernels?: UserKernelRow[];
       writingDrafts?: WritingDraftRow[];
       writingVersions?: WritingVersionRow[];
-    };
+    });
     // V1.10 Phase 2.13: 字段映射（null → undefined + 时间戳归一）
     const dump = convertDump(raw);
 
