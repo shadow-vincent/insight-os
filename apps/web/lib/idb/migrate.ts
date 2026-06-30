@@ -17,6 +17,7 @@
  */
 
 import { getDb, type AssetRow, type OutputRow, type FeedbackRow, type TopicRow, type AssetTopicRow, type SourceRow, type SourceItemRow, type TopicKernelRow, type UserKernelRow, type WritingDraftRow, type WritingVersionRow } from './db';
+import { convertDump } from './mapping';
 
 const MIGRATION_KEY = 'migrated-v1.10';
 const BACKUP_KEY = 'last-backup-v1.10';
@@ -75,7 +76,7 @@ export async function migrateFromSqlite(): Promise<MigrationResult> {
       throw new Error(`migration export failed: ${res.status}`);
     }
 
-    const dump = await res.json() as {
+    const raw = await res.json() as {
       assets?: AssetRow[];
       outputs?: OutputRow[];
       feedback?: FeedbackRow[];
@@ -88,6 +89,8 @@ export async function migrateFromSqlite(): Promise<MigrationResult> {
       writingDrafts?: WritingDraftRow[];
       writingVersions?: WritingVersionRow[];
     };
+    // V1.10 Phase 2.13: 字段映射（null → undefined + 时间戳归一）
+    const dump = convertDump(raw);
 
     // 2. 写入 IndexedDB
     const db = getDb();
