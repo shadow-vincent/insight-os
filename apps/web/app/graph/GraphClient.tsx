@@ -91,6 +91,8 @@ export default function GraphClient() {
             primaryTopic,
             color: a.evidenceLevel === 'E0' ? '#ef4444' : a.evidenceLevel === 'E1' ? '#f97316' : a.evidenceLevel === 'E2' ? '#eab308' : a.evidenceLevel === 'E3' ? '#22c55e' : a.evidenceLevel === 'E4' ? '#3b82f6' : '#8b5cf6',
             topicNames: ats.map((at: any) => topicMap.get(at.topicId)?.name).filter(Boolean),
+            relatedIds: [],  // V1.11.16.3: graph sort 用
+            feedbackCount: a.feedbackCount ?? 0,
           });
           for (const at of ats) {
             const t = topicMap.get(at.topicId);
