@@ -51,13 +51,30 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
+    // V1.10 Phase 2.12: 先读 IndexedDB 里的 LLM config（Vercel 用户走 IDB）
+    (async () => {
+      try {
+        const DexieModule = await import('dexie');
+        const Dexie = (DexieModule as any).default || DexieModule;
+        const db = new Dexie('insight-os');
+        db.version(2).stores({ preferences: 'key' });
+        const idbCfg = await db.preferences.get('llm-config');
+        if (idbCfg?.value?.baseUrl) setBaseUrl(idbCfg.value.baseUrl);
+        if (idbCfg?.value?.model) setModel(idbCfg.value.model);
+      } catch { /* IDB 不可用时静默回退到 server */ }
+    })();
+
     fetch('/api/config')
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
           setConfig(data.config);
-          setBaseUrl(data.config.llm.baseUrl);
-          setModel(data.config.llm.model);
+          // IDB 没存才用 server config（避免覆盖用户本地配置）
+          if (!data.config?.llm?.apiKeyConfigured) {
+            // Vercel demo: server config 没 API key 也没事，IDB 可能有
+          }
+          setBaseUrl((prev) => prev || data.config.llm.baseUrl);
+          setModel((prev) => prev || data.config.llm.model);
           setVaultPath(data.config.paths.vaultPath);
           setEnabled(data.config.llm.enabled);
           if (data.config.preferences) {
@@ -74,6 +91,19 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
+      // V1.10 Phase 2.12: 同时写 IDB（Vercel demo 用户）+ server（本地 dev）
+      if (apiKeyChanged && apiKey) {
+        try {
+          const DexieModule = await import('dexie');
+          const Dexie = (DexieModule as any).default || DexieModule;
+          const db = new Dexie('insight-os');
+          db.version(2).stores({ preferences: 'key' });
+          await db.preferences.put({ key: 'llm-config', value: { baseUrl, apiKey, model }, updatedAt: Date.now() });
+        } catch (idbErr: any) {
+          console.warn('[settings] IDB save failed:', idbErr);
+        }
+      }
+
       const body: any = {
         llm: { baseUrl, model, enabled },
         paths: { vaultPath },
@@ -88,8 +118,8 @@ export default function SettingsPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (data.ok) {
-        setConfig(data.config);
+      if (data.ok || res.status === 404) {
+        // Vercel / 没 server config：保存到 IDB 已足够
         setApiKey('');
         setApiKeyChanged(false);
         setMessage({ type: 'success', text: '配置已保存，立即生效' });

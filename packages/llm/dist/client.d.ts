@@ -8,6 +8,11 @@
  * - 健壮容错：API 错 / 非法 JSON / 非法字段都返回 null，不影响主流程
  */
 import { type KernelEntry } from './kernel-injector';
+export interface ClientLLMConfig {
+    baseUrl?: string;
+    apiKey?: string;
+    model?: string;
+}
 export interface LLMOptions {
     model?: string;
     temperature?: number;
@@ -16,6 +21,8 @@ export interface LLMOptions {
     jsonMode?: boolean;
     /** v1.4 Insight Kernel：用户的判断协议，自动注入到 system prompt 前面 */
     kernel?: KernelEntry[];
+    /** V1.10: client 传来的 LLM config（Vercel demo 用户从 IndexedDB 读） */
+    clientLLMConfig?: ClientLLMConfig;
 }
 export interface LLMResult<T> {
     ok: boolean;

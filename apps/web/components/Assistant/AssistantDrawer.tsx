@@ -93,10 +93,23 @@ export default function AssistantDrawer({ onClose }: { onClose: () => void }) {
     };
 
     try {
+      // V1.10: 从 IDB 读 LLM config 传给 server（Vercel demo 用户从 IndexedDB 读）
+      let clientLLMConfig: any = undefined;
+      try {
+        const DexieModule = await import('dexie');
+        const Dexie = (DexieModule as any).default || DexieModule;
+        const db = new Dexie('insight-os');
+        db.version(1).stores({ preferences: 'key' });
+        const cfg = await db.preferences.get('llm-config');
+        if (cfg?.baseUrl && cfg?.apiKey) {
+          clientLLMConfig = { baseUrl: cfg.baseUrl, apiKey: cfg.apiKey, model: cfg.model };
+        }
+      } catch { /* 静默失败 */ }
+
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ message: content, history: historyForApi }),
+        body: JSON.stringify({ message: content, history: historyForApi, clientLLMConfig }),
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 

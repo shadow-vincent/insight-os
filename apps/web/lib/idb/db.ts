@@ -237,6 +237,12 @@ export class InsightDB extends Dexie {
       // writing_versions —— 按 (writingId+createdAt) 排序
       writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
     });
+
+    // V1.10 Phase 2.12: 加 preferences 表（key-value 形式）
+    // 存 LLM config (baseUrl / apiKey / model) 让 client 调用 API 时传给 server
+    this.version(2).stores({
+      preferences: 'key',
+    });
   }
 }
 

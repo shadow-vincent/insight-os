@@ -119,6 +119,7 @@ async function llmRoute(message: string, history: ChatMessage[]): Promise<Router
   const res = await callLLM<RouterOutput>(ASSISTANT_ROUTER_SYSTEM, userPrompt, {
     jsonMode: true, temperature: 0.1,
     kernel,
+    clientLLMConfig,
   });
   if (!res.ok || !res.data) throw new Error(`路由 LLM 失败: ${res.error}`);
   if (!['search', 'multi_output', 'meta_query', 'multi_step', 'help'].includes(res.data.intent)) {
@@ -140,6 +141,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const message = (body.message ?? '').trim();
   const history: ChatMessage[] = body.history ?? [];
+  // V1.10: client 从 IDB 读 LLM config 传给 server（Vercel demo 必备）
+  const clientLLMConfig = body.clientLLMConfig || undefined;
   if (!message) {
     return new Response(sseEvent('error', { error: '消息为空' }), {
       status: 400, headers: { 'content-type': 'text/event-stream' },
@@ -332,6 +335,7 @@ export async function POST(req: NextRequest) {
           try {
             for await (const chunk of streamLLM(ASSISTANT_SUMMARIZER_SYSTEM, userPrompt, {
               temperature: 0.5, maxTokens: 600,
+              clientLLMConfig,
             })) {
               if (chunk.startsWith('[ERROR]')) {
                 send('delta', { text: fallbackTemplate(route.intent, toolData, cards.length) });

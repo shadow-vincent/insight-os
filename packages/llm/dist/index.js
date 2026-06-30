@@ -16805,8 +16805,12 @@ function readCurrentConfig() {
     };
   }
 }
-function getClient() {
-  const cfg = readCurrentConfig();
+function getClient(clientCfg) {
+  const serverCfg = readCurrentConfig();
+  const cfg = {
+    baseUrl: clientCfg?.baseUrl || serverCfg.baseUrl,
+    apiKey: clientCfg?.apiKey || serverCfg.apiKey
+  };
   const hash = `${cfg.baseUrl}::${cfg.apiKey}`;
   if (!_client || _clientConfigHash !== hash) {
     _client = new openai_default({ baseURL: cfg.baseUrl, apiKey: cfg.apiKey });
@@ -16815,15 +16819,15 @@ function getClient() {
   return _client;
 }
 async function callLLM(systemPrompt, userPrompt, options = {}) {
-  const cfg = readCurrentConfig();
-  const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? "deepseek-v4-flash";
+  const serverCfg = readCurrentConfig();
+  const model = options.model ?? options.clientLLMConfig?.model ?? serverCfg.model ?? process.env.LLM_MODEL ?? "deepseek-v4-flash";
   const temperature = options.temperature ?? 0.3;
   const topP = options.topP;
   const maxTokens = options.maxTokens ?? 6e3;
   const jsonMode = options.jsonMode ?? true;
   const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
   try {
-    const client = getClient();
+    const client = getClient(options.clientLLMConfig);
     const response = await client.chat.completions.create({
       model,
       temperature,
@@ -16886,14 +16890,14 @@ async function completeText(systemPrompt, userPrompt, options = {}) {
   return result.ok ? result.data : null;
 }
 async function* streamLLM(systemPrompt, userPrompt, options = {}) {
-  const cfg = readCurrentConfig();
-  const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? "deepseek-v4-flash";
+  const serverCfg = readCurrentConfig();
+  const model = options.model ?? options.clientLLMConfig?.model ?? serverCfg.model ?? process.env.LLM_MODEL ?? "deepseek-v4-flash";
   const temperature = options.temperature ?? 0.5;
   const topP = options.topP;
   const maxTokens = options.maxTokens ?? 4e3;
   const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
   try {
-    const client = getClient();
+    const client = getClient(options.clientLLMConfig);
     const stream = await client.chat.completions.create({
       model,
       temperature,

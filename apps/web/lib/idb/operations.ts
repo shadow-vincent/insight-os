@@ -440,3 +440,39 @@ export async function getStats(): Promise<{
     totalSources: allSources.filter((s: SourceRow) => s.enabled === 1).length,
   };
 }
+
+// ===== V1.10 Phase 2.12: Preferences (LLM config 等 key-value 配置) =====
+
+export interface PreferenceRow {
+  key: string;
+  value: any;
+  updatedAt: number;
+}
+
+export async function getPreference(key: string): Promise<any | undefined> {
+  const db = await getDb();
+  const row = await db.preferences.get(key);
+  return row?.value;
+}
+
+export async function setPreference(key: string, value: any): Promise<void> {
+  const db = await getDb();
+  await db.preferences.put({ key, value, updatedAt: Date.now() });
+}
+
+export async function deletePreference(key: string): Promise<void> {
+  const db = await getDb();
+  await db.preferences.delete(key);
+}
+
+/** 取 LLM config（如未配返回 null） */
+export async function getLLMConfig(): Promise<{ baseUrl: string; apiKey: string; model: string } | null> {
+  const value = await getPreference('llm-config');
+  if (value && value.baseUrl && value.apiKey) return value;
+  return null;
+}
+
+/** 存 LLM config（用户从设置页配） */
+export async function setLLMConfig(cfg: { baseUrl: string; apiKey: string; model: string }): Promise<void> {
+  await setPreference('llm-config', cfg);
+}

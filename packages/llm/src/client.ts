@@ -15,6 +15,12 @@ import { prependKernel, type KernelEntry } from './kernel-injector.ts';
 let _client: OpenAI | null = null;
 let _clientConfigHash: string | null = null;
 
+export interface ClientLLMConfig {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+}
+
 export interface LLMOptions {
   model?: string;
   temperature?: number;
@@ -23,6 +29,8 @@ export interface LLMOptions {
   jsonMode?: boolean; // 强制 JSON 输出
   /** v1.4 Insight Kernel：用户的判断协议，自动注入到 system prompt 前面 */
   kernel?: KernelEntry[];
+  /** V1.10: client 传来的 LLM config（Vercel demo 用户从 IndexedDB 读） */
+  clientLLMConfig?: ClientLLMConfig;
 }
 
 export interface LLMResult<T> {
@@ -55,8 +63,13 @@ function readCurrentConfig() {
   }
 }
 
-function getClient(): OpenAI {
-  const cfg = readCurrentConfig();
+function getClient(clientCfg?: ClientLLMConfig): OpenAI {
+  // V1.10: 优先用 clientCfg（来自 IndexedDB），其次 server config.json
+  const serverCfg = readCurrentConfig();
+  const cfg = {
+    baseUrl: clientCfg?.baseUrl || serverCfg.baseUrl,
+    apiKey: clientCfg?.apiKey || serverCfg.apiKey,
+  };
   const hash = `${cfg.baseUrl}::${cfg.apiKey}`;
 
   // 配置变了就重建 client
@@ -79,9 +92,13 @@ export async function callLLM<T = unknown>(
   userPrompt: string,
   options: LLMOptions = {}
 ): Promise<LLMResult<T>> {
-  // 优先用 options 传的 model，其次 config.json，最后环境变量
-  const cfg = readCurrentConfig();
-  const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
+  // 优先用 options 传的 model，其次 clientLLMConfig.model，其次 server config.json，最后环境变量
+  const serverCfg = readCurrentConfig();
+  const model = options.model
+    ?? options.clientLLMConfig?.model
+    ?? serverCfg.model
+    ?? process.env.LLM_MODEL
+    ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.3;
   const topP = options.topP;
   const maxTokens = options.maxTokens ?? 6000;
@@ -91,7 +108,7 @@ export async function callLLM<T = unknown>(
   const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
 
   try {
-    const client = getClient();
+    const client = getClient(options.clientLLMConfig);
     const response = await client.chat.completions.create({
       model,
       temperature,
@@ -181,8 +198,12 @@ export async function* streamLLM(
   userPrompt: string,
   options: Omit<LLMOptions, 'jsonMode'> = {}
 ): AsyncGenerator<string, void, void> {
-  const cfg = readCurrentConfig();
-  const model = options.model ?? cfg.model ?? process.env.LLM_MODEL ?? 'deepseek-v4-flash';
+  const serverCfg = readCurrentConfig();
+  const model = options.model
+    ?? options.clientLLMConfig?.model
+    ?? serverCfg.model
+    ?? process.env.LLM_MODEL
+    ?? 'deepseek-v4-flash';
   const temperature = options.temperature ?? 0.5;
   const topP = options.topP;
   const maxTokens = options.maxTokens ?? 4000;
@@ -191,7 +212,7 @@ export async function* streamLLM(
   const effectiveSystemPrompt = prependKernel(systemPrompt, options.kernel);
 
   try {
-    const client = getClient();
+    const client = getClient(options.clientLLMConfig);
     const stream = await client.chat.completions.create({
       model,
       temperature,
