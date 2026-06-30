@@ -41,7 +41,12 @@ export default function WritingDashboard() {
     try {
       const res = await fetch('/api/writing');
       const data = await res.json();
-      if (data.ok) setWritings(data.writings);
+      if (data.ok) {
+        // 兼容 Vercel fallback（line 18 NO_SQLITE 时返 {data, count, ...} 不含 writings）
+        // 和 SQLite 真实数据 {writings: rows}
+        const list = data.writings ?? data.data ?? [];
+        setWritings(Array.isArray(list) ? list : []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
