@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getSharedDexie } from '@/lib/idb/shared-dexie';
+import { getSharedDexie } from '@/components/shared-dexie';
 import type { UserKernelRow } from '@insight-os/db';
 import KernelCard from '@/components/KernelCard';
 import KernelEditor from '@/components/KernelEditor';

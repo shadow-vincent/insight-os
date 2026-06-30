@@ -16,7 +16,7 @@
  */
 
 import { useEffect } from 'react';
-import { getSharedDexie } from '@/lib/idb/shared-dexie';
+import { getSharedDexie } from '@/components/shared-dexie';
 
 export function DemoLoader() {
   useEffect(() => {

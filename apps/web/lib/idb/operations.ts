@@ -20,7 +20,7 @@ import type {
   SourceRow, SourceItemRow, TopicKernelRow, UserKernelRow,
   WritingDraftRow, WritingVersionRow,
 } from './db';
-import { getSharedDexie } from '@/lib/idb/shared-dexie';
+import { getSharedDexie } from '@/components/shared-dexie';
 
 // ===== 单例 db 实例（lazy 初始化） =====
 

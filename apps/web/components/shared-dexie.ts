@@ -9,6 +9,9 @@
  *
  * 统一到本文件：所有 module 都调 getSharedDexie()，单例 + 完整 v1+v2+v3 schema。
  * 删除了 12 个文件里的独立 `new Dexie()` 声明。
+ *
+ * 必须在 components/ 目录下 + 'use client' 声明，Next.js 13+ 才把它当 client module。
+ * 之前在 lib/idb/ 下时 webpack 不打包到 client bundle。
  */
 
 import type { Dexie } from 'dexie';
@@ -68,3 +71,7 @@ export async function checkNeedV3Upgrade(): Promise<boolean> {
     req.onerror = () => resolve(false);
   });
 }
+
+// 强制标记为 client module（Next.js 13+ webpack 要求至少一个 export 是 client component）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function _EnsureClientModule() { return null; }

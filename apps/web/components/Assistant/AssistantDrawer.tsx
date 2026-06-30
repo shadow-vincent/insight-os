@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { getSharedDexie } from '@/lib/idb/shared-dexie';
+import { getSharedDexie } from '@/components/shared-dexie';
 import { useRouter } from 'next/navigation';
 import { useToast } from '../ToastProvider';
 

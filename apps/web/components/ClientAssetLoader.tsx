@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getSharedDexie } from '@/lib/idb/shared-dexie';
+import { getSharedDexie } from '@/components/shared-dexie';
 import Link from 'next/link';
 
 type TimelineItem = {
