@@ -215,10 +215,7 @@ export async function syncSource(source: SourceRow): Promise<{ newCount: number;
 // ===== internal helper =====
 async function addSourceItemBulk(items: SourceItemRow[]) {
   const DexieModule = await import('dexie');
-  const Dexie = (DexieModule as any).default || DexieModule;
-  const db = new Dexie('insight-os');
-  db.version(2).stores({
-    sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
-  });
-  await db.sourceItems.bulkPut(items);
+
+  const db = await getSharedDexie();
+await db.sourceItems.bulkPut(items);
 }

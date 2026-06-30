@@ -106,24 +106,9 @@ export function TodayProcessingPageClient({
     (async () => {
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        // V1.10: 必须用完整 11 table schema（和 DemoLoader 一致）
-        db.version(1).stores({
-          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
-          feedback: 'id, assetId, scene, outputId, createdAt',
-          topics: 'id, slug, sortOrder, updatedAt',
-          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
-          sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
-          sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
-          topicKernels: 'id, topicId, generatedAt',
-          userKernels: 'id, category, status, sortOrder, updatedAt',
-          writingDrafts: 'id, writingId, updatedAt',
-          writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
-        });
 
-        const [allAssets, allTopics, allAssetTopics, allSources] = await Promise.all([
+        const db = await getSharedDexie();
+const [allAssets, allTopics, allAssetTopics, allSources] = await Promise.all([
           db.assets.toArray(),
           db.topics.toArray(),
           db.assetTopics.toArray(),
@@ -240,12 +225,9 @@ export function TodayProcessingPageClient({
   // helper: 写一条 inbox light 卡（无 LLM 时）
   const writeInboxCard = async (content: string) => {
     const DexieModule = await import('dexie');
-    const Dexie = (DexieModule as any).default || DexieModule;
-    const db = new Dexie('insight-os');
-    db.version(1).stores({
-      assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-    });
-    const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const db = await getSharedDexie();
+const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const now = Date.now();
     await db.assets.put({
       id,

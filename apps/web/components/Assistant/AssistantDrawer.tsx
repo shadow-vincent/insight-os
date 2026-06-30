@@ -97,10 +97,9 @@ export default function AssistantDrawer({ onClose }: { onClose: () => void }) {
       let clientLLMConfig: any = undefined;
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        db.version(1).stores({ preferences: 'key' });
-        const cfg = await db.preferences.get('llm-config');
+
+        const db = await getSharedDexie();
+const cfg = await db.preferences.get('llm-config');
         if (cfg?.baseUrl && cfg?.apiKey) {
           clientLLMConfig = { baseUrl: cfg.baseUrl, apiKey: cfg.apiKey, model: cfg.model };
         }

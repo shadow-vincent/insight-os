@@ -102,23 +102,9 @@ export default function DataPage() {
       // 1. 写 IDB（让本地浏览器也有数据）
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        db.version(2).stores({
-          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
-          feedback: 'id, assetId, scene, outputId, createdAt',
-          topics: 'id, slug, sortOrder, updatedAt',
-          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
-          sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
-          sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
-          topicKernels: 'id, topicId, generatedAt',
-          userKernels: 'id, category, status, sortOrder, updatedAt',
-          writingDrafts: 'id, writingId, updatedAt',
-          writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
-          preferences: 'key',
-        });
-        if (json.assets?.length) await db.assets.bulkPut(json.assets);
+
+        const db = await getSharedDexie();
+if (json.assets?.length) await db.assets.bulkPut(json.assets);
         if (json.outputs?.length) await db.outputs.bulkPut(json.outputs);
         if (json.feedback?.length) await db.feedback.bulkPut(json.feedback);
         if (json.topics?.length) await db.topics.bulkPut(json.topics);

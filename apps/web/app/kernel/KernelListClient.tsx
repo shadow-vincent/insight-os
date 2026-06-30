@@ -58,12 +58,9 @@ export default function KernelListClient() {
       let idbKernels: UserKernelRow[] | null = null;
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        db.version(2).stores({
-          userKernels: 'id, category, status, sortOrder, updatedAt',
-        });
-        idbKernels = await db.userKernels.toArray();
+
+        const db = await getSharedDexie();
+idbKernels = await db.userKernels.toArray();
         if (idbKernels.length === 0) idbKernels = null;
       } catch { /* IDB 不可用时回退 server */ }
 

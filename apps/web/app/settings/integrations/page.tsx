@@ -46,10 +46,9 @@ export default function IntegrationsPage() {
     (async () => {
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        db.version(2).stores({ preferences: 'key' });
-        const idbCfg = await db.preferences.get('llm-config');
+
+        const db = await getSharedDexie();
+const idbCfg = await db.preferences.get('llm-config');
         if (idbCfg?.value?.baseUrl) setBaseUrl(idbCfg.value.baseUrl);
         if (idbCfg?.value?.model) setModel(idbCfg.value.model);
       } catch { /* IDB 不可用时回退 */ }
@@ -81,10 +80,9 @@ export default function IntegrationsPage() {
       if (apiKeyChanged && apiKey) {
         try {
           const DexieModule = await import('dexie');
-          const Dexie = (DexieModule as any).default || DexieModule;
-          const db = new Dexie('insight-os');
-          db.version(2).stores({ preferences: 'key' });
-          await db.preferences.put({ key: 'llm-config', value: { baseUrl, apiKey, model }, updatedAt: Date.now() });
+
+          const db = await getSharedDexie();
+await db.preferences.put({ key: 'llm-config', value: { baseUrl, apiKey, model }, updatedAt: Date.now() });
         } catch (idbErr: any) {
           console.warn('[integrations] IDB save failed:', idbErr);
         }

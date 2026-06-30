@@ -28,17 +28,9 @@ export function InsightsClientFromIDB() {
     (async () => {
       try {
         const DexieModule = await import('dexie');
-        const Dexie = (DexieModule as any).default || DexieModule;
-        const db = new Dexie('insight-os');
-        db.version(1).stores({
-          assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-          outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
-          feedback: 'id, assetId, scene, outputId, createdAt',
-          topics: 'id, slug, sortOrder, updatedAt',
-          assetTopics: 'id, assetId, topicId, [assetId+topicId]',
-        });
 
-        const [allAssets, allOutputs, allTopics, allAssetTopics] = await Promise.all([
+        const db = await getSharedDexie();
+const [allAssets, allOutputs, allTopics, allAssetTopics] = await Promise.all([
           db.assets.toArray(),
           db.outputs.toArray(),
           db.topics.toArray(),

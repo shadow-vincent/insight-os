@@ -56,24 +56,9 @@ export function ClientAssetLoader({ id }: { id: string }) {
   const reload = async () => {
     try {
       const DexieModule = await import('dexie');
-      const Dexie = (DexieModule as any).default || DexieModule;
-      const db = new Dexie('insight-os');
-      db.version(1).stores({
-        assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-        outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
-        feedback: 'id, assetId, scene, outputId, createdAt',
-        topics: 'id, slug, sortOrder, updatedAt',
-        assetTopics: 'id, assetId, topicId, [assetId+topicId]',
-        sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
-        sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
-        topicKernels: 'id, topicId, generatedAt',
-        userKernels: 'id, category, status, sortOrder, updatedAt',
-        writingDrafts: 'id, writingId, updatedAt',
-        writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
-      });
-      db.version(2).stores({ preferences: 'key' });
 
-      const [a, fb, ops, krs, tps, assetTopicRows] = await Promise.all([
+      const db = await getSharedDexie();
+const [a, fb, ops, krs, tps, assetTopicRows] = await Promise.all([
         db.assets.get(id),
         db.feedback.where('assetId').equals(id).reverse().sortBy('createdAt'),
         db.outputs.toArray(),
