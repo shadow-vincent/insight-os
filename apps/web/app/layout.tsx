@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { ThemeScript } from '@/components/ThemeScript';
 import { ToastProvider } from '@/components/ToastProvider';
 import { DemoLoader } from '@/components/DemoLoader';
+import { IdbSchemaHealth } from '@/components/IdbSchemaHealth';
 import AssistantButton from '@/components/Assistant/AssistantButton';
 import { Playfair_Display, Inter, JetBrains_Mono } from 'next/font/google';
 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <DemoLoader />
+        <IdbSchemaHealth />
         <ThemeProvider>
           <ToastProvider>
             <div className="app-shell">
