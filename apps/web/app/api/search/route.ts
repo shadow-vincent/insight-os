@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
     params.push(limit);
 
     const rows = sqlite.prepare(sql).all(...params) as any[];
+    // 上面 sqlite 可能 throw（Vercel NO_SQLITE）— 由外层 catch 处理
 
     // 主题过滤（用单独的 query：拿每个 asset 的主题 slug）
     let filtered = rows;
@@ -114,6 +115,17 @@ export async function GET(req: NextRequest) {
       })),
     });
   } catch (e: any) {
+    // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function') ||
+      e.message?.includes('prepare') ||
+      !e.message;
+    if (isVercelNoDb) {
+      return NextResponse.json({ ok: true, q, total: 0, results: [], code: 'NO_SQLITE', note: 'Vercel 部署版不支持全文搜索，请到 /assets 列表浏览' });
+    }
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
   }
 }

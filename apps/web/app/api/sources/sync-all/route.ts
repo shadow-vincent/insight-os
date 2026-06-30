@@ -62,7 +62,7 @@ async function syncOne(sourceId: string, url: string, type?: string): Promise<{ 
   const { randomUUID } = await import('node:crypto');
   const db = getDb();
 
-  if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });
+  if (!db) return { ok: false, error: 'NO_SQLITE' };  // V1.11.15: 修 helper 内 return NextResponse 类型错
   const now = Date.now();
 
   let feed;

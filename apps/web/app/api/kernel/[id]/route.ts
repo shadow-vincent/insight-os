@@ -28,6 +28,15 @@ export async function GET(_req: NextRequest, ctx: RouteCtx) {
     if (!k) return NextResponse.json({ ok: false, error: 'Kernel not found' }, { status: 404 });
     return NextResponse.json({ ok: true, kernel: k });
   } catch (e: any) {
+        // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+        if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }
@@ -62,6 +71,15 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
     const k = getUserKernel(id);
     return NextResponse.json({ ok: true, kernel: k });
   } catch (e: any) {
+        // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+        if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }
@@ -79,6 +97,15 @@ export async function DELETE(_req: NextRequest, ctx: RouteCtx) {
     archiveUserKernel(id);
     return NextResponse.json({ ok: true, archived: id });
   } catch (e: any) {
+        // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+        if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }
@@ -91,6 +118,15 @@ export async function POST(req: NextRequest, ctx: RouteCtx) {
     const k = getUserKernel(id);
     return NextResponse.json({ ok: true, kernel: k });
   } catch (e: any) {
+        // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+        if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }

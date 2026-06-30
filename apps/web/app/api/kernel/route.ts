@@ -4,12 +4,9 @@
  *
  * v1.4 Insight Kernel · 用户判断协议
  *
- * GET query params:
- *   status?: 'active' | 'archived' | 'all'   默认 active
- *   category?: 'belief' | 'contrarian' | 'expertise' | 'challenge'
- *
- * POST body: NewUserKernelInput
- *   { category, content, confidence?, counterExample?, scope?, evidenceAssetIds? }
+ * V1.11.15: Vercel 兼容（@insight-os/db SQLite-only，包内没 NO_SQLITE 兜底）
+ * - 加 try/catch 返 NO_SQLITE 错误码（V1.10 Vercel IDB-first 后 client 已走 IDB，
+ *   server 端 fallback 是给旧 client / 直接调 server 的情况）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -36,6 +33,15 @@ export async function GET(req: NextRequest) {
     const kernels = listUserKernels(opts);
     return NextResponse.json({ ok: true, kernels, count: kernels.length });
   } catch (e: any) {
+    // V1.11.15: Vercel NO_SQLITE 兜底（@insight-os/db SQLite-only）
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+    if (isVercelNoDb) {
+      return NextResponse.json({ ok: true, kernels: [], count: 0, code: 'NO_SQLITE' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }
@@ -61,6 +67,14 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, id });
   } catch (e: any) {
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+    if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }

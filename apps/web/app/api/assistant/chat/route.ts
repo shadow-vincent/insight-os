@@ -388,6 +388,8 @@ function fallbackTemplate(intent: string, data: any, cardCount: number): string 
 
 // ==================== Search ====================
 async function callSearchAPI(query: string, limit: number): Promise<CardSnippet[]> {
+  // V1.11.15: Vercel NO_SQLITE 兜底（@insight-os/db SQLite-only）
+  if (process.env.VERCEL === '1') return [];
   const sqlite = getRawSqlite();
   const likeQuery = `%${query.replace(/[%_]/g, '\\$&')}%`;
   const ftsQuery = query
@@ -447,6 +449,8 @@ async function callSearchAPI(query: string, limit: number): Promise<CardSnippet[
 
 async function getCardSnippets(ids: string[]): Promise<CardSnippet[]> {
   if (ids.length === 0) return [];
+  // V1.11.15: Vercel NO_SQLITE 兜底
+  if (process.env.VERCEL === '1') return [];
   const db = getDb();
 
   if (!db) return NextResponse.json({ ok: true, data: [], count: 0, candidates: [], items: [], sources: [], outputs: [], topics: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [], newItemsCount: 0, totalItemsCount: 0, totalCount: 0, weekly: null, week: null, stats: {} });

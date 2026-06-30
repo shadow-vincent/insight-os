@@ -56,17 +56,48 @@ export function CandidateDetailClient({ id }: { id: string }) {
   const [showMergePicker, setShowMergePicker] = useState(false);
   const [mergeTargets, setMergeTargets] = useState<Array<{ id: string; title: string }>>([]);
 
-  // 加载候选
+  // 加载候选（V1.11.15: IDB-first，server 端 Vercel NO_SQLITE 兜底）
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`/api/candidates/${id}`);
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          setError(data.error || '加载失败');
+        const { getAsset, getAssetTopicsByAsset, getTopics } = await import('@/lib/idb/operations');
+        // 1) 从 IDB 读 asset
+        const asset = await getAsset(id);
+        if (asset) {
+          // 从 IDB 拿主题标签
+          const [assetTopics, allTopics] = await Promise.all([
+            getAssetTopicsByAsset(id),
+            getTopics(),
+          ]);
+          const topicNames = assetTopics
+            .map(at => allTopics.find(t => t.id === at.topicId)?.name)
+            .filter(Boolean) as string[];
+
+          setCandidate({
+            id: asset.id,
+            title: asset.title,
+            statement: asset.oneSentenceInsight || '',
+            scoreTotal: asset.scoreTotal,
+            evidenceLevel: asset.evidenceLevel,
+            recommendedAction: asset.scoreTotal >= 80 ? 'process' : asset.scoreTotal >= 65 ? 'candidate' : asset.scoreTotal >= 50 ? 'signal' : 'ignore',
+            reasoning: '',
+            breakdown: { clear: 0, evidence: 0, contrarian: 0, reusable: 0, output: 0, kernel: 0, novelty: 0 },
+            topics: topicNames,
+            scenarios: [],
+            createdAt: asset.createdAt,
+            evidenceType: [],
+          });
           return;
         }
-        setCandidate(data.candidate);
+
+        // 2) Fallback server API（本地 SQLite 模式）
+        const res = await fetch(`/api/candidates/${id}`);
+        const data = await res.json();
+        if (data.ok && data.candidate) {
+          setCandidate(data.candidate);
+          return;
+        }
+        setError(data.error || '候选卡不存在');
       } catch (e: any) {
         setError(e.message);
       } finally {

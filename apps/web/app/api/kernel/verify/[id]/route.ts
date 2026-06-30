@@ -21,6 +21,15 @@ export async function POST(_req: NextRequest, ctx: RouteCtx) {
     const k = getUserKernel(id);
     return NextResponse.json({ ok: true, kernel: k });
   } catch (e: any) {
+        // V1.11.15: Vercel NO_SQLITE 兜底
+    const isVercelNoDb = process.env.VERCEL === '1' ||
+      e.message?.includes('Cannot find module') ||
+      e.message?.includes('better-sqlite3') ||
+      e.message?.includes('_sqlite') ||
+      e.message?.includes('getDb is not a function');
+        if (isVercelNoDb) {
+      return NextResponse.json({ ok: false, code: 'NO_SQLITE', error: 'Vercel 部署版不支持此操作，请用浏览器 IndexedDB' });
+    }
     return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
   }
 }
