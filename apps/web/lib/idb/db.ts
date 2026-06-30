@@ -243,6 +243,12 @@ export class InsightDB extends Dexie {
     this.version(2).stores({
       preferences: 'key',
     });
+
+    // V1.11.13: 加 assetBodies 表（key-value, key=assetId, value=完整 .md body）
+    // 让 Vercel demo 能展示本地版真实 .md 内容（不依赖 server 文件系统）
+    this.version(3).stores({
+      assetBodies: 'id',
+    });
   }
 }
 

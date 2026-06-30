@@ -606,3 +606,28 @@ export async function clientIntakeLightCard(rawContent: string, sourceType: stri
   }
   return { ok: true, lightCards, errors };
 }
+
+// ===== V1.11.13: assetBodies —— 存完整 .md body =====
+
+export interface AssetBodyRow {
+  id: string;  // assetId
+  body: string;
+  fileName?: string;
+  importedAt: number;
+}
+
+export async function addAssetBody(id: string, body: string, fileName?: string): Promise<void> {
+  const db = await getDb();
+  await db.assetBodies.put({ id, body, fileName, importedAt: Date.now() });
+}
+
+export async function getAssetBody(id: string): Promise<string | undefined> {
+  const db = await getDb();
+  const row = await db.assetBodies.get(id);
+  return row?.body;
+}
+
+export async function deleteAssetBody(id: string): Promise<void> {
+  const db = await getDb();
+  await db.assetBodies.delete(id);
+}

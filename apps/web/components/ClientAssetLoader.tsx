@@ -232,20 +232,40 @@ export function ClientAssetLoader({ id }: { id: string }) {
 
   // ===== Render =====
 
-  const bodySections: string[] = [];
-  if (asset.oneSentenceInsight) {
-    bodySections.push(`## 一句话洞察\n\n${asset.oneSentenceInsight}`);
+  // 决定 body 来源：V1.11.13 assetBodies.body 优先（本地导入 .md 后有完整内容）
+  let body: string;
+  if (mdBody) {
+    // 真实 .md 内容：去掉 # 管理洞察资产卡 - 标题 那行（因为标题已显示）
+    const cleaned = mdBody.replace(/^#\s+管理洞察资产卡\s*[-—–]\s*[^\n]+\n+/, '');
+    body = cleaned;
+  } else {
+    // fallback：拼 IDB 字段（V1.11.12 行为）
+    const sections: string[] = [];
+    if (asset.oneSentenceInsight) {
+      sections.push(`## 一句话洞察\n\n${asset.oneSentenceInsight}`);
+    }
+    if (asset.antiCommonSense) {
+      sections.push(`## 反常识\n\n${asset.antiCommonSense}`);
+    }
+    if (tags.length > 0) {
+      sections.push(`## 标签\n\n${tags.map(t => `\`${t}\``).join(' · ')}`);
+    }
+    if (asset.type === 'light') {
+      sections.push(`\n> 💡 这是一条轻量卡（仅 LLM 整理结果，未校准）。到「开始写作」基于此卡创作，或去详情校准后即可升级为正式资产卡。`);
+    }
+    body = sections.join('\n\n');
   }
-  if (asset.antiCommonSense) {
-    bodySections.push(`## 反常识\n\n${asset.antiCommonSense}`);
-  }
-  if (tags.length > 0) {
-    bodySections.push(`## 标签\n\n${tags.map(t => `\`${t}\``).join(' · ')}`);
-  }
-  if (asset.type === 'light') {
-    bodySections.push(`\n> 💡 这是一条轻量卡（仅 LLM 整理结果，未校准）。到「开始写作」基于此卡创作，或去详情校准后即可升级为正式资产卡。`);
-  }
-  const body = bodySections.join('\n\n');
+
+// ===== V1.11.13: 优先读 assetBodies.body（本地导入 .md 后有完整内容）=====
+  const [mdBody, setMdBody] = useState<string | null>(null);
+  useEffect(() => {
+    if (!asset) return;
+    (async () => {
+      const { getAssetBody } = await import('@/lib/idb/operations');
+      const b = await getAssetBody(asset.id);
+      setMdBody(b ?? null);
+    })();
+  }, [asset]);
 
   // 5 阶段 timeline
   const timeline: TimelineItem[] = [];
@@ -323,33 +343,161 @@ export function ClientAssetLoader({ id }: { id: string }) {
 
   timeline.sort((a, b) => b.ts - a.ts);
 
+// V1.11.13: 升级 markdown 渲染（表格 / 列表 / 分隔线 / 引用 / 标题）
+  const renderInline = (text: string): React.ReactNode[] => {
+    // 处理 `code` / **bold** / *italic* 内联格式
+    const parts: React.ReactNode[] = [];
+    let remaining = text;
+    let key = 0;
+    while (remaining.length > 0) {
+      // 找最近的 `code` 或 **bold**
+      const codeMatch = remaining.match(/`([^`]+)`/);
+      const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
+      let firstMatch: { type: 'code' | 'bold'; index: number; content: string } | null = null;
+      if (codeMatch && (!boldMatch || codeMatch.index! < boldMatch.index!)) {
+        firstMatch = { type: 'code', index: codeMatch.index!, content: codeMatch[1] };
+      } else if (boldMatch) {
+        firstMatch = { type: 'bold', index: boldMatch.index!, content: boldMatch[1] };
+      }
+      if (!firstMatch) {
+        parts.push(remaining);
+        break;
+      }
+      if (firstMatch.index > 0) {
+        parts.push(remaining.slice(0, firstMatch.index));
+      }
+      if (firstMatch.type === 'code') {
+        parts.push(
+          <code key={key++} style={{ padding: '1px 6px', background: 'var(--canvas)', borderRadius: 3, fontSize: 13, fontFamily: 'JetBrains Mono, monospace' }}>{firstMatch.content}</code>
+        );
+      } else {
+        parts.push(<strong key={key++}>{firstMatch.content}</strong>);
+      }
+      remaining = remaining.slice(firstMatch.index + firstMatch.content.length + (firstMatch.type === 'code' ? 2 : 4));
+    }
+    return parts;
+  };
+
   const renderBody = () => {
-    return body.split('\n\n').map((section, i) => {
-      if (section.startsWith('## ')) {
-        return (
-          <div key={i} style={{ marginBottom: 16 }}>
+    // 按行处理（更稳健）
+    const lines = body.split('\n');
+    const elements: React.ReactNode[] = [];
+    let i = 0;
+    let key = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // 分隔线 ---
+      if (line.trim() === '---') {
+        elements.push(<hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '16px 0' }} />);
+        i++;
+        continue;
+      }
+
+      // H2 标题
+      if (line.startsWith('## ')) {
+        elements.push(
+          <div key={key++} style={{ marginBottom: 16, marginTop: 8 }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
-              {section.replace(/^## /, '')}
+              {line.replace(/^## /, '')}
             </h3>
-            <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)' }}>
-              {section.split('\n').slice(1).join('\n').split(/`([^`]+)`/).map((part, j) =>
-                j % 2 === 1
-                  ? <code key={j} style={{ padding: '1px 6px', background: 'var(--canvas)', borderRadius: 3, fontSize: 13, fontFamily: 'JetBrains Mono, monospace' }}>{part}</code>
-                  : <span key={j}>{part}</span>
-              )}
-            </div>
           </div>
         );
+        i++;
+        continue;
       }
-      if (section.startsWith('> ')) {
-        return (
-          <div key={i} style={{ padding: 14, background: 'rgba(234, 88, 12, 0.05)', border: '1px solid rgba(234, 88, 12, 0.2)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
-            {section.slice(2)}
+
+      // H1 标题
+      if (line.startsWith('# ')) {
+        i++; // 跳过 H1（已在页面 title 显示）
+        continue;
+      }
+
+      // 引用
+      if (line.startsWith('> ')) {
+        elements.push(
+          <div key={key++} style={{ padding: 14, background: 'rgba(234, 88, 12, 0.05)', border: '1px solid rgba(234, 88, 12, 0.2)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
+            {renderInline(line.slice(2))}
           </div>
         );
+        i++;
+        continue;
       }
-      return <p key={i} style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', marginBottom: 12 }}>{section}</p>;
-    });
+
+      // 表格（连续多行 | | |）
+      if (line.startsWith('|') && i + 1 < lines.length && lines[i + 1].includes('---')) {
+        const headerLine = line;
+        i += 2; // 跳过分隔 | --- | --- |
+        const rows: string[][] = [];
+        while (i < lines.length && lines[i].startsWith('|')) {
+          rows.push(lines[i].slice(1, -1).split('|').map(c => c.trim()));
+          i++;
+        }
+        elements.push(
+          <table key={key++} style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16, fontSize: 13 }}>
+            <thead>
+              <tr>
+                {headerLine.slice(1, -1).split('|').map((c, j) => (
+                  <th key={j} style={{ textAlign: 'left', padding: '8px 10px', background: 'var(--canvas)', border: '1px solid var(--line)', fontWeight: 600, color: 'var(--ink)' }}>
+                    {renderInline(c.trim())}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => (
+                <tr key={ri}>
+                  {row.map((c, j) => (
+                    <td key={j} style={{ padding: '8px 10px', border: '1px solid var(--line)', color: 'var(--text)' }}>
+                      {renderInline(c)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
+        continue;
+      }
+
+      // 列表项
+      if (line.match(/^[\s]*[-*]\s/)) {
+        const items: string[] = [];
+        while (i < lines.length && lines[i].match(/^[\s]*[-*]\s/)) {
+          items.push(lines[i].replace(/^[\s]*[-*]\s+/, ''));
+          i++;
+        }
+        elements.push(
+          <ul key={key++} style={{ paddingLeft: 20, marginBottom: 12, color: 'var(--text)' }}>
+            {items.map((item, j) => (
+              <li key={j} style={{ marginBottom: 4, lineHeight: 1.6 }}>{renderInline(item)}</li>
+            ))}
+          </ul>
+        );
+        continue;
+      }
+
+      // 段落（合并连续非空行）
+      if (line.trim() !== '') {
+        const paraLines: string[] = [line];
+        i++;
+        while (i < lines.length && lines[i].trim() !== '' && !lines[i].startsWith('#') && !lines[i].startsWith('>') && !lines[i].startsWith('|') && !lines[i].match(/^[\s]*[-*]\s/)) {
+          paraLines.push(lines[i]);
+          i++;
+        }
+        elements.push(
+          <p key={key++} style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text)', marginBottom: 12 }}>
+            {renderInline(paraLines.join(' '))}
+          </p>
+        );
+        continue;
+      }
+
+      i++;
+    }
+
+    return elements;
   };
 
   return (

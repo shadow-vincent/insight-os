@@ -21,6 +21,8 @@ export default function DataPage() {
   const [migrating, setMigrating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [importingMd, setImportingMd] = useState(false);
+  const [importMdResult, setImportMdResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [vaultPath, setVaultPath] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -155,6 +157,65 @@ export default function DataPage() {
     }
   };
 
+  // V1.11.13: 从 .md 文件导入
+  const handleImportMd = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setImportingMd(true);
+    setImportMdResult(null);
+    try {
+      const { parseMdCards } = await import('@/lib/idb/parse-md');
+      const { addAsset, addAssetBody } = await import('@/lib/idb/operations');
+
+      const cards = [];
+      for (const file of Array.from(files)) {
+        const content = await file.text();
+        const parsed = parseMdCards([{ name: file.name, content }]);
+        const card = parsed[0];
+
+        // 写 IDB assets row
+        await addAsset({
+          id: card.id,
+          type: 'asset',
+          status: 'in_use',
+          title: card.title,
+          evidenceLevel: card.evidenceLevel,
+          priority: 'B',
+          tagsJson: JSON.stringify(card.tags),
+          source: card.source || card.fileName,
+          sourceType: card.sourceType,
+          oneSentenceInsight: card.oneSentenceInsight,
+          antiCommonSense: card.antiCommonSense,
+          filePath: `/imported/${card.fileName}`,
+          fileMtime: card.createdAt,
+          fileHash: card.id,
+          feedbackCount: 0,
+          scoreTotal: 70,
+          scoreBreakdownJson: JSON.stringify({ imported: 70 }),
+          outputCount: 0,
+          isKernelCandidate: 0,
+          isKernelApproved: 0,
+          relatedIdsJson: '[]',
+          createdAt: card.createdAt,
+          updatedAt: card.updatedAt,
+        });
+
+        // 写 IDB assetBodies.body（V1.11.13 完整 .md 内容）
+        await addAssetBody(card.id, card.body, card.fileName);
+        cards.push(card);
+      }
+
+      const summary = cards.map(c => c.title).slice(0, 3).join('、');
+      const more = cards.length > 3 ? ` 等 ${cards.length} 张` : '';
+      setImportMdResult({ ok: true, text: `✓ 导入 ${cards.length} 张 · ${summary}${more}` });
+    } catch (e: any) {
+      setImportMdResult({ ok: false, text: `✗ 导入失败: ${e.message}` });
+    } finally {
+      setImportingMd(false);
+      e.target.value = '';
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-3)' }}>加载中…</div>;
   }
@@ -181,6 +242,32 @@ export default function DataPage() {
         <Link href="/settings/sync" className="btn btn-primary" style={{ display: 'inline-block', textDecoration: 'none' }}>
           打开同步工具 →
         </Link>
+      </div>
+
+      {/* V1.11.13: 导入本地 .md 卡片 */}
+      <div className="card" style={{ padding: 28, marginBottom: 16 }}>
+        <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', margin: '0 0 6px' }}>📄 导入 .md 卡片</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 20px' }}>
+          从本地知识库选择 .md 卡片导入。解析 frontmatter（title / tags / evidence_level）+ 完整 body 存到浏览器 IDB。
+          <br />
+          <strong>支持</strong>：本地版 Insight OS 用的 .md 格式（YAML frontmatter + markdown body）
+        </p>
+        <input
+          type="file"
+          accept=".md,text/markdown"
+          multiple
+          onChange={handleImportMd}
+          disabled={importingMd}
+          style={{ display: 'block', marginBottom: 12, fontSize: 13 }}
+        />
+        {importingMd && (
+          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>导入中…</div>
+        )}
+        {importMdResult && (
+          <div style={{ fontSize: 13, color: importMdResult.ok ? '#16a34a' : '#dc2626', marginTop: 8 }}>
+            {importMdResult.text}
+          </div>
+        )}
       </div>
 
       {/* 资产库路径 */}
