@@ -4,13 +4,15 @@ import { readFileSync, existsSync } from 'node:fs';
 import { notFound } from 'next/navigation';
 import { isLLMConfigured } from '@insight-os/core';
 import { AssetDetailClient } from './AssetDetailClient';
+import { ClientAssetLoader } from '@/components/ClientAssetLoader';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = getDb();
-  if (!db) return null;
+  // V1.10: server 没 SQLite（Vercel serverless / demo 模式）→ 让 client 从 IndexedDB 读
+  if (!db) return <ClientAssetLoader id={id} />;
   const sqlite = getRawSqlite();
   const asset = db.select().from(assets).where(eq(assets.id, id)).get();
 
