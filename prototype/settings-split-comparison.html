@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Settings 拆分方案对比</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --canvas: #f7f9fc;
+    --panel: #ffffff;
+    --subtle: #eef2f7;
+    --line: #e2e8f0;
+    --ink: #0f172a;
+    --text: #1a2332;
+    --text-2: #475569;
+    --text-3: #64748b;
+    --muted: #94a3b8;
+    --primary: #1a365d;
+    --primary-soft: rgba(26, 54, 93, 0.06);
+    --accent: #ea580c;
+    --green: #10b981;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', -apple-system, sans-serif;
+    background: var(--canvas);
+    color: var(--text);
+    line-height: 1.55;
+    padding: 32px 24px 80px;
+  }
+  .container { max-width: 1640px; margin: 0 auto; }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 8px;
+    letter-spacing: -0.005em;
+  }
+  .lead { font-size: 14px; color: var(--text-3); margin-bottom: 8px; }
+  .meta { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 32px; }
+
+  /* comparison grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 1280px) { .grid { grid-template-columns: 1fr; } }
+
+  .col {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .col-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--primary-soft);
+  }
+  .col-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .tag-a { background: #dbeafe; color: #1e40af; }
+  .tag-b { background: #d1fae5; color: #065f46; }
+  .tag-c { background: #fef3c7; color: #92400e; }
+  .col-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .col-sub {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .col-stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .col-stats span { padding: 2px 6px; background: white; border: 1px solid var(--line); border-radius: 4px; }
+
+  /* settings mockup window */
+  .mock {
+    display: flex;
+    min-height: 720px;
+  }
+  .sidebar {
+    width: 130px;
+    flex-shrink: 0;
+    background: var(--subtle);
+    padding: 14px 10px;
+    border-right: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .sb-section { color: var(--text-3); font-size: 9px; text-transform: uppercase; letter-spacing: 1.2px; margin: 8px 4px 4px; font-weight: 600; }
+  .sb-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    color: var(--text-2);
+  }
+  .sb-item.active { background: var(--primary); color: white; }
+  .sb-item .icon { width: 12px; height: 12px; opacity: 0.8; }
+
+  .main {
+    flex: 1;
+    padding: 20px 22px;
+    overflow-y: auto;
+    background: var(--canvas);
+    max-height: 720px;
+  }
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--ink); margin-bottom: 4px; }
+  .page-subtitle { font-size: 11px; color: var(--text-3); margin-bottom: 16px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-icon { font-size: 16px; flex-shrink: 0; }
+  .card-body { flex: 1; min-width: 0; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .card-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .card-arrow { color: var(--muted); font-size: 14px; }
+  .card.featured { background: var(--primary-soft); border-color: var(--primary); }
+  .card.featured .card-title { color: var(--primary); }
+
+  .section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .section-desc { font-size: 11px; color: var(--text-3); margin-bottom: 10px; }
+  .field { margin-bottom: 8px; }
+  .field-label { font-size: 10px; color: var(--text-3); margin-bottom: 3px; }
+  .field-input {
+    width: 100%;
+    padding: 5px 9px;
+    background: var(--subtle);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .btn {
+    display: inline-block;
+    padding: 5px 12px;
+    background: var(--primary);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .btn-row { display: flex; gap: 6px; margin-top: 8px; }
+
+  .verdict {
+    padding: 16px 20px;
+    background: var(--subtle);
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .verdict-row { display: flex; gap: 6px; margin-bottom: 4px; }
+  .verdict-row b { color: var(--ink); min-width: 60px; }
+  .verdict em { color: var(--accent); font-style: normal; }
+
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--subtle);
+    color: var(--text-3);
+    margin-left: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge.ok { background: #d1fae5; color: #065f46; }
+  .badge.warn { background: #fef3c7; color: #92400e; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Settings 拆分方案对比</h1>
+  <p class="lead">V1.11.6+ settings 页 9 个 section / 5 个 sub-page 入口卡。3 个拆分方案对比：</p>
+  <p class="meta">A: 全部 9 个 sub-page · B: 7 个 sub-page（合并相关）· C: 按"输入/输出/数据"分组</p>
+
+  <div class="grid">
+
+    <!-- ============ 方案 A ============ -->
+    <div class="col">
+      <div class="col-header">
+        <span class="col-tag tag-a">方案 A</span>
+        <div class="col-title">全部 9 个 sub-page</div>
+        <div class="col-sub">每个 section 都拆独立页 · 主页只留主题</div>
+        <div class="col-stats">
+          <span>sub-page: 9</span>
+          <span>主页 section: 1</span>
+          <span>主页可滚: 0</span>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="sidebar">
+          <div class="sb-section">每日工作流</div>
+          <div class="sb-item"><span>⊕</span>今日加工</div>
+          <div class="sb-item"><span>✱</span>候选判断</div>
+          <div class="sb-item"><span>◫</span>判断资产</div>
+          <div class="sb-item"><span>◊</span>主题资产包</div>
+          <div class="sb-section">输出与方法论</div>
+          <div class="sb-item"><span>📄</span>输出包</div>
+          <div class="sb-item"><span>◉</span>我的方法论</div>
+          <div class="sb-section">系统</div>
+          <div class="sb-item"><span>⊞</span>仪表盘</div>
+          <div class="sb-item"><span>📖</span>操作手册</div>
+          <div class="sb-item active"><span>⚙</span>设置</div>
+        </div>
+        <div class="main">
+          <div class="page-title">设置</div>
+          <div class="page-subtitle">主题外观</div>
+
+          <div class="section">
+            <div class="section-title">🎨 主题外观</div>
+            <div class="section-desc">切换 light / dark 主题</div>
+            <div class="btn-row">
+              <div class="btn">Light</div>
+              <div class="btn" style="background: var(--subtle); color: var(--ink);">Dark</div>
+            </div>
+          </div>
+
+          <div class="card"><div class="card-icon">✎</div><div class="card-body"><div class="card-title">写作风格配置</div><div class="card-desc">当前: vincent-standard</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">🧠</div><div class="card-body"><div class="card-title">判断协议</div><div class="card-desc">4 类 × 4 字段</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">☁️</div><div class="card-body"><div class="card-title">数据同步</div><div class="card-desc">导出 / 导入 ZIP</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📤</div><div class="card-body"><div class="card-title">导出图谱</div><div class="card-desc">PNG / PDF</div></div><div class="card-arrow">→</div></div>
+          <div class="card featured"><div class="card-icon">📰</div><div class="card-body"><div class="card-title">博客文章图导出</div><div class="card-desc">1080 长图 · 公众号专用</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">🤖</div><div class="card-body"><div class="card-title">LLM 接入</div><div class="card-desc">baseUrl / apiKey / model</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📡</div><div class="card-body"><div class="card-title">RSSHub 接入</div><div class="card-desc">自部署 URL</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📁</div><div class="card-body"><div class="card-title">资产库路径</div><div class="card-desc">vault 根路径</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📦</div><div class="card-body"><div class="card-title">老版本数据迁移</div><div class="card-desc">SQLite → IndexedDB</div></div><div class="card-arrow">→</div></div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="verdict-row"><b>主页：</b>无内嵌，9 个 sub-page 入口卡</div>
+        <div class="verdict-row"><b>优点：</b>零滚动，每个功能独立 URL</div>
+        <div class="verdict-row"><b>缺点：</b><em>9 个 sub-page 偏多</em>，LLM/RSSHub 各自一页需要在菜单间切换</div>
+        <div class="verdict-row"><b>改动量：</b>大（5 个新 sub-page + 主页重写）</div>
+      </div>
+    </div>
+
+    <!-- ============ 方案 B ============ -->
+    <div class="col">
+      <div class="col-header">
+        <span class="col-tag tag-b">方案 B · 推荐</span>
+        <div class="col-title">7 个 sub-page（合并相关）</div>
+        <div class="col-sub">外部服务 / 数据类各合并一个 sub-page</div>
+        <div class="col-stats">
+          <span>sub-page: 7</span>
+          <span>主页 section: 1</span>
+          <span>主页可滚: 0</span>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="sidebar">
+          <div class="sb-section">每日工作流</div>
+          <div class="sb-item"><span>⊕</span>今日加工</div>
+          <div class="sb-item"><span>✱</span>候选判断</div>
+          <div class="sb-item"><span>◫</span>判断资产</div>
+          <div class="sb-item"><span>◊</span>主题资产包</div>
+          <div class="sb-section">输出与方法论</div>
+          <div class="sb-item"><span>📄</span>输出包</div>
+          <div class="sb-item"><span>◉</span>我的方法论</div>
+          <div class="sb-section">系统</div>
+          <div class="sb-item"><span>⊞</span>仪表盘</div>
+          <div class="sb-item"><span>📖</span>操作手册</div>
+          <div class="sb-item active"><span>⚙</span>设置</div>
+        </div>
+        <div class="main">
+          <div class="page-title">设置</div>
+          <div class="page-subtitle">主题外观</div>
+
+          <div class="section">
+            <div class="section-title">🎨 主题外观</div>
+            <div class="section-desc">切换 light / dark 主题</div>
+            <div class="btn-row">
+              <div class="btn">Light</div>
+              <div class="btn" style="background: var(--subtle); color: var(--ink);">Dark</div>
+            </div>
+          </div>
+
+          <div class="card"><div class="card-icon">✎</div><div class="card-body"><div class="card-title">写作风格配置</div><div class="card-desc">当前: vincent-standard</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">🧠</div><div class="card-body"><div class="card-title">判断协议</div><div class="card-desc">4 类 × 4 字段</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">☁️</div><div class="card-body"><div class="card-title">数据同步</div><div class="card-desc">导出 / 导入 ZIP</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📤</div><div class="card-body"><div class="card-title">导出图谱</div><div class="card-desc">PNG / PDF</div></div><div class="card-arrow">→</div></div>
+          <div class="card featured"><div class="card-icon">📰</div><div class="card-body"><div class="card-title">博客文章图导出</div><div class="card-desc">1080 长图 · 公众号专用</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">🔌</div><div class="card-body"><div class="card-title">外部服务接入 <span class="badge ok">合并</span></div><div class="card-desc">LLM + RSSHub</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">💾</div><div class="card-body"><div class="card-title">数据与迁移 <span class="badge ok">合并</span></div><div class="card-desc">资产库路径 + 老版本迁移</div></div><div class="card-arrow">→</div></div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="verdict-row"><b>主页：</b>无内嵌，7 个 sub-page 入口卡</div>
+        <div class="verdict-row"><b>优点：</b>LLM+RSSHub 一组（用户认知"外部服务"）· 资产库+迁移一组（数据生命周期连贯）</div>
+        <div class="verdict-row"><b>缺点：</b>合并后每个 sub-page 内嵌 section 略多（约 2-3 个）</div>
+        <div class="verdict-row"><b>改动量：</b>中（2 个新 sub-page + 主页重写）</div>
+      </div>
+    </div>
+
+    <!-- ============ 方案 C+（调整后）============ -->
+    <div class="col">
+      <div class="col-header">
+        <span class="col-tag tag-c">方案 C+ · 你的调整</span>
+        <div class="col-title">5 个 sub-page</div>
+        <div class="col-sub">按你定：接入 / 写作 / 判断 / 输出 / 数据 五大类</div>
+        <div class="col-stats">
+          <span>sub-page: 5</span>
+          <span>主页 section: 1</span>
+          <span>主页可滚: 0</span>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="sidebar">
+          <div class="sb-section">每日工作流</div>
+          <div class="sb-item"><span>⊕</span>今日加工</div>
+          <div class="sb-item"><span>✱</span>候选判断</div>
+          <div class="sb-item"><span>◫</span>判断资产</div>
+          <div class="sb-item"><span>◊</span>主题资产包</div>
+          <div class="sb-section">输出与方法论</div>
+          <div class="sb-item"><span>📄</span>输出包</div>
+          <div class="sb-item"><span>◉</span>我的方法论</div>
+          <div class="sb-section">系统</div>
+          <div class="sb-item"><span>⊞</span>仪表盘</div>
+          <div class="sb-item"><span>📖</span>操作手册</div>
+          <div class="sb-item active"><span>⚙</span>设置</div>
+        </div>
+        <div class="main">
+          <div class="page-title">设置</div>
+          <div class="page-subtitle">主题外观</div>
+
+          <div class="section">
+            <div class="section-title">🎨 主题外观</div>
+            <div class="section-desc">切换 light / dark 主题</div>
+            <div class="btn-row">
+              <div class="btn">Light</div>
+              <div class="btn" style="background: var(--subtle); color: var(--ink);">Dark</div>
+            </div>
+          </div>
+
+          <div class="card"><div class="card-icon">🔌</div><div class="card-body"><div class="card-title">外部服务接入</div><div class="card-desc">LLM + RSSHub</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">✎</div><div class="card-body"><div class="card-title">写作风格</div><div class="card-desc">当前: vincent-standard</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">🧠</div><div class="card-body"><div class="card-title">判断协议</div><div class="card-desc">4 类 × 4 字段</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">📤</div><div class="card-body"><div class="card-title">输出与导出</div><div class="card-desc">图谱 PNG/PDF + 博客长图</div></div><div class="card-arrow">→</div></div>
+          <div class="card"><div class="card-icon">💾</div><div class="card-body"><div class="card-title">数据与迁移</div><div class="card-desc">iCloud 同步 + 老版本迁移 + 资产库路径</div></div><div class="card-arrow">→</div></div>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="verdict-row"><b>主页：</b>1 section（主题）+ 5 个 sub-page 入口卡</div>
+        <div class="verdict-row"><b>外部服务：</b>LLM + RSSHub（接入类，认知连贯）</div>
+        <div class="verdict-row"><b>输出：</b>图谱 + 博客（都是导出图，类型一致）</div>
+        <div class="verdict-row"><b>数据：</b>iCloud + 迁移 + 资产库路径（生命周期连贯）</div>
+        <div class="verdict-row"><b>最大 sub-page section：</b>2-3（数据组）</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 48px; padding: 20px 24px; background: white; border: 1px solid var(--line); border-radius: 12px;">
+    <h2 style="font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--ink); margin-bottom: 12px;">对比要点</h2>
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <tr style="border-bottom: 1px solid var(--line);">
+        <th style="text-align: left; padding: 8px 4px; color: var(--text-3); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">维度</th>
+        <th style="text-align: left; padding: 8px 4px; color: #1e40af; font-weight: 600;">A · 9 个 sub-page</th>
+        <th style="text-align: left; padding: 8px 4px; color: #065f46; font-weight: 600;">B · 7 个 sub-page</th>
+        <th style="text-align: left; padding: 8px 4px; color: #92400e; font-weight: 600;">C · 4 个 sub-page</th>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--line);">
+        <td style="padding: 10px 4px; color: var(--text-3);">sub-page 总数</td>
+        <td style="padding: 10px 4px;">9</td>
+        <td style="padding: 10px 4px;">7</td>
+        <td style="padding: 10px 4px;">4</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--line);">
+        <td style="padding: 10px 4px; color: var(--text-3);">主页可滚</td>
+        <td style="padding: 10px 4px;">0</td>
+        <td style="padding: 10px 4px;">0</td>
+        <td style="padding: 10px 4px;">0</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--line);">
+        <td style="padding: 10px 4px; color: var(--text-3);">主页 section</td>
+        <td style="padding: 10px 4px;">1（主题）</td>
+        <td style="padding: 10px 4px;">1（主题）</td>
+        <td style="padding: 10px 4px;">1（主题）</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--line);">
+        <td style="padding: 10px 4px; color: var(--text-3);">最大 sub-page section 数</td>
+        <td style="padding: 10px 4px;">1</td>
+        <td style="padding: 10px 4px;">2-3</td>
+        <td style="padding: 10px 4px;">4</td>
+      </tr>
+      <tr style="border-bottom: 1px solid var(--line);">
+        <td style="padding: 10px 4px; color: var(--text-3);">改动量</td>
+        <td style="padding: 10px 4px;">大</td>
+        <td style="padding: 10px 4px;">中</td>
+        <td style="padding: 10px 4px;">大</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 4px; color: var(--text-3);">认知连贯</td>
+        <td style="padding: 10px 4px;">⭐⭐⭐</td>
+        <td style="padding: 10px 4px;">⭐⭐⭐⭐</td>
+        <td style="padding: 10px 4px;">⭐⭐</td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
