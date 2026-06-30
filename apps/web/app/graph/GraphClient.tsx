@@ -69,92 +69,47 @@ export default function GraphClient() {
   const [mode, setMode] = useState<'pedigree' | 'overview'>('pedigree');
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
 
-  // V1.11.18: 双源（IDB + server SQLite）
-  // - Vercel: IDB 唯一数据源（V1.10 IDB-first）
-  // - 本地 dev 4191: 优先 server SQLite（Vincent 真实数据在 SQLite，未迁 IDB）→ fallback IDB
+  // V1.12 统一 data-source helper
   useEffect(() => {
     (async () => {
       try {
-        // 1) 先并发拿：IDB + server API
-        const { getAssets, getAssetTopicsByAsset, getTopics, getRelatedAssets } = await import('@/lib/idb/operations');
-        const [idbAssets, idbTopics, serverRes] = await Promise.all([
-          getAssets({}),
-          getTopics(),
-          fetch('/api/graph', { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-        ]);
-
-        let assets: any[] = idbAssets;
-        let topics: any[] = idbTopics;
-        let relations: any[] = [];  // asset ↔ asset related links（仅 server API 有）
-
-        // 2) 如果 server 返 ok + 有数据，覆盖 IDB（本地 dev SQLite 优先）
-        if (serverRes && serverRes.ok && serverRes.nodes && serverRes.nodes.length > idbAssets.length) {
-          // server 拿 node + topic + links 完整
-          const serverNodes = serverRes.nodes;
-          const serverTopics = serverRes.topics ?? [];
-          const serverLinks = serverRes.links ?? [];
-          // 拆 node 为 assets + topics
-          const nodeMap = new Map(serverNodes.map((n: any) => [n.id, n]));
-          assets = serverNodes
-            .filter((n: any) => n.type === 'asset' || n.type === 'light' || (n.type && n.type !== 'topic'))
-            .map((n: any) => ({
-              id: n.id,
-              title: n.title,
-              type: n.type,
-              evidenceLevel: n.evidenceLevel ?? 'E1',
-              createdAt: n.createdAt ?? 0,
-              feedbackCount: n.feedbackCount ?? 0,
-              relatedIds: n.relatedIds ?? [],
-              primaryTopic: n.primaryTopic,
-              topicNames: n.topicNames ?? [],
-            }));
-          topics = serverTopics.length > 0 ? serverTopics : topics;
-          // 拆 link：asset-asset 关系 vs asset-topic
-          relations = serverLinks.filter((l: any) => l.type === 'related' || (l.type !== 'asset_topic' && l.source && l.target && !topics.find((t: any) => t.id === l.source) && !topics.find((t: any) => t.id === l.target)));
-        }
-
-        // 3) 构造 graph nodes + links
-        const topicMap = new Map(topics.map((t: any) => [t.id, t]));
-        const nodes: any[] = [];
-        const links: any[] = [];
-        for (const a of assets.slice(0, 200)) {
-          let ats: any[] = [];
-          let topicNames: string[] = a.topicNames ?? [];
-          if (topicNames.length === 0) {
-            // IDB 来源需要再查
-            ats = await getAssetTopicsByAsset(a.id);
-            topicNames = ats.map((at: any) => topicMap.get(at.topicId)?.name).filter(Boolean);
-          }
-          const primaryTopic = topicNames[0] ?? a.primaryTopic ?? null;
-          nodes.push({
-            id: a.id,
-            title: a.title,
-            type: a.type,
-            evidenceLevel: a.evidenceLevel,
-            createdAt: a.createdAt,
-            primaryTopic,
-            color: a.evidenceLevel === 'E0' ? '#ef4444' : a.evidenceLevel === 'E1' ? '#f97316' : a.evidenceLevel === 'E2' ? '#eab308' : a.evidenceLevel === 'E3' ? '#22c55e' : a.evidenceLevel === 'E4' ? '#3b82f6' : '#8b5cf6',
-            topicNames,
-            relatedIds: a.relatedIds ?? [],
-            feedbackCount: a.feedbackCount ?? 0,
-          });
-          for (const tn of topicNames) {
-            const t = Array.from(topicMap.values()).find((tt: any) => tt.name === tn);
-            if (t) links.push({ source: a.id, target: t.id, type: 'asset_topic' });
-          }
-        }
-        for (const t of topics) {
-          nodes.push({ id: t.id, title: t.name, type: 'topic', createdAt: t.createdAt ?? 0, primaryTopic: t.name, color: '#3b82f6' });
-        }
-        // asset-asset 关系
-        for (const a of assets) {
-          for (const rid of a.relatedIds ?? []) {
-            if (assets.find((x: any) => x.id === rid)) {
-              links.push({ source: a.id, target: rid, type: 'related' });
+        const { readSource } = await import('@/lib/data-source');
+        // 单次调用：本地 dev 走 server SQLite，Vercel 走 IDB fallback
+        const data = await readSource<any>('/api/graph', {
+          fallback: async () => {
+            // Vercel 端：从 IDB 构造 graph 数据
+            const { getAssets, getAssetTopicsByAsset, getTopics } = await import('@/lib/idb/operations');
+            const [assets, topics] = await Promise.all([getAssets({}), getTopics()]);
+            const topicMap = new Map(topics.map((t: any) => [t.id, t]));
+            const nodes: any[] = [];
+            const links: any[] = [];
+            for (const a of assets.slice(0, 200)) {
+              const ats = await getAssetTopicsByAsset(a.id);
+              const topicNames = ats.map((at: any) => topicMap.get(at.topicId)?.name).filter(Boolean);
+              nodes.push({
+                id: a.id,
+                title: a.title,
+                type: a.type,
+                evidenceLevel: a.evidenceLevel,
+                createdAt: a.createdAt,
+                primaryTopic: topicNames[0] ?? null,
+                color: a.evidenceLevel === 'E0' ? '#ef4444' : a.evidenceLevel === 'E1' ? '#f97316' : a.evidenceLevel === 'E2' ? '#eab308' : a.evidenceLevel === 'E3' ? '#22c55e' : a.evidenceLevel === 'E4' ? '#3b82f6' : '#8b5cf6',
+                topicNames,
+                relatedIds: a.relatedIds ?? [],
+                feedbackCount: a.feedbackCount ?? 0,
+              });
+              for (const tn of topicNames) {
+                const t = Array.from(topicMap.values()).find((tt: any) => tt.name === tn);
+                if (t) links.push({ source: a.id, target: t.id, type: 'asset_topic' });
+              }
             }
-          }
-        }
-        setData({ ok: true, nodes, links, total: nodes.length, stats: { nodeCount: nodes.length, edgeCount: links.length, topicCount: topics.length }, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
+            for (const t of topics) {
+              nodes.push({ id: t.id, title: t.name, type: 'topic', createdAt: t.createdAt ?? 0, primaryTopic: t.name, color: '#3b82f6' });
+            }
+            return { ok: true, nodes, links, total: nodes.length, stats: { nodeCount: nodes.length, edgeCount: links.length, topicCount: topics.length }, topics, sources: [], outputs: [], list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] };
+          },
+        });
+        setData(data);
       } catch (e: any) {
         setError(e.message);
       } finally {

@@ -68,13 +68,35 @@ export function AssetDetailClient({ asset, initialBody, tags, llmEnabled, timeli
   const [classifying, setClassifying] = useState(false);
   const [assetTopics, setAssetTopics] = useState<Array<{ id: string; topicId: string; topicName: string; topicSlug: string; confidence: number; assignedBy: string }>>([]);
 
+  // V1.12 统一 data-source helper
   useEffect(() => {
-    fetch(`/api/assets/${asset.id}/topics`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) setAssetTopics(data.topics);
-      })
-      .catch(() => {});
+    (async () => {
+      const { readSource } = await import('@/lib/data-source');
+      const data = await readSource<any>(`/api/assets/${asset.id}/topics`, {
+        fallback: async () => {
+          const { getAssetTopicsByAsset, getTopics } = await import('@/lib/idb/operations');
+          const [ats, topics] = await Promise.all([
+            getAssetTopicsByAsset(asset.id),
+            getTopics(),
+          ]);
+          return {
+            ok: true,
+            topics: ats.map((at: any) => {
+              const t = topics.find((tt: any) => tt.id === at.topicId);
+              return {
+                id: at.id,
+                topicId: at.topicId,
+                topicName: t?.name ?? '',
+                topicSlug: t?.slug ?? '',
+                confidence: at.confidence ?? 0,
+                assignedBy: at.assignedBy ?? 'system',
+              };
+            }),
+          };
+        },
+      });
+      if (data.ok) setAssetTopics(data.topics);
+    })();
   }, [asset.id]);
 
   useEffect(() => {
@@ -279,24 +301,33 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
   const [editConfidence, setEditConfidence] = useState(100);
 
   useEffect(() => {
-    fetch('/api/topics/list')
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) setAllTopics(data.topics);
+    (async () => {
+      const { readSource } = await import('@/lib/data-source');
+      const data = await readSource<any>('/api/topics/list', {
+        fallback: async () => {
+          const { getTopics } = await import('@/lib/idb/operations');
+          const topics = await getTopics();
+          return { ok: true, topics: topics.map((t: any) => ({ id: t.id, name: t.name, slug: t.slug })) };
+        },
       });
+      if (data.ok) setAllTopics(data.topics);
+    })();
   }, []);
 
+  // V1.12 统一 helper
   const handleReclassify = async () => {
     setClassifying(true);
     try {
-      const res = await fetch('/api/topics/classify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ assetId }),
+      const { writeSource, readSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>('/api/topics/classify', { assetId }, {
+        fallback: async (p: any) => {
+          // Vercel: 不重做 LLM 归类（需要 LLM + IDB 写操作），直接告诉用户去本地 dev 跑
+          return { ok: false, error: 'Vercel 部署版暂不支持自动归类（请在本地 dev 跑）' };
+        },
       });
-      const data = await res.json();
       if (data.ok) {
-        onTopicsChange(data.topics);
+        const r2 = await readSource<any>(`/api/assets/${assetId}/topics`);
+        if (r2.ok) onTopicsChange(r2.topics);
         router.refresh();
       } else {
         toast.error(`归类失败: ${data.error}`);
@@ -308,16 +339,23 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
 
   const handleAdd = async (topicId: string) => {
     try {
-      const res = await fetch(`/api/assets/${assetId}/topics`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ topicId, confidence: 100 }),
+      const { writeSource, readSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/assets/${assetId}/topics`, { topicId, confidence: 100 }, {
+        fallback: async (p: any) => {
+          const { addAssetTopic, getAssetTopicsByAsset, getTopics } = await import('@/lib/idb/operations');
+          await addAssetTopic({ assetId: assetId, topicId: p.topicId, confidence: p.confidence, assignedBy: 'manual' });
+          const [ats, topics] = await Promise.all([getAssetTopicsByAsset(assetId), getTopics()]);
+          return {
+            ok: true,
+            topics: ats.map((at: any) => {
+              const t = topics.find((tt: any) => tt.id === at.topicId);
+              return { id: at.id, topicId: at.topicId, topicName: t?.name ?? '', topicSlug: t?.slug ?? '', confidence: at.confidence, assignedBy: at.assignedBy };
+            }),
+          };
+        },
       });
-      const data = await res.json();
       if (data.ok) {
-        const r2 = await fetch(`/api/assets/${assetId}/topics`);
-        const d2 = await r2.json();
-        if (d2.ok) onTopicsChange(d2.topics);
+        if (data.topics) onTopicsChange(data.topics);
         setShowAdd(false);
         router.refresh();
       } else {
@@ -335,35 +373,37 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
     }
     setCreatingTopic(true);
     try {
-      const res = await fetch('/api/topics', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: newTopicName.trim() }),
+      const { writeSource: writeTopic } = await import('@/lib/data-source');
+      const data = await writeTopic<any>('/api/topics', { name: newTopicName.trim() }, {
+        fallback: async (p: any) => {
+          const { addTopic } = await import('@/lib/idb/operations');
+          const t = await addTopic({ name: p.name, slug: p.name.toLowerCase().replace(/\s+/g, '-') });
+          return { ok: true, topic: { id: t.id, name: t.name, slug: t.slug } };
+        },
       });
-      const data = await res.json();
       if (!data.ok) {
         toast.error(`创建失败: ${data.error}`);
         return;
       }
       const newTopic = data.topic;
 
-      const res2 = await fetch(`/api/assets/${assetId}/topics`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ topicId: newTopic.id, confidence: 100 }),
+      const { writeSource } = await import('@/lib/data-source');
+      const data2 = await writeSource<any>(`/api/assets/${assetId}/topics`, { topicId: newTopic.id, confidence: 100 }, {
+        fallback: async (p: any) => {
+          const { addAssetTopic } = await import('@/lib/idb/operations');
+          await addAssetTopic({ assetId: assetId, topicId: p.topicId, confidence: p.confidence, assignedBy: 'manual' });
+          return { ok: true };
+        },
       });
-      const data2 = await res2.json();
       if (!data2.ok) {
         toast.error(`关联失败: ${data2.error}`);
         return;
       }
 
-      const r2 = await fetch('/api/topics/list');
-      const d2 = await r2.json();
-      if (d2.ok) setAllTopics(d2.topics);
-      const r3 = await fetch(`/api/assets/${assetId}/topics`);
-      const d3 = await r3.json();
-      if (d3.ok) onTopicsChange(d3.topics);
+      const r2 = await readSource<any>('/api/topics/list');
+      if (r2.ok) setAllTopics(r2.topics);
+      const r3 = await readSource<any>(`/api/assets/${assetId}/topics`);
+      if (r3.ok) onTopicsChange(r3.topics);
       setNewTopicName('');
       router.refresh();
     } catch (e: any) {
@@ -376,8 +416,15 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
   const handleRemove = async (topicId: string) => {
     if (!confirm('确定移除该主题关联？')) return;
     try {
-      const res = await fetch(`/api/assets/${assetId}/topics?topicId=${topicId}`, { method: 'DELETE' });
-      const data = await res.json();
+      const { writeSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/assets/${assetId}/topics?topicId=${topicId}`, undefined, {
+        method: 'DELETE',
+        fallback: async () => {
+          const { deleteAssetTopicsByAsset } = await import('@/lib/idb/operations');
+          await deleteAssetTopicsByAsset(assetId);
+          return { ok: true };
+        },
+      });
       if (data.ok) {
         onTopicsChange(topics.filter(t => t.topicId !== topicId));
         router.refresh();
@@ -391,16 +438,20 @@ function TopicsPanel({ assetId, topics, onTopicsChange, classifying, setClassify
 
   const handleUpdateConfidence = async (topicId: string) => {
     try {
-      const res = await fetch(`/api/assets/${assetId}/topics`, {
+      const { writeSource, readSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/assets/${assetId}/topics`, { topicId, confidence: editConfidence }, {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ topicId, confidence: editConfidence }),
+        fallback: async (p: any) => {
+          // Vercel: 暂不支持 IDB update (Dexie schema 没建 assetTopics by topicId index)，先 delete + insert
+          const { getAssetTopicsByAsset, deleteAssetTopicsByAsset, addAssetTopic } = await import('@/lib/idb/operations');
+          await deleteAssetTopicsByAsset(assetId);
+          await addAssetTopic({ assetId, topicId: p.topicId, confidence: p.confidence, assignedBy: 'manual' });
+          return { ok: true };
+        },
       });
-      const data = await res.json();
       if (data.ok) {
-        const r2 = await fetch(`/api/assets/${assetId}/topics`);
-        const d2 = await r2.json();
-        if (d2.ok) onTopicsChange(d2.topics);
+        const r2 = await readSource<any>(`/api/assets/${assetId}/topics`);
+        if (r2.ok) onTopicsChange(r2.topics);
         setEditingTopicId(null);
         router.refresh();
       } else {
