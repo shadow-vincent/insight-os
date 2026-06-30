@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { useAssets } from '@/lib/idb/hooks';
 
 interface AssetItem {
   id: string;
@@ -18,9 +19,30 @@ export default function AssetsPageClient({ all }: { all: AssetItem[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showMultiModal, setShowMultiModal] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
-  const [list, setList] = useState<AssetItem[]>(all);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string; hasFile: boolean } | null>(null);
   const toast = useToast();
+
+  // V1.10: 从 IndexedDB 优先读（demo / Vercel 上 server 没数据时）
+  const { data: idbAssets } = useAssets({ type: 'asset' });
+  const [list, setList] = useState<AssetItem[]>(all);
+
+  useEffect(() => {
+    if (idbAssets && idbAssets.length > 0) {
+      const mapped: AssetItem[] = idbAssets.map(a => ({
+        id: a.id,
+        title: a.title,
+        oneSentenceInsight: a.oneSentenceInsight ?? null,
+        evidenceLevel: a.evidenceLevel,
+        priority: a.priority ?? null,
+        tagsJson: a.tagsJson,
+        filePath: a.filePath,
+      }));
+      setList(mapped);
+    } else if (idbAssets) {
+      // idbAssets 是空数组（不是 null）→ 覆盖 props
+      setList([]);
+    }
+  }, [idbAssets]);
 
   const toggleSelect = (id: string, e: React.MouseEvent) => {
     e.preventDefault();

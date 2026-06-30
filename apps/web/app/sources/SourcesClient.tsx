@@ -13,9 +13,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSources } from '@/lib/idb/hooks';
+import { addSource, updateSource, deleteSource } from '@/lib/idb/operations';
 
 interface SourceRow {
   id: string;
@@ -59,7 +61,18 @@ export function SourcesClient({ initialSources }: Props) {
   const [newTitle, setNewTitle] = useState('');
   const [newHandle, setNewHandle] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState<string | null>(null); // 正在同步的 source id
+  const [syncing, setSyncing] = useState<string | null>(null);
+
+  // V1.10: 从 IndexedDB 读 sources（demo / Vercel 上 server 没数据时）
+  const { data: idbSources } = useSources();
+
+  useEffect(() => {
+    if (idbSources && idbSources.length > 0) {
+      setSources(idbSources as any);
+    } else if (idbSources) {
+      setSources([]);
+    }
+  }, [idbSources]);
 
   const handleAdd = async () => {
     if (addType === 'rss' && !newUrl.trim()) {
@@ -70,31 +83,55 @@ export function SourcesClient({ initialSources }: Props) {
       setError(`${addType === 'twitter' ? 'Twitter handle' : 'subreddit/user 名'} 不能为空`);
       return;
     }
-    setError(null);
+setError(null);
     setAdding(true);
     try {
-      const body: Record<string, string> = { type: addType };
-      if (addType === 'rss') {
-        body.url = newUrl.trim();
-        if (newTitle.trim()) body.title = newTitle.trim();
-      } else {
-        body.handle = newHandle.trim();
-        if (newTitle.trim()) body.title = newTitle.trim();
-      }
-      const res = await fetch('/api/sources', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error || '添加失败');
-        return;
+      // V1.10: 直接写 IndexedDB（同时尝试调 server route 抓 RSS 内容）
+      const id = `src_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const sourceData: any = {
+        id,
+        type: addType,
+        url: addType === 'rss' ? newUrl.trim() : '',
+        title: newTitle.trim() || newUrl.trim() || newHandle.trim() || 'Untitled',
+        enabled: 1,
+        lastFetchedAt: null,
+        lastError: null,
+        fetchIntervalMin: 60,
+        newItemsCount: 0,
+        totalItemsCount: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      // 尝试调 server route 抓 RSS
+      try {
+        const res = await fetch('/api/sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: addType,
+            url: addType === 'rss' ? newUrl.trim() : undefined,
+            title: sourceData.title,
+            handle: addType !== 'rss' ? newHandle.trim() : undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.source) {
+            await addSource({ ...sourceData, id: data.source.id, ...data.source });
+          } else {
+            await addSource(sourceData);
+          }
+        } else {
+          await addSource(sourceData);
+        }
+      } catch {
+        // server 不可用 → 直接写 IDB
+        await addSource(sourceData);
       }
       setNewUrl('');
       setNewTitle('');
       setNewHandle('');
-      router.refresh();
+      window.location.reload();
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -103,25 +140,44 @@ export function SourcesClient({ initialSources }: Props) {
   };
 
   const handleToggle = async (id: string, enabled: boolean) => {
-    await fetch(`/api/sources/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !enabled }),
-    });
-    router.refresh();
+    try {
+      // V1.10: 直接更新 IDB
+      await updateSource(id, { enabled: enabled ? 1 : 0 });
+      // 同步到 server（可选，server 不可用时静默失败）
+      fetch(`/api/sources/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !enabled }),
+      }).catch(() => {});
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除该信息源及其所有已抓内容？')) return;
-    await fetch(`/api/sources/${id}`, { method: 'DELETE' });
-    router.refresh();
+    try {
+      // V1.10: 直接删 IDB
+      await deleteSource(id);
+      fetch(`/api/sources/${id}`, { method: 'DELETE' }).catch(() => {});
+      window.location.reload();
+    } catch (e: any) {
+      setError(e.message);
+    }
   };
 
   const handleSync = async (id: string) => {
     setSyncing(id);
     try {
-      await fetch(`/api/sources/${id}/sync`, { method: 'POST' });
-      router.refresh();
+      // 先尝试 server route 抓 RSS
+      try {
+        await fetch(`/api/sources/${id}/sync`, { method: 'POST' });
+      } catch {}
+      // server route 写入 sourceItems 到 server SQLite，IDB 没数据
+      // TODO: 让 server route 也写 IDB（Phase 2.12 后做）
+      // 现在只是 trigger sync，refresh 页面让 useSources 重新读
+      window.location.reload();
     } finally {
       setSyncing(null);
     }
@@ -130,8 +186,10 @@ export function SourcesClient({ initialSources }: Props) {
   const handleSyncAll = async () => {
     setSyncing('__all__');
     try {
-      await fetch('/api/sources/sync-all', { method: 'POST' });
-      router.refresh();
+      try {
+        await fetch('/api/sources/sync-all', { method: 'POST' });
+      } catch {}
+      window.location.reload();
     } finally {
       setSyncing(null);
     }

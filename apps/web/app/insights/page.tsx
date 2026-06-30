@@ -24,12 +24,14 @@ import { sql, desc, ne, eq, and } from 'drizzle-orm';
 import Link from 'next/link';
 import { isLLMConfigured } from '@insight-os/core';
 import { InsightsClient } from './InsightsClient';
+import { InsightsClientFromIDB } from './InsightsClientFromIDB';
 
 export const dynamic = 'force-dynamic';
 
 export default function InsightsPage() {
   const db = getDb();
-  if (!db) return null;
+  // V1.10: server 没 SQLite → 让 client 从 IndexedDB 读
+  if (!db) return <InsightsClientFromIDB />;
   const sqlite = getRawSqlite();
   const now = Math.floor(Date.now() / 1000);
   const DAY = 86400;
