@@ -90,7 +90,7 @@ export default function GraphClient() {
         for (const t of topics) {
           nodes.push({ id: t.id, title: t.name, type: 'topic' });
         }
-        setData({ ok: true, nodes, links, total: nodes.length, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
+        setData({ ok: true, nodes, links, total: nodes.length, stats: { nodeCount: nodes.length, edgeCount: links.length, topicCount: topics.length }, sources: [], outputs: [], topics, list: [], all: [], kernels: [], assets: [], feedbacks: [], kernelCandidates: [], counts: {}, recent: [] });
       } catch (e: any) {
         setError(e.message);
       } finally {
