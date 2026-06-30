@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
+import { useAssets } from '@/lib/idb/hooks';
+import { updateAsset, deleteAsset, getAsset } from '@/lib/idb/operations';
+import type { AssetRow } from '@/lib/idb/db';
 
 interface Candidate {
   id: string;
@@ -52,25 +55,59 @@ export default function CandidatesPage() {
 
   const handlePromoteClick = async (c: Candidate) => {
     if (!confirm(`确认将「${c.title}」入库为正式资产？`)) return;
-    const res = await fetch(`/api/candidates/${c.id}/promote`, { method: 'POST' });
-    const data = await res.json();
-    if (data.ok) {
+    try {
+      // V1.10: 直接更新 IndexedDB（status: candidate → in_use）
+      // TODO: 完整 promote 流程包含 LLM 生成 12 章节，目前简化版只改 status
+      await updateAsset(c.id, { status: 'in_use', processedAt: Date.now() });
       const next = list.map(c2 => c2.id === c.id ? { ...c2, status: 'in_use' } : c2);
       setList(next);
-      toast.success(`「${c.title}」已入库`);
-    } else {
-      toast.error('入库失败: ' + (data.error || '未知错误'));
+      toast.success(`「${c.title}」已入库（demo 模式：仅更新状态）`);
+    } catch (e: any) {
+      toast.error('入库失败: ' + e.message);
     }
   };
 
   useEffect(() => {
-    fetch('/api/candidates')
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) setList(data.candidates);
-      })
-      .finally(() => setLoading(false));
+    // V1.10: 从 IndexedDB 读 candidates（status=candidate/in_use/archived）
+    // TODO: filter 应该是 ['candidate', 'in_use', 'archived']
   }, []);
+
+  const { data: assets, loading: assetsLoading, refetch } = useAssets({ status: ['candidate', 'in_use', 'archived'] });
+
+  useEffect(() => {
+    if (assets) {
+      // 转换 AssetRow → Candidate
+      const candidates: Candidate[] = (assets || []).map(a => {
+        let tags: string[] = [];
+        try { const t = JSON.parse(a.tagsJson || '[]'); if (Array.isArray(t)) tags = t; } catch {}
+        return {
+          id: a.id,
+          title: a.title,
+          status: a.status,
+          type: a.type,
+          evidenceLevel: a.evidenceLevel,
+          priority: a.priority ?? null,
+          source: a.source ?? null,
+          sourceType: a.sourceType ?? null,
+          oneSentenceInsight: a.oneSentenceInsight ?? null,
+          antiCommonSense: a.antiCommonSense ?? null,
+          tags,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+        };
+      });
+      // 按 scoreTotal 倒序
+      candidates.sort((a, b) => {
+        const scoreA = assets?.find(x => x.id === a.id)?.scoreTotal ?? 0;
+        const scoreB = assets?.find(x => x.id === b.id)?.scoreTotal ?? 0;
+        return scoreB - scoreA;
+      });
+      setList(candidates);
+      setLoading(false);
+    }
+  }, [assets]);
+
+  const reloadList = async () => { await refetch(); };
 
   const filtered = list.filter(c => {
     if (filter === 'all') return true;
@@ -266,16 +303,12 @@ function CandidateRow({ c, expanded, isSelected, selectable, onToggle, onSelect,
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`确认删除「${c.title}」？\n（关联的 .md 文件也会被删除）`)) return;
+    if (!confirm(`确认删除「${c.title}」？`)) return;
     try {
-      const res = await fetch(`/api/candidates/${c.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success(`已删除「${c.title}」`);
-        onDeleted(c.id);
-      } else {
-        toast.error('删除失败: ' + (data.error || '未知错误'));
-      }
+      // V1.10: 直接从 IndexedDB 删除（demo 模式不删 .md 文件）
+      await deleteAsset(c.id);
+      toast.success(`已删除「${c.title}」`);
+      onDeleted(c.id);
     } catch (err: any) {
       toast.error('删除失败: ' + err.message);
     }
