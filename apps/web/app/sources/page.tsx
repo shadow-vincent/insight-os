@@ -36,7 +36,8 @@ interface SourceRow {
 
 export default function SourcesPage() {
   const db = getDb();
-  if (!db) return null;
+  // V1.10: server 没 SQLite → 让 client 从 IndexedDB 读
+  if (!db) return <SourcesClient initialSources={[]} />;
   const rows = db.all(sql`
     SELECT id, type, url, title, enabled, last_fetched_at as lastFetchedAt,
            last_error as lastError, fetch_interval_min as fetchIntervalMin,
