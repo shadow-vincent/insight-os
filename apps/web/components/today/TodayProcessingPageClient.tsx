@@ -200,6 +200,11 @@ export function TodayProcessingPageClient({
   const finalReadyTopics = clientReadyTopics ?? readyTopics;
   const finalKernelCandidates = clientKernelCandidates ?? kernelCandidates;
   const finalSources = clientSources ?? sourceRows;
+  // totalCount / inboxCount 从 IDB 候选数 + inbox 数算出
+  const finalTotalCount = clientCandidates ? clientCandidates.length : totalCount;
+  const finalInboxCount = clientCandidates
+    ? clientCandidates.filter((c: any) => c.recommendedAction === 'ignore' || c.scoreTotal < 50).length
+    : inboxCount;
 
   const handleSubmit = async () => {
     if (!material.trim()) { setError('素材不能为空'); return; }
@@ -207,17 +212,46 @@ export function TodayProcessingPageClient({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/materials/paste', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: material.trim(), source: 'manual' }),
+      // V1.10: 直接写 IndexedDB（demo / Vercel 上 server API 不可用）
+      const DexieModule = await import('dexie');
+      const Dexie = (DexieModule as any).default || DexieModule;
+      const db = new Dexie('insight-os');
+      db.version(1).stores({
+        assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) { setError(data.error || '提交失败'); return; }
+
+      const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const now = Date.now();
+      const content = material.trim();
+      // 简化版：light 卡 + 状态 inbox
+      // TODO: 完整 intake 流程（LLM 评分 + 升级 candidate）
+      await db.assets.put({
+        id,
+        type: 'light',
+        status: 'inbox',
+        title: content.slice(0, 50),
+        evidenceLevel: 'E0',
+        tagsJson: '[]',
+        source: 'manual',
+        sourceType: 'original',
+        filePath: `/inbox/${id}.md`,
+        fileMtime: now,
+        fileHash: id,
+        feedbackCount: 0,
+        scoreTotal: 0,
+        scoreBreakdownJson: '{}',
+        outputCount: 0,
+        isKernelCandidate: 0,
+        isKernelApproved: 0,
+        relatedIdsJson: '[]',
+        createdAt: now,
+        updatedAt: now,
+      });
+
       setMaterial('');
       router.push('/candidates');
     } catch (e: any) {
-      setError(e.message || '网络错误');
+      setError(e.message || '提交失败');
     } finally {
       setSubmitting(false);
     }
@@ -236,7 +270,7 @@ export function TodayProcessingPageClient({
     { icon: '📋', label: '粘贴素材', desc: '直接复制一段文字', bg: 'rgba(26, 54, 93, 0.08)', color: '#1a365d' },
     { icon: '📎', label: '上传文件', desc: 'PDF / Word / Markdown', bg: 'rgba(109, 91, 201, 0.10)', color: '#6d5bc9' },
     { icon: '🤖', label: 'OpenClaw 同步', desc: '1,152 张概念卡待筛', bg: '#ecfdf5', color: '#059669', href: '/inbox' },
-    { icon: '📥', label: '从收集箱选', desc: `${inboxCount} 条未加工`, bg: '#fffbeb', color: '#d97706', href: '/inbox' },
+    { icon: '📥', label: '从收集箱选', desc: `${finalInboxCount} 条未加工`, bg: '#fffbeb', color: '#d97706', href: '/inbox' },
   ];
 
   return (
@@ -413,7 +447,7 @@ export function TodayProcessingPageClient({
               今日推荐加工 · 5 条
             </h2>
             <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-              {totalCount > 5 ? `显示前 5 / 共 ${totalCount}` : `共 ${totalCount}`}
+              {finalTotalCount > 5 ? `显示前 5 / 共 ${finalTotalCount}` : `共 ${finalTotalCount}`}
               <span style={{ marginLeft: 8 }}>· 按价值排序 · AI 已自动评估</span>
               <Link href="/candidates" style={{ marginLeft: 12, color: 'var(--primary)', textDecoration: 'none' }}>查看全部 →</Link>
             </div>
