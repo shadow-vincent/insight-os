@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { GlobalSearchModal } from './GlobalSearchModal';
 
-// v1.8.0 主动判断加工系统 · 6 主导航
-// 设计原则：每日工作流 2 / 判断资产 2 / 输出方法论 2（按 v3 原型对齐）
+// v1.8.0 主动判断加工系统 · 7 主导航
+// 设计原则：每日工作流 2 / 判断资产 3 / 输出方法论 2
+// 7 入口：V1.11.16 把"资产图谱"加回（V1.7 砍过但 Vincent 找不到，V1.11.16 复原）
 const navItems = [
   { section: '每日工作流', href: '/', label: '今日加工', icon: 'today' },
   { section: '每日工作流', href: '/candidates', label: '候选判断', icon: 'candidates' },
   { section: '判断资产', href: '/assets', label: '判断资产', icon: 'assets' },
   { section: '判断资产', href: '/topics', label: '主题资产包', icon: 'topic' },
+  { section: '判断资产', href: '/graph', label: '资产图谱', icon: 'graph' },
   { section: '输出与方法论', href: '/output', label: '输出包', icon: 'output' },
   { section: '输出与方法论', href: '/kernel', label: '我的方法论', icon: 'methodology' },
 ];
