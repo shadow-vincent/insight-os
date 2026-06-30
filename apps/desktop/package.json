@@ -1,6 +1,6 @@
 {
   "name": "insight-os-desktop",
-  "version": "1.7.1",
+  "version": "1.10.0",
   "description": "Insight Asset OS desktop app (Electron)",
   "main": "main.js",
   "author": {

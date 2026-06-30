@@ -212,41 +212,21 @@ export function TodayProcessingPageClient({
     setSubmitting(true);
     setError(null);
     try {
-      // V1.10: 直接写 IndexedDB（demo / Vercel 上 server API 不可用）
-      const DexieModule = await import('dexie');
-      const Dexie = (DexieModule as any).default || DexieModule;
-      const db = new Dexie('insight-os');
-      db.version(1).stores({
-        assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
-      });
-
-      const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const now = Date.now();
-      const content = material.trim();
-      // 简化版：light 卡 + 状态 inbox
-      // TODO: 完整 intake 流程（LLM 评分 + 升级 candidate）
-      await db.assets.put({
-        id,
-        type: 'light',
-        status: 'inbox',
-        title: content.slice(0, 50),
-        evidenceLevel: 'E0',
-        tagsJson: '[]',
-        source: 'manual',
-        sourceType: 'original',
-        filePath: `/inbox/${id}.md`,
-        fileMtime: now,
-        fileHash: id,
-        feedbackCount: 0,
-        scoreTotal: 0,
-        scoreBreakdownJson: '{}',
-        outputCount: 0,
-        isKernelCandidate: 0,
-        isKernelApproved: 0,
-        relatedIdsJson: '[]',
-        createdAt: now,
-        updatedAt: now,
-      });
+      const { clientIntakeLightCard, getLLMConfig } = await import('@/lib/idb/operations');
+      const cfg = await getLLMConfig();
+      if (cfg) {
+        // V1.11: client 端 LLM 评分（Vercel demo 必备）
+        const result = await clientIntakeLightCard(material.trim(), 'manual');
+        if (!result.ok && result.lightCards.length === 0) {
+          // LLM 失败 → fallback 写一条 inbox 卡
+          await writeInboxCard(material.trim());
+        } else if (result.errors.length > 0) {
+          console.warn('[handleSubmit] intake errors:', result.errors);
+        }
+      } else {
+        // V1.10: 无 LLM 配置 → 写一条 inbox 卡
+        await writeInboxCard(material.trim());
+      }
 
       setMaterial('');
       router.push('/candidates');
@@ -255,6 +235,40 @@ export function TodayProcessingPageClient({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // helper: 写一条 inbox light 卡（无 LLM 时）
+  const writeInboxCard = async (content: string) => {
+    const DexieModule = await import('dexie');
+    const Dexie = (DexieModule as any).default || DexieModule;
+    const db = new Dexie('insight-os');
+    db.version(1).stores({
+      assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+    });
+    const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const now = Date.now();
+    await db.assets.put({
+      id,
+      type: 'light',
+      status: 'inbox',
+      title: content.slice(0, 50),
+      evidenceLevel: 'E0',
+      tagsJson: '[]',
+      source: 'manual',
+      sourceType: 'original',
+      filePath: `/inbox/${id}.md`,
+      fileMtime: now,
+      fileHash: id,
+      feedbackCount: 0,
+      scoreTotal: 0,
+      scoreBreakdownJson: '{}',
+      outputCount: 0,
+      isKernelCandidate: 0,
+      isKernelApproved: 0,
+      relatedIdsJson: '[]',
+      createdAt: now,
+      updatedAt: now,
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

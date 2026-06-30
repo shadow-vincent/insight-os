@@ -2,6 +2,7 @@
 
 import type { UserKernelRow } from '@insight-os/db';
 import { useState, useEffect } from 'react';
+import { addUserKernel, updateUserKernel } from '@/lib/idb/operations';
 
 const CATEGORIES = [
   { id: 'belief' as const,     label: '底层信念',     color: '#6366f1', hint: '长期价值主张 / 哲学立场' },
@@ -53,43 +54,72 @@ export default function KernelEditor({ open, initial, onClose, onSaved }: Kernel
     setSaving(true);
     setError(null);
     try {
-      let res: Response;
+      // V1.11: 优先写 IndexedDB
       if (initial) {
-        // PATCH
-        res = await fetch(`/api/kernel/${initial.id}`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            category,
-            content: content.trim(),
-            confidence,
-            counterExample: counterExample.trim() || null,
-            scope: scope.trim() || null,
-          }),
+        await updateUserKernel(initial.id, {
+          category,
+          content: content.trim(),
+          confidence,
+          counterExample: counterExample.trim() || undefined,
+          scope: scope.trim() || undefined,
         });
       } else {
-        // POST
-        res = await fetch('/api/kernel', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            category,
-            content: content.trim(),
-            confidence,
-            counterExample: counterExample.trim() || null,
-            scope: scope.trim() || null,
-          }),
+        const id = `kernel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        await addUserKernel({
+          id,
+          category,
+          kind: 'belief' as any,
+          content: content.trim(),
+          confidence,
+          counterExample: counterExample.trim() || undefined,
+          scope: scope.trim() || undefined,
+          evidenceAssetIdsJson: '[]',
+          referencedCount: 0,
+          status: 'active',
+          sortOrder: 99,
         });
       }
-      const data = await res.json();
-      if (data.ok) {
-        onSaved();
-        onClose();
-      } else {
-        setError(data.error ?? '保存失败');
-      }
+      onSaved?.();
+      onClose();
     } catch (e: any) {
-      setError(e.message ?? String(e));
+      // 回退 server API
+      try {
+        let res: Response;
+        if (initial) {
+          res = await fetch(`/api/kernel/${initial.id}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              content: content.trim(),
+              confidence,
+              counterExample: counterExample.trim() || null,
+              scope: scope.trim() || null,
+            }),
+          });
+        } else {
+          res = await fetch('/api/kernel', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              category,
+              content: content.trim(),
+              confidence,
+              counterExample: counterExample.trim() || null,
+              scope: scope.trim() || null,
+            }),
+          });
+        }
+        const data = await res.json();
+        if (data.ok) {
+          onSaved?.();
+          onClose();
+        } else {
+          setError(data.error ?? '保存失败');
+        }
+      } catch (e2: any) {
+        setError(e.message || e2.message || String(e));
+      }
     } finally {
       setSaving(false);
     }

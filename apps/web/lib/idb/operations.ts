@@ -476,3 +476,133 @@ export async function getLLMConfig(): Promise<{ baseUrl: string; apiKey: string;
 export async function setLLMConfig(cfg: { baseUrl: string; apiKey: string; model: string }): Promise<void> {
   await setPreference('llm-config', cfg);
 }
+
+/**
+ * V1.11: client 端直接调 LLM 评分 + 升级 light 卡为 candidate
+ * 不依赖 server SQLite（Vercel demo 必备）
+ */
+export interface LLMCallResult {
+  ok: boolean;
+  data: any;
+  error?: string;
+}
+
+export async function callLLMDirect<T = any>(
+  systemPrompt: string,
+  userPrompt: string,
+  options: { model?: string; temperature?: number; jsonMode?: boolean } = {}
+): Promise<LLMCallResult> {
+  const cfg = await getLLMConfig();
+  if (!cfg) {
+    return { ok: false, data: null, error: 'LLM 未配置：请在设置页配 API key' };
+  }
+  try {
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: options.model ?? cfg.model ?? 'deepseek-chat',
+        temperature: options.temperature ?? 0.4,
+        ...(options.jsonMode !== false ? { response_format: { type: 'json_object' } } : {}),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, data: null, error: `LLM ${res.status}: ${text.slice(0, 200)}` };
+    }
+    const json = await res.json();
+    const content = json?.choices?.[0]?.message?.content;
+    if (!content) return { ok: false, data: null, error: 'LLM 返回空' };
+    if (options.jsonMode !== false) {
+      try {
+        return { ok: true, data: JSON.parse(content) as T };
+      } catch {
+        // 尝试从 markdown code block 提取
+        const m = content.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+        if (m) {
+          try { return { ok: true, data: JSON.parse(m[1]) as T }; } catch {}
+        }
+        return { ok: false, data: null, error: 'LLM JSON 解析失败' };
+      }
+    }
+    return { ok: true, data: content as any };
+  } catch (e: any) {
+    return { ok: false, data: null, error: e.message || String(e) };
+  }
+}
+
+/**
+ * V1.11: client 端简化 intake
+ * 给素材评分 + 抽 light 卡
+ * 不依赖 server SQLite
+ */
+export async function clientIntakeLightCard(rawContent: string, sourceType: string = 'manual'): Promise<{
+  ok: boolean;
+  lightCards: any[];
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  const lightCards: any[] = [];
+
+  // 1. 简单 LLM 调用
+  const system = `你是一个判断力提炼助手。给定一段素材（笔记 / 文章 / 想法），输出 1-3 张「轻量判断卡」（light card）。
+每张卡 JSON 格式：
+{
+  "title": "10 字以内的核心判断标题",
+  "oneSentenceInsight": "一句话洞察（30-80 字）",
+  "evidenceLevel": "E0|E1|E2|E3|E4|E5"（E0=无证据 · E1=个人观察 · E2=有 1 个案例 · E3=多案例 · E4=实践验证 · E5=反复实践）,
+  "scoreTotal": 0-100（综合价值分）,
+  "tags": ["标签1", "标签2"],
+  "antiCommonSense": "反常识判断（如果素材里有）或 null"
+}
+只输出 JSON 对象 { "cards": [...] }，不解释。`;
+
+  const user = `素材（sourceType=${sourceType}）：\n\n${rawContent.slice(0, 6000)}\n\n请提炼轻量卡：`;
+
+  const result = await callLLMDirect<{ cards: any[] }>(system, user, { temperature: 0.4, jsonMode: true });
+
+  if (!result.ok) {
+    return { ok: false, lightCards, errors: [result.error || 'LLM 失败'] };
+  }
+
+  const cards = result.data?.cards || [];
+  const now = Date.now();
+  const db = await getDb();
+  for (const c of cards.slice(0, 3)) {
+    const id = `lc_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const row: AssetRow = {
+      id,
+      type: 'light',
+      status: 'candidate',
+      title: c.title || rawContent.slice(0, 30),
+      evidenceLevel: c.evidenceLevel || 'E1',
+      tagsJson: JSON.stringify(c.tags || []),
+      source: 'manual',
+      sourceType: sourceType as any,
+      oneSentenceInsight: c.oneSentenceInsight || null,
+      antiCommonSense: c.antiCommonSense || null,
+      filePath: `/inbox/${id}.md`,
+      fileMtime: now,
+      fileHash: id,
+      feedbackCount: 0,
+      scoreTotal: c.scoreTotal || 60,
+      scoreBreakdownJson: JSON.stringify({ llm: c.scoreTotal || 60 }),
+      outputCount: 0,
+      isKernelCandidate: (c.scoreTotal || 0) >= 75 ? 1 : 0,
+      isKernelApproved: 0,
+      relatedIdsJson: '[]',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await db.assets.put(row);
+    lightCards.push(row);
+  }
+  return { ok: true, lightCards, errors };
+}

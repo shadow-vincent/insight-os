@@ -5,6 +5,8 @@ import type { UserKernelRow } from '@insight-os/db';
 import KernelCard from '@/components/KernelCard';
 import KernelEditor from '@/components/KernelEditor';
 import { useToast } from '@/components/ToastProvider';
+import { updateUserKernel, addUserKernel, getUserKernels } from '@/lib/idb/operations';
+import { seedDefaultKernels, seedSixLayersKernels } from '@/lib/idb/kernel-seeds';
 
 type Filter = 'all' | 'belief' | 'contrarian' | 'expertise' | 'challenge';
 
@@ -119,74 +121,90 @@ export default function KernelListClient() {
   const handleArchive = async (k: UserKernelRow) => {
     if (!confirm(`归档「${k.content.slice(0, 30)}…」？归档后可以恢复。`)) return;
     try {
-      const r = await fetch(`/api/kernel/${k.id}`, { method: 'DELETE' });
-      const d = await r.json();
-      if (d.ok) {
-        toast.success('已归档');
-        load();
-      } else {
-        toast.error(d.error ?? '归档失败');
-      }
+      // V1.11: 直接写 IndexedDB
+      await updateUserKernel(k.id, { status: 'archived' });
+      toast.success('已归档');
+      load();
     } catch (e: any) {
-      toast.error(e.message);
+      // 回退 server API（本地 dev）
+      try {
+        const r = await fetch(`/api/kernel/${k.id}`, { method: 'DELETE' });
+        const d = await r.json();
+        if (d.ok) { toast.success('已归档'); load(); }
+        else { toast.error(d.error ?? '归档失败'); }
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     }
   };
 
   const handleReactivate = async (k: UserKernelRow) => {
     try {
-      const r = await fetch(`/api/kernel/${k.id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: 'active' }),
-      });
-      const d = await r.json();
-      if (d.ok) {
-        toast.success('已恢复');
-        load();
-      } else {
-        toast.error(d.error ?? '恢复失败');
-      }
+      await updateUserKernel(k.id, { status: 'active' });
+      toast.success('已恢复');
+      load();
     } catch (e: any) {
-      toast.error(e.message);
+      try {
+        const r = await fetch(`/api/kernel/${k.id}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ status: 'active' }),
+        });
+        const d = await r.json();
+        if (d.ok) { toast.success('已恢复'); load(); }
+        else { toast.error(d.error ?? '恢复失败'); }
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     }
   };
 
   const handleVerify = async (k: UserKernelRow) => {
     try {
-      const r = await fetch(`/api/kernel/verify/${k.id}`, { method: 'POST' });
-      const d = await r.json();
-      if (d.ok) {
-        toast.success('已标记「重新想过了」');
-        load();
-      } else {
-        toast.error(d.error ?? '标记失败');
-      }
+      await updateUserKernel(k.id, { lastVerifiedAt: Date.now() });
+      toast.success('已标记「重新想过了」');
+      load();
     } catch (e: any) {
-      toast.error(e.message);
+      try {
+        const r = await fetch(`/api/kernel/verify/${k.id}`, { method: 'POST' });
+        const d = await r.json();
+        if (d.ok) { toast.success('已标记「重新想过了」'); load(); }
+        else { toast.error(d.error ?? '标记失败'); }
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     }
   };
 
   const seedPreset = async (kind: 'default' | 'six-layers') => {
     setSeeding(kind);
     try {
-      const r = await fetch(`/api/kernel/seed-${kind}`, { method: 'POST' });
-      const d = await r.json();
-      if (d.ok) {
-        toast.success(d.message ?? `已种入 ${d.seeded} 条`);
+      // V1.11: 直接写 IndexedDB
+      const result = kind === 'default' ? await seedDefaultKernels() : await seedSixLayersKernels();
+      if (result.seeded > 0) {
+        toast.success(`已种入 ${result.seeded} 条`);
         load();
-      } else if (d.existingCount) {
-        toast.info(`已存在 ${d.existingCount} 条`);
-      } else {
-        toast.error(d.error ?? '种子失败');
+      } else if (result.existingCount > 0) {
+        toast.info(`已存在 ${result.existingCount} 条`);
+        load();
       }
     } catch (e: any) {
-      toast.error(e.message);
+      // 回退 server API
+      try {
+        const r = await fetch(`/api/kernel/seed-${kind}`, { method: 'POST' });
+        const d = await r.json();
+        if (d.ok) { toast.success(d.message ?? `已种入 ${d.seeded} 条`); load(); }
+        else if (d.existingCount) { toast.info(`已存在 ${d.existingCount} 条`); }
+        else { toast.error(d.error ?? '种子失败'); }
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     } finally {
       setSeeding(null);
     }
   };
 
-  // v1.6: 一键提炼 Kernel
+  // v1.6: 一键提炼 Kernel（需要 LLM 配 API key，Vercel demo 不支持）
   const inferFromAssets = async () => {
     setInferring(true);
     setInferError(null);
@@ -202,7 +220,7 @@ export default function KernelListClient() {
       }
     } catch (e: any) {
       setInferError(e.message);
-      toast.error(e.message);
+      toast.error('需要 LLM 配置 + server SQLite（V1.11 demo 暂不支持）');
     } finally {
       setInferring(false);
     }
@@ -212,29 +230,51 @@ export default function KernelListClient() {
   const saveInferredCandidate = async () => {
     if (!inferCandidate) return;
     try {
-      const r = await fetch('/api/kernel', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          category: inferCandidate.category,
-          kind: inferCandidate.kind,
-          content: inferCandidate.content,
-          counterExample: inferCandidate.counterExample,
-          scope: inferCandidate.scope,
-          confidence: inferCandidate.confidence,
-          evidenceAssetIds: inferCandidate.evidenceAssetIds,
-        }),
+      // V1.11: 直接写 IndexedDB
+      const id = `kernel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      await addUserKernel({
+        id,
+        category: inferCandidate.category as any,
+        kind: inferCandidate.kind as any,
+        content: inferCandidate.content,
+        counterExample: inferCandidate.counterExample || undefined,
+        scope: inferCandidate.scope || undefined,
+        confidence: inferCandidate.confidence || 70,
+        evidenceAssetIdsJson: JSON.stringify(inferCandidate.evidenceAssetIds || []),
+        referencedCount: 0,
+        status: 'active',
+        sortOrder: 99,
       });
-      const d = await r.json();
-      if (d.ok) {
-        toast.success('已保存为 Kernel');
-        setInferCandidate(null);
-        load();
-      } else {
-        toast.error(d.error ?? '保存失败');
-      }
+      toast.success('已保存为 Kernel');
+      setInferCandidate(null);
+      load();
     } catch (e: any) {
-      toast.error(e.message);
+      // 回退 server API
+      try {
+        const r = await fetch('/api/kernel', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            category: inferCandidate.category,
+            kind: inferCandidate.kind,
+            content: inferCandidate.content,
+            counterExample: inferCandidate.counterExample,
+            scope: inferCandidate.scope,
+            confidence: inferCandidate.confidence,
+            evidenceAssetIds: inferCandidate.evidenceAssetIds,
+          }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          toast.success('已保存为 Kernel');
+          setInferCandidate(null);
+          load();
+        } else {
+          toast.error(d.error ?? '保存失败');
+        }
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     }
   };
 

@@ -14,9 +14,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { syncSource } from '@/lib/idb/client-rss';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSources } from '@/lib/idb/hooks';
+import { useToast } from '@/components/ToastProvider';
 import { addSource, updateSource, deleteSource } from '@/lib/idb/operations';
 
 interface SourceRow {
@@ -54,6 +56,7 @@ const REDDIT_PRESETS = [
 
 export function SourcesClient({ initialSources }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [sources, setSources] = useState<SourceRow[]>(initialSources);
   const [addType, setAddType] = useState<'rss' | 'twitter' | 'reddit'>('rss');
   const [adding, setAdding] = useState(false);
@@ -170,14 +173,24 @@ setError(null);
   const handleSync = async (id: string) => {
     setSyncing(id);
     try {
-      // 先尝试 server route 抓 RSS
+      // V1.11: client 端直接 fetch RSS + 写 IDB
+      const src = sources.find(s => s.id === id);
+      if (!src) return;
+      const result = await syncSource(src as any);
+      if (result.error) {
+        toast.error(`同步失败: ${result.error}`);
+      } else {
+        toast.success(`✓ 同步完成 · 新增 ${result.newCount} 条 / 共 ${result.totalCount} 条`);
+        load();
+      }
+    } catch (e: any) {
+      // 回退 server API
       try {
         await fetch(`/api/sources/${id}/sync`, { method: 'POST' });
-      } catch {}
-      // server route 写入 sourceItems 到 server SQLite，IDB 没数据
-      // TODO: 让 server route 也写 IDB（Phase 2.12 后做）
-      // 现在只是 trigger sync，refresh 页面让 useSources 重新读
-      window.location.reload();
+        window.location.reload();
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     } finally {
       setSyncing(null);
     }
@@ -186,10 +199,23 @@ setError(null);
   const handleSyncAll = async () => {
     setSyncing('__all__');
     try {
+      let totalNew = 0;
+      let totalAll = 0;
+      for (const src of sources) {
+        const result = await syncSource(src as any);
+        totalNew += result.newCount;
+        totalAll += result.totalCount;
+        if (result.error) console.warn(`[sync] ${src.title} failed:`, result.error);
+      }
+      toast.success(`✓ 全部同步完成 · 新增 ${totalNew} 条 / 共 ${totalAll} 条`);
+      load();
+    } catch (e: any) {
       try {
         await fetch('/api/sources/sync-all', { method: 'POST' });
-      } catch {}
-      window.location.reload();
+        window.location.reload();
+      } catch (e2: any) {
+        toast.error(e.message || e2.message);
+      }
     } finally {
       setSyncing(null);
     }
