@@ -1,6 +1,12 @@
 /**
  * POST /api/inbox/import-url
  *
+ * V1.11.18: Vercel 兼容（去掉 Playwright 依赖）
+ * - 之前用 Playwright 处理公众号折叠长文 → Vercel serverless 无 Playwright → 500
+ * - 现在统一走纯 HTML fetch（Vercel / 本地都支持）
+ * - 公众号折叠长文 Vercel 上只能取折叠版（用户可在 frontend 编辑后 intake）
+ * - 本地 dev 仍可 try Playwright（如果装了）— 失败 fallback HTML
+ *
  * 输入: { url }
  * 输出: { ok, url, title, content, length, sourceType, ... }
  *
@@ -9,14 +15,13 @@
  *
  * 公众号特殊处理：
  * - 通用 UA 会被反爬挡掉（"Parameter error"），用微信内置浏览器 UA
- * - 长文默认折叠，必须用 Playwright 无头浏览器渲染 + 点击"轻触阅读原文"展开
- * - 抓过的 URL 7 天内走本地缓存（避免每次都跑 chromium）
+ * - 长文默认折叠，本地用 Playwright（可选）展开 / Vercel 直接用折叠版
+ * - 抓过的 URL 7 天内走本地缓存（仅本地 dev）
  *
  * 其他页面：纯 HTML 抓取（去 script/style/nav 等）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { scrapeWeixinArticle } from '@/lib/weixin-scraper';
 
 const MAX_LENGTH = 100000; // 100KB 上限（覆盖绝大多数公众号长文；防止极端情况 LLM prompt 爆炸）
 const WECHAT_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.49(0x18003130) NetType/WIFI Language/zh_CN';
@@ -42,52 +47,56 @@ export async function POST(req: NextRequest) {
 
     const isWeixin = parsedUrl.hostname.includes('mp.weixin.qq.com');
 
-    // ===== 公众号：走 Playwright（处理折叠长文）=====
-    if (isWeixin) {
-      const t0 = Date.now();
-      if (!forceRefresh) {
-        const cacheCheck = (await import('@/lib/weixin-scraper')).readWeixinCache(url);
-        if (cacheCheck) {
+    // ===== 公众号：本地 dev 尝试 Playwright（处理折叠长文），Vercel 直接跳过 =====
+    if (isWeixin && process.env.VERCEL !== '1') {
+      try {
+        const { scrapeWeixinArticle, readWeixinCache } = await import('@/lib/weixin-scraper');
+        const t0 = Date.now();
+
+        if (!forceRefresh) {
+          const cacheCheck = readWeixinCache(url);
+          if (cacheCheck) {
+            return NextResponse.json({
+              ok: true,
+              url,
+              title: cacheCheck.title,
+              content: cacheCheck.content,
+              length: cacheCheck.length,
+              truncated: false,
+              sourceType: 'weixin_article',
+              via: 'cached',
+              unfolded: cacheCheck.unfolded,
+              durationMs: Date.now() - t0,
+            });
+          }
+        }
+
+        const result = await scrapeWeixinArticle(url, { forceRefresh });
+        if (result.ok) {
+          let text = result.content;
+          const truncated = text.length > MAX_LENGTH;
+          if (truncated) text = text.slice(0, MAX_LENGTH);
           return NextResponse.json({
             ok: true,
             url,
-            title: cacheCheck.title,
-            content: cacheCheck.content,
-            length: cacheCheck.length,
-            truncated: false,
+            title: result.title,
+            content: text,
+            length: text.length,
+            truncated,
             sourceType: 'weixin_article',
-            via: 'cached',
-            unfolded: cacheCheck.unfolded,
+            via: 'playwright',
+            unfolded: result.unfolded,
             durationMs: Date.now() - t0,
           });
         }
+        console.warn(`[import-url] Playwright failed for ${url}, fallback: ${result.error}`);
+      } catch (e: any) {
+        // Playwright 没装 / chromium 没下 / sandbox 失败 → fallback HTML
+        console.warn(`[import-url] Playwright unavailable (${e.message}), fallback to HTML`);
       }
-
-      const result = await scrapeWeixinArticle(url, { forceRefresh });
-
-      if (result.ok) {
-        let text = result.content;
-        const truncated = text.length > MAX_LENGTH;
-        if (truncated) text = text.slice(0, MAX_LENGTH);
-        return NextResponse.json({
-          ok: true,
-          url,
-          title: result.title,
-          content: text,
-          length: text.length,
-          truncated,
-          sourceType: 'weixin_article',
-          via: 'playwright',
-          unfolded: result.unfolded,
-          durationMs: Date.now() - t0,
-        });
-      }
-
-      // Playwright 失败 → fallback 到 HTML 抓取（用微信 UA）
-      console.warn(`[import-url] Playwright failed for ${url}, fallback: ${result.error}`);
     }
 
-    // ===== 通用页面：纯 HTML 抓取 =====
+    // ===== 通用页面：纯 HTML 抓取（Vercel + 本地都支持）=====
     const userAgent = isWeixin
       ? WECHAT_UA
       : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -111,7 +120,7 @@ export async function POST(req: NextRequest) {
     if (isWeixin && html.includes('Parameter error')) {
       return NextResponse.json({
         ok: false,
-        error: '公众号反爬拦截（HTML 抓取也失败）。可能原因：链接已过期 / 已被发布者删除。Playwright 也未成功，请稍后重试。',
+        error: '公众号反爬拦截。Vercel 部署版无法用 Playwright 展开长文（仅本地 dev 支持）。请手动复制正文到粘贴框。',
         code: 'WECHIN_BLOCKED',
       }, { status: 403 });
     }
