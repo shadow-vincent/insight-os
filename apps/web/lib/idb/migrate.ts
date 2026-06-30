@@ -18,7 +18,30 @@
 
 import { type AssetRow, type OutputRow, type FeedbackRow, type TopicRow, type AssetTopicRow, type SourceRow, type SourceItemRow, type TopicKernelRow, type UserKernelRow, type WritingDraftRow, type WritingVersionRow } from './db';
 import { convertDump } from './mapping';
-import { getDb as getIDB } from './operations';
+
+// V1.11 修复: dynamic import dexie（避免 db.ts 顶层 class extends Dexie 在 Vercel 抛 'Dexie is not defined'）
+async function getIDB(): Promise<any> {
+  const DexieModule = await import('dexie');
+  const Dexie = (DexieModule as any).default || DexieModule;
+  const db = new Dexie('insight-os');
+  db.version(1).stores({
+    assets: 'id, type, status, evidenceLevel, updatedAt, scoreTotal, isKernelCandidate, isKernelApproved, sourceMaterialId, createdAt',
+    outputs: 'id, status, writingStatus, topicId, createdAt, updatedAt',
+    feedback: 'id, assetId, scene, outputId, createdAt',
+    topics: 'id, slug, sortOrder, updatedAt',
+    assetTopics: 'id, assetId, topicId, [assetId+topicId]',
+    sources: 'id, url, enabled, lastFetchedAt, type, createdAt',
+    sourceItems: 'id, sourceId, status, fetchedAt, publishedAt, [sourceId+guid]',
+    topicKernels: 'id, topicId, generatedAt',
+    userKernels: 'id, category, status, sortOrder, updatedAt',
+    writingDrafts: 'id, writingId, updatedAt',
+    writingVersions: 'id, writingId, createdAt, [writingId+createdAt]',
+  });
+  db.version(2).stores({
+    preferences: 'key',
+  });
+  return db;
+}
 
 const MIGRATION_KEY = 'migrated-v1.10';
 const BACKUP_KEY = 'last-backup-v1.10';
