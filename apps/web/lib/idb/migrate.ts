@@ -16,8 +16,9 @@
  *       （Electron 内嵌的 server 端会处理这个端点）
  */
 
-import { getDb, type AssetRow, type OutputRow, type FeedbackRow, type TopicRow, type AssetTopicRow, type SourceRow, type SourceItemRow, type TopicKernelRow, type UserKernelRow, type WritingDraftRow, type WritingVersionRow } from './db';
+import { type AssetRow, type OutputRow, type FeedbackRow, type TopicRow, type AssetTopicRow, type SourceRow, type SourceItemRow, type TopicKernelRow, type UserKernelRow, type WritingDraftRow, type WritingVersionRow } from './db';
 import { convertDump } from './mapping';
+import { getDb as getIDB } from './operations';
 
 const MIGRATION_KEY = 'migrated-v1.10';
 const BACKUP_KEY = 'last-backup-v1.10';
@@ -93,7 +94,7 @@ export async function migrateFromSqlite(): Promise<MigrationResult> {
     const dump = convertDump(raw);
 
     // 2. 写入 IndexedDB
-    const db = getDb();
+    const db = await getIDB();
     const migrated: Record<string, number> = {};
 
     await db.transaction(
@@ -169,7 +170,7 @@ export async function exportAllAsJson(): Promise<BackupResult> {
     return { success: false, size: 0, error: 'browser-only' };
   }
   try {
-    const db = getDb();
+    const db = await getIDB();
     const dump = {
       version: 1,
       exportedAt: Date.now(),
@@ -230,7 +231,7 @@ export async function maybeAutoBackup(): Promise<BackupResult> {
 
   // 检查 IndexedDB 是否有任何数据（避免给新用户下载空 JSON 打扰）
   try {
-    const db = getDb();
+    const db = await getIDB();
     const totalCount = await Promise.all([
       db.assets.count(),
       db.outputs.count(),
