@@ -15,6 +15,7 @@
 import { getDb, topics, assets, assetTopics, topicKernels } from '@insight-os/db';
 import { eq, sql } from 'drizzle-orm';
 import { TopicAssetPackageClient } from './TopicAssetPackageClient';
+import { TopicsClientFromIDB } from './TopicsClientFromIDB';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,8 @@ interface TopicKernelInfo {
 
 export default function TopicsPage() {
   const db = getDb();
-  if (!db) return null;
+  // V1.10: server 没 SQLite → 从 IndexedDB 读
+  if (!db) return <TopicsClientFromIDB />;
 
   // 1. 加载所有主题
   const allTopics = db.select().from(topics).orderBy(topics.sortOrder).all();
