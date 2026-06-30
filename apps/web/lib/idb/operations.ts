@@ -20,6 +20,7 @@ import type {
   SourceRow, SourceItemRow, TopicKernelRow, UserKernelRow,
   WritingDraftRow, WritingVersionRow,
 } from './db';
+import { getSharedDexie } from '@/lib/idb/shared-dexie';
 
 // ===== 单例 db 实例（lazy 初始化） =====
 
@@ -30,11 +31,8 @@ async function getDb(): Promise<any> {
     throw new Error('IndexedDB only available in browser context');
   }
   if (_dbInstance) return _dbInstance;
-
-  const DexieModule = await import('dexie');
-
-  const db = await getSharedDexie();
-return _dbInstance;
+  _dbInstance = await getSharedDexie();
+  return _dbInstance;
 }
 
 // ===== Assets =====

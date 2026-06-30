@@ -17,6 +17,7 @@
  */
 
 import { type AssetRow, type OutputRow, type FeedbackRow, type TopicRow, type AssetTopicRow, type SourceRow, type SourceItemRow, type TopicKernelRow, type UserKernelRow, type WritingDraftRow, type WritingVersionRow } from './db';
+import { getSharedDexie } from '@/lib/idb/shared-dexie';
 import { convertDump } from './mapping';
 
 // V1.11 修复: dynamic import dexie（避免 db.ts 顶层 class extends Dexie 在 Vercel 抛 'Dexie is not defined'）

@@ -11,6 +11,7 @@
  */
 
 import { addSourceItem, getSourceItems, updateSource } from './operations';
+import { getSharedDexie } from '@/lib/idb/shared-dexie';
 import type { SourceItemRow, SourceRow } from './db';
 
 interface ParsedItem {

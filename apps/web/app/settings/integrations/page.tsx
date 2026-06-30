@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { getSharedDexie } from '@/lib/idb/shared-dexie';
 import Link from 'next/link';
 import { useTheme } from '@/components/useTheme';
 

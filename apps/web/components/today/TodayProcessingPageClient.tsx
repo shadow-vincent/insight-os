@@ -18,6 +18,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { getSharedDexie } from '@/lib/idb/shared-dexie';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
