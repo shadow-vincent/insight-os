@@ -14,6 +14,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import { syncSource } from '@/lib/idb/client-rss';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -109,17 +110,19 @@ setError(null);
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
-      // 尝试调 server route 抓 RSS
+      // V1.12: 用 writeSource（本地 dev 走 server SQLite，Vercel fallback IDB）
       try {
-        const res = await fetch('/api/sources', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: addType,
-            url: addType === 'rss' ? newUrl.trim() : undefined,
-            title: sourceData.title,
-            handle: addType !== 'rss' ? newHandle.trim() : undefined,
-          }),
+        const res: any = await writeSource('/api/sources', {
+          type: addType,
+          url: addType === 'rss' ? newUrl.trim() : undefined,
+          title: sourceData.title,
+          handle: addType !== 'rss' ? newHandle.trim() : undefined,
+        }, {
+          fallback: async (p: any) => {
+            const { addSource } = await import('@/lib/idb/operations');
+            const s = await addSource({ type: p.type, url: p.url ?? '', title: p.title, handle: p.handle ?? null, enabled: 1, fetchIntervalMin: 60, lastFetchedAt: null, lastError: null });
+            return { ok: true, source: { id: s.id, type: s.type, url: s.url, title: s.title, handle: s.handle, enabled: s.enabled } };
+          },
         });
         if (res.ok) {
           const data = await res.json();
@@ -146,17 +149,18 @@ setError(null);
     }
   };
 
+  // V1.12 统一 helper
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
-      // V1.10: 直接更新 IDB
-      await updateSource(id, { enabled: enabled ? 1 : 0 });
-      // 同步到 server（可选，server 不可用时静默失败）
-      fetch(`/api/sources/${id}`, {
+      const data: any = await writeSource(`/api/sources/${id}`, { enabled: !enabled ? 1 : 0 }, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !enabled }),
-      }).catch(() => {});
-      window.location.reload();
+        fallback: async (p: any) => {
+          await updateSource(id, { enabled: p.enabled });
+          return { ok: true };
+        },
+      });
+      if (!data.ok) setError(data.error ?? '切换失败');
+      load();
     } catch (e: any) {
       setError(e.message);
     }
@@ -165,10 +169,15 @@ setError(null);
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除该信息源及其所有已抓内容？')) return;
     try {
-      // V1.10: 直接删 IDB
-      await deleteSource(id);
-      fetch(`/api/sources/${id}`, { method: 'DELETE' }).catch(() => {});
-      window.location.reload();
+      const data: any = await writeSource(`/api/sources/${id}`, undefined, {
+        method: 'DELETE',
+        fallback: async () => {
+          await deleteSource(id);
+          return { ok: true };
+        },
+      });
+      if (!data.ok) setError(data.error ?? '删除失败');
+      load();
     } catch (e: any) {
       setError(e.message);
     }
@@ -177,24 +186,23 @@ setError(null);
   const handleSync = async (id: string) => {
     setSyncing(id);
     try {
-      // V1.11: client 端直接 fetch RSS + 写 IDB
       const src = sources.find(s => s.id === id);
       if (!src) return;
+      // V1.12: 优先 client 端 syncSource（直接 fetch RSS + 写 IDB）
+      // 本地 dev 也走 client sync（V1.11.2 client-rss 实现）
       const result = await syncSource(src as any);
       if (result.error) {
+        // client 失败 → fallback server
+        await writeSource(`/api/sources/${id}/sync`, undefined, {
+          fallback: async () => ({ ok: false, error: 'client sync failed' }),
+        });
         toast.error(`同步失败: ${result.error}`);
       } else {
         toast.success(`✓ 同步完成 · 新增 ${result.newCount} 条 / 共 ${result.totalCount} 条`);
         load();
       }
     } catch (e: any) {
-      // 回退 server API
-      try {
-        await fetch(`/api/sources/${id}/sync`, { method: 'POST' });
-        window.location.reload();
-      } catch (e2: any) {
-        toast.error(e.message || e2.message);
-      }
+      toast.error(e.message);
     } finally {
       setSyncing(null);
     }

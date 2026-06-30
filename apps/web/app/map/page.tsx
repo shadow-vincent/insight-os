@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import Link from 'next/link';
 
 interface KernelData {
@@ -38,13 +39,25 @@ export default function MapPage() {
   const [generatingTopicId, setGeneratingTopicId] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
 
-  // V1.11.16: IDB-first
+  // V1.12 统一 helper
   const loadTopics = () => {
     (async () => {
       try {
-        const { getTopics } = await import('@/lib/idb/operations');
-        const topics = await getTopics();
-        setTopics(topics.map((t: any) => ({ id: t.id, slug: t.slug, name: t.name, sortOrder: t.sortOrder, kernel: null, kernelUpdatedAt: t.updatedAt, assetCount: 0 })));
+        const { readSource } = await import('@/lib/data-source');
+        const data = await readSource<any>('/api/topics', {
+          fallback: async () => {
+            const { getTopics, getAssetTopicsByTopic } = await import('@/lib/idb/operations');
+            const topics = await getTopics();
+            const enriched = await Promise.all(topics.map(async (t: any) => {
+              const ats = await getAssetTopicsByTopic(t.id);
+              return { ...t, assetCount: ats.length };
+            }));
+            return { ok: true, topics: enriched };
+          },
+        });
+        if (data.ok) {
+          setTopics(data.topics.map((t: any) => ({ ...t, kernel: t.kernel ?? null, kernelUpdatedAt: t.kernelUpdatedAt ?? t.updatedAt, assetCount: t.assetCount ?? 0 })));
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -59,14 +72,11 @@ export default function MapPage() {
     setGeneratingTopicId(topicId);
     setGenError(null);
     try {
-      // V1.11.16: Vercel NO_SQLITE 兼容（生成 kernel 需要 LLM + IDB 写）
-      // 先尝试 server 路径（本地 SQLite 模式）
-      const res = await fetch(`/api/topics/${topicId}/kernel`, { method: 'POST' });
-      const data = await res.json();
-      if (data.code === 'NO_SQLITE') {
-        // Vercel：TODO 调 client LLM 写 IDB（V1.12 任务）
-        setGenError('Vercel 部署版暂不支持此操作（IDB 写 kernel 待 V1.12）');
-      } else if (data.ok) {
+      const { writeSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/topics/${topicId}/kernel`, undefined, {
+        fallback: async () => ({ ok: false, error: 'Vercel 部署版暂不支持此操作（需要 LLM 服务端调用）' }),
+      });
+      if (data.ok) {
         loadTopics();
       } else {
         setGenError(data.error ?? '生成失败');
@@ -81,12 +91,15 @@ export default function MapPage() {
   const clearKernel = async (topicId: string) => {
     if (!confirm('清空思想内核？')) return;
     try {
-      const res = await fetch(`/api/topics/${topicId}/kernel`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.code === 'NO_SQLITE') {
-        setGenError('Vercel 部署版暂不支持此操作');
-      } else {
+      const { writeSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/topics/${topicId}/kernel`, undefined, {
+        method: 'DELETE',
+        fallback: async () => ({ ok: false, error: 'Vercel 部署版暂不支持此操作' }),
+      });
+      if (data.ok) {
         loadTopics();
+      } else {
+        setGenError(data.error ?? '操作失败');
       }
     } catch { /* ignore */ }
   };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { useAssets } from '@/lib/idb/hooks';
@@ -151,18 +152,18 @@ export default function CandidatesPage() {
     if (!confirm(`确认批量入库 ${selected.size} 张候选卡？\n（每张会调 LLM 生成 12 章节，5 张约 30 秒）`)) return;
     setBatchBusy(true);
     try {
-      const res = await fetch('/api/candidates/promote-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: Array.from(selected) }),
+      // V1.12 统一 helper
+      const { writeSource, readSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>('/api/candidates/promote-batch', { ids: Array.from(selected) }, {
+        fallback: async (p: any) => {
+          // Vercel: 需要 LLM 调 + IDB 写 — 暂 disable（需要 V1.13 加 client LLM promote）
+          return { ok: false, error: 'Vercel 部署版暂不支持批量入库（需要 LLM 服务端调用）' };
+        },
       });
-      const data = await res.json();
       if (data.ok) {
         toast.success(`批量入库完成：成功 ${data.promoted}/${selected.size} 张${data.failed > 0 ? `，失败 ${data.failed} 张` : ''}`);
         clearSelection();
-        // 刷新列表
-        const refresh = await fetch('/api/candidates');
-        const refreshData = await refresh.json();
+        const refreshData = await readSource<any>('/api/candidates');
         if (refreshData.ok) setList(refreshData.candidates);
       } else {
         toast.error('批量入库失败: ' + (data.error || '未知错误'));

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import { getSharedDexie } from '@/components/shared-dexie';
 import type { UserKernelRow } from '@insight-os/db';
 import KernelCard from '@/components/KernelCard';

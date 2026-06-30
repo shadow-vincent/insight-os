@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
@@ -167,18 +168,18 @@ function NewWritingInner() {
     }
     setGenerating(true);
     try {
-      // V1.11.16: IDB-first（Vercel NO_SQLITE：/api/writing/scaffold 返 ok:true 但 writingId undefined）
+      // V1.12 统一 helper：本地 dev 走 server SQLite，Vercel 走 IDB
       const { addOutput, getAsset } = await import('@/lib/idb/operations');
+      const { writeSource } = await import('@/lib/data-source');
       const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `out_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
       const now = Date.now();
-      // 收集 seed 资产标题（给草稿一个"基于这 5 张" 的 placeholder title）
       const cardTitles: string[] = [];
       for (const aid of selectedCards) {
         const a = await getAsset(aid);
         if (a?.title) cardTitles.push(a.title);
       }
       const title = `${selectedBelief.text.slice(0, 30)} · 基于 ${cardTitles.length} 张卡`;
-      await addOutput({
+      const payload = {
         id,
         outputType: 'article',
         status: 'draft',
@@ -190,6 +191,12 @@ function NewWritingInner() {
         content: `# ${title}\n\n> 基于核心判断: ${selectedBelief.text}\n> 来自 ${cardTitles.length} 张资产卡：\n${cardTitles.map(t => `- ${t}`).join('\n')}\n\n（待生成）\n`,
         createdAt: now,
         updatedAt: now,
+      };
+      await writeSource('/api/writing/scaffold', payload, {
+        fallback: async (p: any) => {
+          await addOutput(p);
+          return { ok: true, writingId: p.id };
+        },
       });
       toast.success('已创建草稿，去写作页面继续');
       router.push(`/writing/${id}`);

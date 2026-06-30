@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState, useCallback, use, useRef, useMemo } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 
@@ -98,16 +99,28 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
     video: { emoji: '🎬', label: '视频脚本' },
   }), []);
 
+  // V1.12 统一 helper
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/writing/${id}`);
-      const data = await res.json();
+      const { readSource } = await import('@/lib/data-source');
+      const data = await readSource<any>(`/api/writing/${id}`, {
+        fallback: async () => {
+          const { getOutputs } = await import('@/lib/idb/operations');
+          const all = await getOutputs();
+          const w = all.find(o => o.id === id);
+          return w ? { ok: true, writing: w } : { ok: false };
+        },
+      });
       if (data.ok && data.writing) {
         setWriting(data.writing);
-        // 优先加载草稿（如果有）
-        const draftRes = await fetch(`/api/writing/${id}/draft`);
-        const draftData = await draftRes.json();
+        const draftData = await readSource<any>(`/api/writing/${id}/draft`, {
+          fallback: async () => {
+            const { getWritingDrafts } = await import('@/lib/idb/operations');
+            const drafts = await getWritingDrafts(id);
+            return { ok: true, draft: drafts[0] ?? null };
+          },
+        });
         const articleText = data.writing.content?.primary_version ?? '';
         if (draftData.ok && draftData.draft && draftData.draft.content !== articleText) {
           setText(draftData.draft.content);
@@ -135,12 +148,16 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
     saveTimerRef.current = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        const res = await fetch(`/api/writing/${id}/draft`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ content: newText, title: newTitle }),
+        // V1.12 统一 helper
+        const { writeSource } = await import('@/lib/data-source');
+        const data = await writeSource<any>(`/api/writing/${id}/draft`, { content: newText, title: newTitle }, {
+          fallback: async (p: any) => {
+            const { addWritingDraft } = await import('@/lib/idb/operations');
+            const draftId = `draft_${id}_${Date.now().toString(36)}`;
+            await addWritingDraft({ id: draftId, writingId: id, content: p.content, title: p.title });
+            return { ok: true, updatedAt: Date.now() };
+          },
         });
-        const data = await res.json();
         if (data.ok) {
           setSaveStatus('saved');
           setLastSavedAt(data.updatedAt);
@@ -244,8 +261,14 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
   const loadVersions = async () => {
     setLoadingVersions(true);
     try {
-      const res = await fetch(`/api/writing/${id}/versions`);
-      const data = await res.json();
+      const { readSource } = await import('@/lib/data-source');
+      const data = await readSource<any>(`/api/writing/${id}/versions`, {
+        fallback: async () => {
+          const { getWritingVersions } = await import('@/lib/idb/operations');
+          const vs = await getWritingVersions(id);
+          return { ok: true, versions: vs };
+        },
+      });
       if (data.ok) setVersions(data.versions);
     } catch (e: any) {
       toast.error(`加载版本失败：${e.message}`);
@@ -262,13 +285,16 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
   const handleSaveVersion = async (note: string) => {
     setSavingVersion(true);
     try {
-      const res = await fetch(`/api/writing/${id}/versions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: text, title: textTitle, note, createdBy: 'manual' }),
+      const { writeSource } = await import('@/lib/data-source');
+      const res = await writeSource<any>(`/api/writing/${id}/versions`, { content: text, title: textTitle, note, createdBy: 'manual' }, {
+        fallback: async (p: any) => {
+          const { addWritingVersion } = await import('@/lib/idb/operations');
+          const vId = `v_${id}_${Date.now().toString(36)}`;
+          await addWritingVersion({ id: vId, writingId: id, content: p.content, title: p.title, note: p.note ?? '', createdBy: p.createdBy ?? 'manual' });
+          return { ok: true, versionId: vId };
+        },
       });
-      const data = await res.json();
-      if (data.ok) {
+      if (res.ok) {
         toast.success('版本已保存');
         loadVersions();
       } else {
@@ -357,10 +383,13 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
     // 切换到 published 时，把 textarea 内容写回 outputs
     if (newStatus === 'published') {
       try {
-        const draftRes = await fetch(`/api/writing/${id}/draft`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ content: text, title: textTitle }),
+        const { writeSource } = await import('@/lib/data-source');
+        const draftRes = await writeSource<any>(`/api/writing/${id}/draft`, { content: text, title: textTitle }, {
+          fallback: async (p: any) => {
+            const { addWritingDraft } = await import('@/lib/idb/operations');
+            await addWritingDraft({ id: `draft_pub_${id}_${Date.now().toString(36)}`, writingId: id, content: p.content, title: p.title });
+            return { ok: true };
+          },
         });
         if (!draftRes.ok) {
           toast.error('发布前保存草稿失败');
@@ -373,12 +402,14 @@ export default function WritingDetailPage({ params }: { params: Promise<{ id: st
     }
     setTransitioning(true);
     try {
-      const res = await fetch(`/api/output/${writing.id}/status`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ writingStatus: newStatus }),
+      const { writeSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/output/${writing.id}/status`, { writingStatus: newStatus }, {
+        fallback: async (p: any) => {
+          const { updateOutput } = await import('@/lib/idb/operations');
+          await updateOutput(writing.id, { writingStatus: p.writingStatus });
+          return { ok: true };
+        },
       });
-      const data = await res.json();
       if (data.ok) {
         toast.success(`已切换到 ${STATUS_LABELS[newStatus].label}`);
         await load();

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 const SOURCES = [
@@ -153,19 +154,26 @@ function InboxInner() {
         return;
       }
 
-      // V1.11.16: IDB-first（Vercel NO_SQLITE：/api/inbox/intake 返 ok:true 但 assetIds undefined）
-      const { clientIntakeLightCard, callLLMDirect, getLLMConfig } = await import('@/lib/idb/operations');
+      // V1.12 统一 helper
+      const { clientIntakeLightCard, getLLMConfig } = await import('@/lib/idb/operations');
+      const { writeSource } = await import('@/lib/data-source');
       const llmConfig = await getLLMConfig();
       if (!llmConfig?.apiKey) {
         setError('请先在 /settings/integrations 配置 LLM API Key');
         setBusy(false);
         return;
       }
-      const data = await clientIntakeLightCard({
-        rawContent: text,
-        sourceType: source,
+      const data = await writeSource<any>('/api/inbox/intake', body, {
+        fallback: async (p: any) => {
+          const r = await clientIntakeLightCard({
+            rawContent: p.rawContent ?? text,
+            sourceType: p.sourceType ?? source,
+            url: p.url,
+          });
+          return { ok: true, assetIds: [r.id], count: 1 };
+        },
       });
-      setResult({ ok: true, assetIds: [data.id], count: 1 });
+      setResult(data);
     } catch (e: any) {
       setError(e.message);
     } finally {

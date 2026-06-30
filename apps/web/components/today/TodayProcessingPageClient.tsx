@@ -18,6 +18,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import { getSharedDexie } from '@/components/shared-dexie';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -393,7 +394,9 @@ const id = `lc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={async () => {
-                await fetch('/api/sources/sync-all', { method: 'POST' });
+                // V1.12: 调 client 端 syncSource（V1.11.2 已实现）
+                const { syncAllSources } = await import('@/lib/idb/client-rss');
+                await syncAllSources();
                 location.reload();
               }}
               style={{

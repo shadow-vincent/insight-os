@@ -16,6 +16,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { readSource, writeSource } from '@/lib/data-source';
 import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 
@@ -70,13 +71,19 @@ export function OutputPackageClient() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toast = useToast();
 
-  // V1.11.16: IDB-first
+  // V1.12 统一 helper
   useEffect(() => {
     (async () => {
       try {
-        const { getOutputs } = await import('@/lib/idb/operations');
-        const outputs = await getOutputs();
-        setList(outputs);
+        const { readSource } = await import('@/lib/data-source');
+        const data = await readSource<any>('/api/outputs', {
+          fallback: async () => {
+            const { getOutputs } = await import('@/lib/idb/operations');
+            const outputs = await getOutputs();
+            return { ok: true, outputs };
+          },
+        });
+        if (data.ok) setList(data.outputs);
       } catch (e) {
         console.error(e);
       } finally {
@@ -221,8 +228,10 @@ function OutputRow({ o, expanded, onToggle, toast }: {
   const handlePromoteToKernel = async () => {
     setStrengthenBusy(true);
     try {
-      const res = await fetch(`/api/outputs/${o.id}/promote-to-kernel`, { method: 'POST' });
-      const data = await res.json();
+      const { writeSource } = await import('@/lib/data-source');
+      const data = await writeSource<any>(`/api/outputs/${o.id}/promote-to-kernel`, undefined, {
+        fallback: async () => ({ ok: false, error: 'Vercel 部署版暂不支持此操作（需要 LLM 服务端调用）' }),
+      });
       if (data.ok) {
         setStrengthenResult({
           ok: true,
